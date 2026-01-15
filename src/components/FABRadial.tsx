@@ -30,26 +30,40 @@ const FABRadial = ({ onOptionSelect }: FABRadialProps) => {
     setIsOpen(false);
   };
 
-  // Calculate positions for 90° arc (bottom-right to top-right)
+  // Calculate positions for 90° arc - increased radius for better spacing
   const getPosition = (index: number, total: number) => {
     const startAngle = -180; // Start from left
     const endAngle = -90; // End at top
     const angle = startAngle + ((endAngle - startAngle) / (total - 1)) * index;
     const radians = (angle * Math.PI) / 180;
-    const radius = 80;
+    const radius = 110; // Increased from 80 to 110
     return {
       x: Math.cos(radians) * radius,
       y: Math.sin(radians) * radius,
     };
   };
 
+  // Calculate label position based on button position
+  const getLabelPosition = (index: number, total: number) => {
+    const { x, y } = getPosition(index, total);
+    // Position labels to the left of buttons on the left side, above for top buttons
+    if (x < -50) {
+      return { left: "-80px", top: "50%", transform: "translateY(-50%)" };
+    } else if (y < -50) {
+      return { left: "50%", top: "-36px", transform: "translateX(-50%)" };
+    } else {
+      return { left: "-75px", top: "50%", transform: "translateY(-50%)" };
+    }
+  };
+
   return (
-    <div className="fixed bottom-24 right-6 z-40">
+    <div className="fixed bottom-24 right-6 z-50">
       {/* Backdrop */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            className="fixed inset-0 bg-foreground/10 backdrop-blur-sm"
+            className="fixed inset-0 bg-foreground/20 backdrop-blur-sm"
+            style={{ zIndex: 40 }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -63,12 +77,13 @@ const FABRadial = ({ onOptionSelect }: FABRadialProps) => {
         {isOpen &&
           fabOptions.map((option, index) => {
             const position = getPosition(index, fabOptions.length);
+            const labelStyle = getLabelPosition(index, fabOptions.length);
             const Icon = option.icon;
             return (
               <motion.button
                 key={option.id}
-                className="absolute w-12 h-12 rounded-full shadow-lg flex items-center justify-center text-white"
-                style={{ backgroundColor: option.color }}
+                className="absolute w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-white"
+                style={{ backgroundColor: option.color, zIndex: 45 }}
                 initial={{ scale: 0, x: 0, y: 0, opacity: 0 }}
                 animate={{
                   scale: 1,
@@ -87,12 +102,20 @@ const FABRadial = ({ onOptionSelect }: FABRadialProps) => {
                 whileTap={{ scale: 0.9 }}
                 onClick={() => handleOptionClick(option.id)}
               >
-                <Icon size={20} />
+                <Icon size={22} />
                 <motion.span
-                  className="absolute -top-8 whitespace-nowrap text-xs font-medium text-foreground bg-card px-2 py-1 rounded-lg shadow-md"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 + 0.1 }}
+                  className="absolute whitespace-nowrap text-xs font-semibold px-3 py-1.5 rounded-lg shadow-lg"
+                  style={{
+                    ...labelStyle,
+                    zIndex: 50,
+                    backgroundColor: "hsl(var(--card))",
+                    color: "hsl(var(--foreground))",
+                    border: "1px solid hsl(var(--border))",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                  }}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: index * 0.05 + 0.15 }}
                 >
                   {option.label}
                 </motion.span>
@@ -103,7 +126,8 @@ const FABRadial = ({ onOptionSelect }: FABRadialProps) => {
 
       {/* Main FAB button */}
       <motion.button
-        className="fab-button relative z-10"
+        className="fab-button relative"
+        style={{ zIndex: 46 }}
         onClick={toggleOpen}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
