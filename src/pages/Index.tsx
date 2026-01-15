@@ -6,29 +6,47 @@ import WaveBackground from "@/components/WaveBackground";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import FABRadial from "@/components/FABRadial";
-import ChildrenSelector from "@/components/ChildrenSelector";
 import UpcomingEvents from "@/components/UpcomingEvents";
 import ZenState from "@/components/ZenState";
-import { Child } from "@/components/ChildBadge";
-import { EventData } from "@/components/EventCard";
+import CalendarView from "@/components/CalendarView";
+import MemberAvatar from "@/components/MemberAvatar";
+import AssignResponsibleDialog from "@/components/AssignResponsibleDialog";
+import { NestMember, EventData } from "@/types/kidus";
+import { useConflictDetection } from "@/hooks/useConflictDetection";
 
 // Mock data for demonstration
-const mockChildren: Child[] = [
+const mockMembers: NestMember[] = [
   {
-    id: "1",
+    id: "adult-1",
+    name: "Ana García",
+    role: "adult",
+    color: "hsl(270, 70%, 60%)", // Purple
+    custodyDays: [1, 2, 3], // Mon, Tue, Wed
+  },
+  {
+    id: "adult-2",
+    name: "Carlos García",
+    role: "adult",
+    color: "hsl(211, 100%, 50%)", // Blue
+    custodyDays: [4, 5, 6, 0], // Thu, Fri, Sat, Sun
+  },
+  {
+    id: "child-1",
     name: "Lucía García",
+    role: "child",
+    color: "hsl(340, 80%, 65%)", // Pink
     school: "CEIP San Fernando",
     grade: "3º Primaria",
     class: "3ºB",
-    color: "hsl(340, 80%, 65%)", // Pink
   },
   {
-    id: "2",
+    id: "child-2",
     name: "Pablo García",
+    role: "child",
+    color: "hsl(142, 60%, 50%)", // Green
     school: "CEIP San Fernando",
     grade: "1º Primaria",
     class: "1ºA",
-    color: "hsl(211, 100%, 60%)", // Blue
   },
 ];
 
@@ -36,43 +54,68 @@ const mockEvents: EventData[] = [
   {
     id: "1",
     title: "Excursión al Zoo",
-    date: "15 Ene",
-    time: "09:00 - 14:00",
+    date: "2026-01-15",
+    startTime: "09:00",
+    endTime: "14:00",
     location: "Zoo de Madrid",
-    childName: "Lucía",
-    childColor: "hsl(340, 80%, 65%)",
+    memberId: "child-1",
+    memberName: "Lucía",
+    memberColor: "hsl(340, 80%, 65%)",
     type: "school",
-    assignedTo: "Mamá",
+    assignedToId: "adult-1",
+    assignedToName: "Ana",
   },
   {
     id: "2",
     title: "Clase de Natación",
-    date: "15 Ene",
-    time: "17:30 - 18:30",
+    date: "2026-01-15",
+    startTime: "10:00",
+    endTime: "11:30",
     location: "Polideportivo Municipal",
-    childName: "Pablo",
-    childColor: "hsl(211, 100%, 60%)",
+    memberId: "child-2",
+    memberName: "Pablo",
+    memberColor: "hsl(142, 60%, 50%)",
     type: "activity",
-    hasConflict: true,
-    assignedTo: "Papá",
+    assignedToId: "adult-2",
+    assignedToName: "Carlos",
   },
   {
     id: "3",
     title: "Reunión de Padres",
-    date: "16 Ene",
-    time: "16:00 - 17:00",
+    date: "2026-01-16",
+    startTime: "16:00",
+    endTime: "17:00",
     location: "Aula 3ºB",
-    childName: "Lucía",
-    childColor: "hsl(340, 80%, 65%)",
+    memberId: "child-1",
+    memberName: "Lucía",
+    memberColor: "hsl(340, 80%, 65%)",
     type: "school",
+  },
+  {
+    id: "4",
+    title: "Reunión Trabajo",
+    date: "2026-01-15",
+    startTime: "09:30",
+    endTime: "11:00",
+    memberId: "adult-1",
+    memberName: "Ana",
+    memberColor: "hsl(270, 70%, 60%)",
+    type: "work",
+    assignedToId: "adult-1",
+    assignedToName: "Ana",
   },
 ];
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("home");
-  const [selectedChildId, setSelectedChildId] = useState<string>("all");
-  const [events] = useState<EventData[]>(mockEvents);
-  const [showZenState, setShowZenState] = useState(false);
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  const [events, setEvents] = useState<EventData[]>(mockEvents);
+  const [showAssignDialog, setShowAssignDialog] = useState(false);
+  const [currentEventId, setCurrentEventId] = useState<string | null>(null);
+  const [isConflictMode, setIsConflictMode] = useState(false);
+
+  // Use conflict detection hook
+  const { eventsWithConflicts, conflicts } = useConflictDetection(events);
 
   const handleFabOptionSelect = (optionId: string) => {
     const messages: Record<string, string> = {
@@ -82,58 +125,134 @@ const Index = () => {
       manual: "✏️ Crear evento manualmente",
     };
     toast.info(messages[optionId] || "Opción seleccionada");
+    
+    // For manual entry, show assign dialog
+    if (optionId === "manual") {
+      setIsConflictMode(false);
+      setShowAssignDialog(true);
+    }
   };
 
   const handleDelegate = (eventId: string) => {
-    toast.success("Solicitud de delegación enviada", {
-      description: "El otro progenitor recibirá una notificación",
-    });
+    setCurrentEventId(eventId);
+    setIsConflictMode(false);
+    setShowAssignDialog(true);
   };
 
-  const handleChildSelect = (childId: string) => {
-    setSelectedChildId(childId);
+  const handleConflictResolve = (eventId: string) => {
+    setCurrentEventId(eventId);
+    setIsConflictMode(true);
+    setShowAssignDialog(true);
   };
 
-  const handleAddChild = () => {
-    toast.info("Añadir nuevo hijo", {
+  const handleAssignConfirm = (memberId: string) => {
+    if (currentEventId) {
+      const member = mockMembers.find((m) => m.id === memberId);
+      setEvents((prev) =>
+        prev.map((e) =>
+          e.id === currentEventId
+            ? {
+                ...e,
+                assignedToId: memberId,
+                assignedToName: memberId === "family" ? "Familia" : member?.name.split(" ")[0] || "",
+              }
+            : e
+        )
+      );
+      toast.success(
+        isConflictMode
+          ? "Evento delegado correctamente"
+          : "Responsable asignado",
+        {
+          description: memberId === "family" 
+            ? "Toda la familia es responsable"
+            : `Asignado a ${member?.name.split(" ")[0]}`,
+        }
+      );
+    }
+    setCurrentEventId(null);
+    setShowAssignDialog(false);
+  };
+
+  const handleMemberFilter = (memberId: string | null) => {
+    setSelectedMemberId(memberId);
+  };
+
+  const handleDateSelect = (date: Date) => {
+    toast.info(`Fecha seleccionada: ${date.toLocaleDateString("es-ES")}`);
+  };
+
+  const handleAddMember = () => {
+    toast.info("Añadir nuevo miembro", {
       description: "Próximamente podrás registrar nuevos perfiles",
     });
   };
 
-  const filteredEvents =
-    selectedChildId === "all"
-      ? events
-      : events.filter((e) => {
-          const child = mockChildren.find((c) => c.id === selectedChildId);
-          return child && e.childName === child.name.split(" ")[0];
-        });
+  // Filter events by selected member
+  const filteredEvents = selectedMemberId
+    ? eventsWithConflicts.filter((e) => e.memberId === selectedMemberId)
+    : eventsWithConflicts;
+
+  const currentEvent = currentEventId
+    ? events.find((e) => e.id === currentEventId)
+    : undefined;
 
   return (
     <div className="min-h-screen relative">
       <WaveBackground />
-      
+
       <div className="relative z-10 safe-bottom">
-        <Header userName="Familia García" notificationCount={2} />
-        
+        <Header userName="Familia García" notificationCount={conflicts.length} />
+
         <main className="pb-4">
-          {/* Children selector */}
-          <ChildrenSelector
-            children={mockChildren}
-            selectedChildId={selectedChildId}
-            onChildSelect={handleChildSelect}
-            onAddChild={handleAddChild}
-          />
+          {/* Members filter bar */}
+          <motion.section
+            className="px-4 py-3"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div className="flex items-center gap-3 overflow-x-auto pb-2">
+              <button
+                onClick={() => handleMemberFilter(null)}
+                className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                  !selectedMemberId
+                    ? "bg-primary text-white shadow-lg"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                Todos
+              </button>
+              {mockMembers.map((member) => (
+                <MemberAvatar
+                  key={member.id}
+                  member={member}
+                  size="md"
+                  isSelected={selectedMemberId === member.id}
+                  onClick={() => handleMemberFilter(member.id)}
+                  showName
+                />
+              ))}
+              <button
+                onClick={handleAddMember}
+                className="flex-shrink-0 w-12 h-12 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+              >
+                +
+              </button>
+            </div>
+          </motion.section>
 
           {/* Quick stats */}
           <motion.section
             className="px-4 py-2"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
+            transition={{ delay: 0.2 }}
           >
             <div className="grid grid-cols-3 gap-3">
               <div className="glass-card rounded-2xl p-4 text-center">
-                <span className="text-2xl font-bold text-primary">{filteredEvents.length}</span>
+                <span className="text-2xl font-bold text-primary">
+                  {filteredEvents.length}
+                </span>
                 <p className="text-xs text-muted-foreground mt-1">Esta semana</p>
               </div>
               <div className="glass-card rounded-2xl p-4 text-center">
@@ -143,25 +262,55 @@ const Index = () => {
                 <p className="text-xs text-muted-foreground mt-1">Conflictos</p>
               </div>
               <div className="glass-card rounded-2xl p-4 text-center">
-                <span className="text-2xl font-bold text-success">2</span>
-                <p className="text-xs text-muted-foreground mt-1">Delegados</p>
+                <span className="text-2xl font-bold text-success">
+                  {filteredEvents.filter((e) => e.assignedToId).length}
+                </span>
+                <p className="text-xs text-muted-foreground mt-1">Asignados</p>
               </div>
             </div>
           </motion.section>
 
-          {/* Events or Zen state */}
-          {filteredEvents.length > 0 ? (
-            <UpcomingEvents events={filteredEvents} onDelegate={handleDelegate} />
+          {/* Calendar view (shown in calendar tab) */}
+          {activeTab === "calendar" ? (
+            <CalendarView
+              events={eventsWithConflicts}
+              members={mockMembers}
+              selectedMemberId={selectedMemberId}
+              onMemberFilter={handleMemberFilter}
+              onDateSelect={handleDateSelect}
+            />
           ) : (
-            <ZenState />
+            /* Events or Zen state */
+            filteredEvents.length > 0 ? (
+              <UpcomingEvents
+                events={filteredEvents}
+                onDelegate={handleDelegate}
+                onConflictResolve={handleConflictResolve}
+              />
+            ) : (
+              <ZenState />
+            )
           )}
         </main>
 
         {/* FAB */}
         <FABRadial onOptionSelect={handleFabOptionSelect} />
-        
+
         {/* Bottom nav */}
         <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+
+        {/* Assign responsible dialog */}
+        <AssignResponsibleDialog
+          isOpen={showAssignDialog}
+          onClose={() => {
+            setShowAssignDialog(false);
+            setCurrentEventId(null);
+          }}
+          onConfirm={handleAssignConfirm}
+          members={mockMembers}
+          eventData={currentEvent}
+          isConflict={isConflictMode}
+        />
       </div>
     </div>
   );

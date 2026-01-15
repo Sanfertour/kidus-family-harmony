@@ -1,13 +1,15 @@
 import { motion } from "framer-motion";
-import EventCard, { EventData } from "./EventCard";
+import EventCard from "./EventCard";
+import { EventData } from "@/types/kidus";
 import { CalendarDays } from "lucide-react";
 
 interface UpcomingEventsProps {
   events: EventData[];
   onDelegate?: (eventId: string) => void;
+  onConflictResolve?: (eventId: string) => void;
 }
 
-const UpcomingEvents = ({ events, onDelegate }: UpcomingEventsProps) => {
+const UpcomingEvents = ({ events, onDelegate, onConflictResolve }: UpcomingEventsProps) => {
   const container = {
     hidden: { opacity: 0 },
     show: {
@@ -18,14 +20,7 @@ const UpcomingEvents = ({ events, onDelegate }: UpcomingEventsProps) => {
     },
   };
 
-  // Group events by date
   const today = new Date().toLocaleDateString("es-ES", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
-
-  const tomorrow = new Date(Date.now() + 86400000).toLocaleDateString("es-ES", {
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -38,7 +33,6 @@ const UpcomingEvents = ({ events, onDelegate }: UpcomingEventsProps) => {
         <h2 className="text-base font-semibold text-foreground">Próximos eventos</h2>
       </div>
 
-      {/* Date header */}
       <div className="mb-3">
         <span className="text-sm font-medium text-muted-foreground capitalize">
           Hoy, {today}
@@ -52,7 +46,12 @@ const UpcomingEvents = ({ events, onDelegate }: UpcomingEventsProps) => {
         animate="show"
       >
         {events.map((event) => (
-          <EventCard key={event.id} event={event} onDelegate={onDelegate} />
+          <EventCard 
+            key={event.id} 
+            event={event} 
+            onDelegate={onDelegate}
+            onConflictResolve={onConflictResolve}
+          />
         ))}
       </motion.div>
     </section>
