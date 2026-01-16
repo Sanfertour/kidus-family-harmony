@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { checkConflicts } from "@/lib/nest-logic"; // Importa la función de conflicto
 
-export const AddEventDialog = ({ members, onEventAdded }: { members: any[], onEventAdded: () => void }) => {
+// Añadido 'children' para el botón personalizado
+export const AddEventDialog = ({ members, onEventAdded, children }: { members: any[], onEventAdded: () => void, children?: React.ReactNode }) => {
   const [title, setTitle] = useState("");
   const [memberId, setMemberId] = useState("");
   const [date, setDate] = useState("");
@@ -23,14 +25,29 @@ export const AddEventDialog = ({ members, onEventAdded }: { members: any[], onEv
     setLoading(true);
 
     const fullStartTime = `${date}T${time}:00`;
+    // Asumimos una duración de 1 hora para el conflicto
+    const endTime = new Date(new Date(fullStartTime).getTime() + 60 * 60 * 1000).toISOString(); 
+
+    // Aquí usamos la función de detección de conflictos
+    const conflicts = await checkConflicts(memberId, fullStartTime, endTime);
+
+    if (conflicts.length > 0) {
+      toast({ 
+        title: "¡Conflicto de Agenda!", 
+        description: `${members.find(m => m.id === memberId)?.display_name} ya tiene un evento a esa hora.`, 
+        variant: "destructive" 
+      });
+      setLoading(false);
+      return; // Detenemos el guardado si hay conflicto
+    }
     
-    // Aquí iría la llamada a checkConflicts que creamos antes
     const { error } = await supabase
       .from('events')
       .insert([{ 
         title, 
         member_id: memberId, 
         start_time: fullStartTime,
+        end_time: endTime, // Guardamos la hora de fin para el conflicto
         category: 'logistics' 
       }]);
 
@@ -47,9 +64,11 @@ export const AddEventDialog = ({ members, onEventAdded }: { members: any[], onEv
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <button className="fab-button fixed bottom-28 right-6 z-50 scale-110 active:scale-95 transition-all">
-          <Plus className="text-white w-8 h-8" />
-        </button>
+        {children || ( // Renderiza el children si existe, si no, un botón por defecto
+          <Button size="sm" className="rounded-full bg-blue-600 hover:bg-blue-700 shadow-lg">
+            <Plus className="w-4 h-4 mr-1" /> Añadir Evento
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="rounded-[2rem] max-w-[90vw]">
         <DialogHeader>
