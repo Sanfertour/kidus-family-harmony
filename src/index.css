@@ -30,10 +30,90 @@
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.7);
   box-shadow: 0 10px 30px -10px rgba(0,0,0,0.05);
+  border-radius: 2rem; /* Aseguramos esquinas redondeadas */
   transition: all 0.3s ease;
 }
 
 .glass-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 15px 35px -10px rgba(0,0,0,0.1);
+}
+
+/* Nuevas clases para el FAB Radial */
+.fab-radial-container {
+  position: fixed;
+  bottom: 110px; /* Ajusta la posición para que esté sobre la nav */
+  right: 24px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column-reverse; /* Botón principal abajo */
+  align-items: center;
+  gap: 10px; /* Espacio entre los botones */
+}
+
+.fab-main-button {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%); /* Naranja a Rojo para el + */
+  box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 2rem;
+  transition: transform 0.3s ease, background 0.3s ease;
+  cursor: pointer;
+  position: relative;
+  z-index: 10;
+}
+
+.fab-main-button.open {
+  transform: rotate(135deg); /* Gira el + para que sea una X */
+  background: linear-gradient(135deg, #ef4444 0%, #f59e0b 100%);
+}
+
+.fab-sub-button {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #3b82f6; /* Azul KidUs para los iconos */
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  opacity: 0;
+  transform: translateY(20px) scale(0.8);
+  pointer-events: none; /* No clickable cuando está oculto */
+  position: absolute; /* Para apilarlos y que se desplieguen */
+  bottom: 0px; /* Posición inicial apilados */
+  right: 0px;
+}
+
+.fab-sub-button.visible {
+  opacity: 1;
+  pointer-events: auto; /* Clickable cuando visible */
+}
+
+/* Animación para desplegar los botones */
+.fab-sub-button:nth-child(1).visible { /* Lápiz (Manual) */
+  transform: translateY(-70px) scale(1);
+  transition-delay: 0.05s;
+}
+.fab-sub-button:nth-child(2).visible { /* PDF */
+  transform: translateY(-130px) scale(1);
+  transition-delay: 0.1s;
+}
+.fab-sub-button:nth-child(3).visible { /* Galería */
+  transform: translateY(-190px) scale(1);
+  transition-delay: 0.15s;
+}
+.fab-sub-button:nth-child(4).visible { /* Cámara */
+  transform: translateY(-250px) scale(1);
+  transition-delay: 0.2s;
 }
