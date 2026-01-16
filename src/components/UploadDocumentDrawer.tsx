@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { X, Upload, FileText, Image, Camera } from 'lucide-react';
+import { X, Upload, Camera, Image as ImageIcon, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export const UploadDocumentDrawer = ({ isOpen, onClose, onEventAdded, members }: { 
@@ -26,54 +25,88 @@ export const UploadDocumentDrawer = ({ isOpen, onClose, onEventAdded, members }:
       return;
     }
     setLoading(true);
-    toast({ title: "Procesando documento...", description: "La IA de KidUs está trabajando.", variant: "default" });
+    toast({ title: "Procesando documento...", description: "La IA de KidUs está trabajando." });
 
-    // --- AQUÍ SE INTEGRARÍA LA LLAMADA A TU API DE IA/OCR ---
-    // Por ahora, solo simula el procesamiento
     await new Promise(resolve => setTimeout(resolve, 3000)); 
 
-    toast({ title: "Documento analizado", description: "Revisa los campos sugeridos por la IA.", variant: "success" });
-    // Aquí iría la lógica para mostrar los campos precargados para validación
+    toast({ title: "Documento analizado", description: "Revisa los campos sugeridos por la IA." });
     setLoading(false);
-    // onClose(); // Cerrar y pasar a un diálogo de validación
   };
 
+  if (!isOpen) return null;
+
   return (
-    <div className={`fixed inset-x-0 bottom-0 z-50 transform transition-transform duration-300 ease-out ${isOpen ? 'translate-y-0' : 'translate-y-full'}`}>
-      <div className="glass-card rounded-t-3xl p-6 shadow-2xl max-h-[80vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold font-nunito">Escaneo Inteligente</h2>
-          <Button variant="ghost" size="icon" onClick={onClose} className="text-gray-500 hover:text-gray-700">
-            <X className="w-6 h-6" />
-          </Button>
+    <div className="fixed inset-0 z-[100] flex items-end justify-center">
+      {/* Overlay oscuro con desenfoque */}
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity" onClick={onClose} />
+      
+      {/* El Drawer */}
+      <div className="relative w-full max-w-md bg-white/90 backdrop-blur-2xl rounded-t-[3rem] p-8 shadow-2xl animate-in slide-in-from-bottom duration-500 border-t border-white/50">
+        {/* Tirador decorativo superior */}
+        <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6" />
+
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h2 className="text-2xl font-black font-nunito flex items-center gap-2">
+              Escaneo IA <Sparkles className="w-5 h-5 text-blue-500" />
+            </h2>
+            <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">Multimodal</p>
+          </div>
+          <button onClick={onClose} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors">
+            <X className="w-5 h-5 text-gray-500" />
+          </button>
         </div>
         
-        <div className="space-y-6 text-center">
-          <p className="text-muted-foreground">Sube una circular, un pantallazo o un PDF. ¡La IA se encarga del resto!</p>
-          
-          <div className="flex justify-center gap-4 my-6">
-            <label className="w-24 h-24 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-2xl cursor-pointer hover:bg-gray-50 transition-colors">
+        <div className="space-y-8">
+          <div className="grid grid-cols-3 gap-4">
+            <label className="flex flex-col items-center justify-center gap-2 p-4 rounded-3xl border-2 border-dashed border-gray-200 hover:border-blue-400 hover:bg-blue-50/50 transition-all cursor-pointer group">
               <input type="file" accept="image/*,.pdf" className="hidden" onChange={handleFileChange} />
-              <Upload className="w-8 h-8 text-gray-400 mb-2" />
-              <span className="text-xs text-gray-500">Subir</span>
+              <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Upload className="w-6 h-6 text-blue-500" />
+              </div>
+              <span className="text-[10px] font-bold text-gray-500 uppercase">Subir</span>
             </label>
-            {/* Opciones directas (Cámara/Galería) que luego se integrarán */}
-            <Button variant="outline" className="w-24 h-24 flex flex-col items-center justify-center rounded-2xl text-gray-500">
-                <Camera className="w-8 h-8 mb-2" />
-                <span className="text-xs">Cámara</span>
-            </Button>
-            <Button variant="outline" className="w-24 h-24 flex flex-col items-center justify-center rounded-2xl text-gray-500">
-                <Image className="w-8 h-8 mb-2" />
-                <span className="text-xs">Galería</span>
-            </Button>
+
+            <button className="flex flex-col items-center justify-center gap-2 p-4 rounded-3xl border border-gray-100 bg-gray-50/50 hover:bg-white transition-all">
+              <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center">
+                <Camera className="w-6 h-6 text-gray-400" />
+              </div>
+              <span className="text-[10px] font-bold text-gray-400 uppercase">Cámara</span>
+            </button>
+
+            <button className="flex flex-col items-center justify-center gap-2 p-4 rounded-3xl border border-gray-100 bg-gray-50/50 hover:bg-white transition-all">
+              <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center">
+                <ImageIcon className="w-6 h-6 text-gray-400" />
+              </div>
+              <span className="text-[10px] font-bold text-gray-400 uppercase">Galería</span>
+            </button>
           </div>
 
           {file && (
-            <p className="text-sm font-medium text-kidus-blue">Archivo seleccionado: {file.name}</p>
+            <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-2xl animate-in zoom-in-95">
+              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
+                <Upload className="w-5 h-5 text-blue-500" />
+              </div>
+              <div className="overflow-hidden">
+                <p className="text-xs font-bold text-blue-700 truncate">{file.name}</p>
+                <p className="text-[10px] text-blue-400 uppercase font-bold">Listo para procesar</p>
+              </div>
+            </div>
           )}
 
-          <Button onClick={handleProcess} disabled={loading || !file} className="w-full h-14 rounded-2xl bg-kidus-blue hover:bg-kidus-blue/90 text-lg font-bold shadow-lg mt-6">
-            {loading ? "Analizando documento..." : "Procesar con IA"}
+          <Button 
+            onClick={handleProcess} 
+            disabled={loading || !file} 
+            className="w-full h-16 rounded-[2rem] bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white text-lg font-black shadow-xl shadow-blue-200 transition-all active:scale-95 disabled:opacity-50"
+          >
+            {loading ? (
+              <div className="flex items-center gap-3">
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Analizando...
+              </div>
+            ) : (
+              "Extraer con IA"
+            )}
           </Button>
         </div>
       </div>
