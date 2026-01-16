@@ -111,25 +111,46 @@ const Index = () => {
           </div>
         )}
 
-        {/* VISTA: FAMILIA */}
-        {activeTab === "family" && (
-          <div className="space-y-6 animate-in slide-in-from-bottom-4">
-            <div className="flex justify-between items-center px-2">
-              <h2 className="text-2xl font-black">Mi Equipo</h2>
-              <AddMemberDialog onMemberAdded={fetchAllData} />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              {familyMembers.map((member) => (
-                <div key={member.id} className="glass-card p-6 flex flex-col items-center group">
-                  <div className="w-16 h-16 rounded-full bg-white shadow-lg flex items-center justify-center mb-3 border-2 border-blue-50">
-                    <span className="text-2xl font-black text-blue-500">{member.display_name?.charAt(0)}</span>
-                  </div>
-                  <span className="font-bold text-gray-800">{member.display_name}</span>
-                </div>
-              ))}
-            </div>
+       {/* VISTA: FAMILIA */}
+{activeTab === "family" && (
+  <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+    <div className="flex justify-between items-center px-2">
+      <h2 className="text-3xl font-black font-nunito tracking-tight text-gray-800">Mi Equipo</h2>
+      
+      {/* EL BOTÓN FENG SHUI ENVOLVIENDO EL DIALOG */}
+      <AddMemberDialog onMemberAdded={fetchAllData}>
+        <button className="flex items-center gap-2 px-4 py-2 bg-white/40 backdrop-blur-md border border-white/60 rounded-2xl shadow-sm hover:bg-white/60 transition-all active:scale-95 group">
+          <div className="w-8 h-8 rounded-xl bg-blue-500 flex items-center justify-center text-white group-hover:rotate-90 transition-transform duration-300">
+            <Plus size={18} strokeWidth={3} />
           </div>
-        )}
+          <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Nuevo</span>
+        </button>
+      </AddMemberDialog>
+    </div>
+
+    {/* GRID DE MIEMBROS ESTILO GLASS-CARD */}
+    <div className="grid grid-cols-2 gap-4">
+      {familyMembers.map((member) => (
+        <div 
+          key={member.id} 
+          className="glass-card p-6 flex flex-col items-center group transition-all hover:translate-y-[-4px]"
+        >
+          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-white to-blue-50 shadow-xl flex items-center justify-center mb-4 border-2 border-white relative overflow-hidden">
+            {/* Efecto de brillo en el avatar */}
+            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/40 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+            <span className="text-3xl font-black text-blue-500 drop-shadow-sm">
+              {member.display_name?.charAt(0).toUpperCase()}
+            </span>
+          </div>
+          <span className="font-black text-gray-700 tracking-tight">{member.display_name}</span>
+          <span className="text-[9px] font-bold text-blue-400 uppercase tracking-[0.2em] mt-1">
+            {member.role || 'Miembro'}
+          </span>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
 
         {/* VISTA: AJUSTES */}
         {activeTab === "settings" && (
