@@ -3,12 +3,22 @@ import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus } from "lucide-react";
+import { Plus, User, Palette } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-export const AddMemberDialog = ({ onMemberAdded }: { onMemberAdded: () => void }) => {
+const COLORS = [
+  { name: 'Azul', value: '#3b82f6' },
+  { name: 'Rosa', value: '#ec4899' },
+  { name: 'Verde', value: '#10b981' },
+  { name: 'Naranja', value: '#f59e0b' },
+  { name: 'Morado', value: '#8b5cf6' }
+];
+
+// Añadido 'children' para el botón personalizado
+export const AddMemberDialog = ({ onMemberAdded, children }: { onMemberAdded: () => void, children?: React.ReactNode }) => {
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
+  const [selectedColor, setSelectedColor] = useState(COLORS[0].value);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
@@ -17,28 +27,20 @@ export const AddMemberDialog = ({ onMemberAdded }: { onMemberAdded: () => void }
     if (!name) return;
     setLoading(true);
     
-    // Aquí asumo que ya tienes el nest_id del usuario actual
-    // Para simplificar ahora, creamos un perfil vinculado
-    const { data: userData } = await supabase.auth.getUser();
-    
-    if (userData?.user) {
-      const { error } = await supabase
-        .from('profiles')
-        .insert([{ 
-          display_name: name, 
-          role: role || 'miembro',
-          // Aquí iría el nest_id si lo tuviéramos
-        }]);
+    const { error } = await supabase
+      .from('profiles')
+      .insert([{ 
+        display_name: name, 
+        role: role || 'miembro',
+        color: selectedColor // Guardamos el color
+      }]);
 
-      if (error) {
-        toast({ title: "Error", description: "No se pudo añadir", variant: "destructive" });
-      } else {
-        toast({ title: "¡Éxito!", description: `${name} ya está en el nido.` });
-        setName("");
-        setRole("");
-        setOpen(false);
-        onMemberAdded();
-      }
+    if (error) {
+      toast({ title: "Error", description: "Vaya, algo ha fallado en la subida.", variant: "destructive" });
+    } else {
+      toast({ title: "¡Miembro listo!", description: `${name} ya es parte del equipo.` });
+      setName(""); setRole(""); setOpen(false);
+      onMemberAdded();
     }
     setLoading(false);
   };
@@ -46,33 +48,36 @@ export const AddMemberDialog = ({ onMemberAdded }: { onMemberAdded: () => void }
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" className="rounded-full bg-kidus-blue">
-          <Plus className="w-4 h-4 mr-1" /> Añadir
-        </Button>
+        {children || ( // Renderiza el children si existe, si no, un botón por defecto
+          <Button size="sm" className="rounded-full bg-blue-600 hover:bg-blue-700 shadow-lg">
+            <Plus className="w-4 h-4 mr-1" /> Añadir
+          </Button>
+        )}
       </DialogTrigger>
-      <DialogContent className="glass-card border-none">
+      <DialogContent className="sm:max-w-md rounded-[2rem] border-none shadow-2xl">
         <DialogHeader>
-          <DialogTitle className="font-nunito text-2xl">Nuevo Miembro</DialogTitle>
+          <DialogTitle className="text-2xl font-nunito font-extrabold text-center">Nuevo Miembro</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 py-4">
-          <Input 
-            placeholder="Nombre (ej: Lucas)" 
-            value={name} 
-            onChange={(e) => setName(e.target.value)}
-            className="bg-white/50"
-          />
-          <Input 
-            placeholder="Rol (ej: Hijo, Abuela, Logística)" 
-            value={role} 
-            onChange={(e) => setRole(e.target.value)}
-            className="bg-white/50"
-          />
-          <Button 
-            onClick={handleAdd} 
-            disabled={loading} 
-            className="w-full bg-kidus-orange hover:bg-kidus-orange/90"
-          >
-            {loading ? "Registrando..." : "Añadir al Nido"}
+        <div className="space-y-6 py-4">
+          <div className="space-y-2">
+            <label className="text-sm font-bold ml-1">Nombre</label>
+            <Input placeholder="Ej: Lucas" value={name} onChange={(e) => setName(e.target.value)} className="rounded-xl" />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-bold ml-1">Color Identificativo</label>
+            <div className="flex justify-around p-2 bg-gray-50 rounded-2xl">
+              {COLORS.map((c) => (
+                <button
+                  key={c.value}
+                  onClick={() => setSelectedColor(c.value)}
+                  className={`w-8 h-8 rounded-full border-4 transition-all ${selectedColor === c.value ? 'border-gray-400 scale-125' : 'border-transparent'}`}
+                  style={{ backgroundColor: c.value }}
+                />
+              ))}
+            </div>
+          </div>
+          <Button onClick={handleAdd} disabled={loading} className="w-full h-12 rounded-xl bg-orange-500 hover:bg-orange-600 font-bold text-lg transition-all shadow-lg">
+            {loading ? "Registrando..." : "¡Al Nido!"}
           </Button>
         </div>
       </DialogContent>
