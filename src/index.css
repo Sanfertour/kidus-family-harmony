@@ -1,140 +1,157 @@
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { Settings, Users, Calendar, Home as HomeIcon, LayoutDashboard, Plus, Camera, Image, FileText, Edit } from "lucide-react";
-import Header from "@/components/Header";
-import UpcomingEvents from "@/components/UpcomingEvents";
-import { AgendaView } from "@/components/AgendaView";
-import { AddMemberDialog } from "@/components/AddMemberDialog";
-import { useToast } from "@/hooks/use-toast";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-// Simulación de Drawers (Asegúrate de tener estos archivos o créalos básicos)
-import { ManualEventDrawer } from "@/components/ManualEventDrawer";
-import { UploadDocumentDrawer } from "@/components/UploadDocumentDrawer";
+@layer base {
+  :root {
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+    --kidus-blue: 211 100% 50%;
+    --kidus-teal: 180 50% 70%;
+    --radius: 2rem;
+  }
+}
 
-const Index = () => {
-  const [activeTab, setActiveTab] = useState("home");
-  const [familyMembers, setFamilyMembers] = useState<any[]>([]);
-  const [events, setEvents] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  
-  // ESTADOS PARA EL FAB RADIAL Y DRAWERS
-  const [isOpen, setIsOpen] = useState(false);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [dialogType, setDialogType] = useState('manual');
+/* 1. FONDO WAVY DINÁMICO (Orgánico y lento) */
+.wave-bg {
+  background: linear-gradient(135deg, #e0f2fe 0%, #fdfcfb 50%, #f0fdfa 100%);
+  background-size: 400% 400%;
+  animation: gradient 15s ease infinite;
+  min-height: 100vh;
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+}
 
-  const { toast } = useToast();
+@keyframes gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
 
-  const fetchAllData = async () => {
-    const { data: profiles } = await supabase.from('profiles').select('*');
-    const { data: eventData } = await supabase.from('events').select('*').order('start_time', { ascending: true });
-    setFamilyMembers(profiles || []);
-    setEvents(eventData || []);
-    setLoading(false);
-  };
+/* 2. GLASSMORPHISM (Capas de cristal esmerilado) */
+.glass-card {
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+  border-radius: 2rem;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
 
-  useEffect(() => {
-    fetchAllData();
-  }, []);
+.glass-card:hover {
+  background: rgba(255, 255, 255, 0.55);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.1);
+}
 
-  const handleSubButtonClick = (type: string) => {
-    setDialogType(type);
-    setIsDrawerOpen(true);
-    setIsOpen(false);
-  };
+/* 3. FAB RADIAL (Tu motor visual con despliegue) */
+.fab-radial-container {
+  position: fixed;
+  bottom: 110px; /* Sobre la barra de navegación */
+  right: 24px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 12px; /* Espacio entre los botones */
+}
 
-  return (
-    <div className="relative min-h-screen w-full overflow-hidden">
-      {/* 1. EL FONDO WAVY (Debe ser el primer elemento con z-index bajo) */}
-      <div className="wave-bg" />
+.fab-main-button {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%); /* Naranja a Rojo */
+  box-shadow: 0 12px 24px rgba(239, 68, 68, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  transition: all 0.5s cubic-bezier(0.68, -0.6, 0.32, 1.6); /* Transición elástica */
+  cursor: pointer;
+  z-index: 10;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+}
 
-      {/* 2. CONTENIDO PRINCIPAL */}
-      <div className="relative z-10 pb-32">
-        <Header />
-        
-        <main className="container mx-auto px-4 pt-4 max-w-md">
-          {activeTab === "home" && (
-            <div className="space-y-6 animate-in fade-in duration-700">
-              <div className="glass-card p-6">
-                <h2 className="text-xl font-bold font-nunito mb-2">Santuario de Calma</h2>
-                <p className="text-sm opacity-80 leading-relaxed">
-                  {events.length > 0 ? `Tienes ${events.length} tareas en el nido.` : "Todo está en paz por ahora."}
-                </p>
-              </div>
-              <UpcomingEvents events={events.slice(0, 3)} />
-            </div>
-          )}
+.fab-main-button.open {
+  transform: rotate(135deg); /* Gira el '+' a 'X' */
+  background: linear-gradient(135deg, #374151 0%, #111827 100%); /* Gris oscuro */
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
 
-          {activeTab === "agenda" && <div className="animate-in slide-in-from-right-4"><AgendaView /></div>}
+.fab-sub-button {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #3b82f6; /* Azul KidUs para iconos */
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Transición elástica */
+  opacity: 0;
+  transform: translateY(20px) scale(0.5); /* Posición inicial oculta y pequeña */
+  pointer-events: none; /* No clickable cuando está oculto */
+  position: absolute; /* Para apilarlos y que se desplieguen */
+  bottom: 0px; /* Posición inicial apilados */
+}
 
-          {activeTab === "family" && (
-            <div className="space-y-6 animate-in slide-in-from-bottom-4">
-              <div className="flex justify-between items-center px-2">
-                <h2 className="text-2xl font-bold font-nunito">Familia</h2>
-                <AddMemberDialog onMemberAdded={fetchAllData} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                {familyMembers.map((m) => (
-                  <div key={m.id} className="glass-card p-4 flex flex-col items-center">
-                    <div className="w-12 h-12 rounded-full bg-kidus-blue/20 flex items-center justify-center mb-2 font-bold text-kidus-blue">
-                      {m.display_name?.charAt(0)}
-                    </div>
-                    <span className="font-bold text-sm">{m.display_name}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </main>
-      </div>
+.fab-sub-button.visible {
+  opacity: 1;
+  pointer-events: auto; /* Clickable cuando visible */
+}
 
-      {/* 3. FAB RADIAL (Basado en tu CSS) */}
-      <div className="fab-radial-container">
-        <button className={`fab-sub-button ${isOpen ? 'visible' : ''}`} onClick={() => handleSubButtonClick('camera')}>
-          <Camera className="w-5 h-5" />
-        </button>
-        <button className={`fab-sub-button ${isOpen ? 'visible' : ''}`} onClick={() => handleSubButtonClick('gallery')}>
-          <Image className="w-5 h-5" />
-        </button>
-        <button className={`fab-sub-button ${isOpen ? 'visible' : ''}`} onClick={() => handleSubButtonClick('upload')}>
-          <FileText className="w-5 h-5" />
-        </button>
-        <button className={`fab-sub-button ${isOpen ? 'visible' : ''}`} onClick={() => handleSubButtonClick('manual')}>
-          <Edit className="w-5 h-5" />
-        </button>
+/* Animaciones de despliegue de los botones secundarios (respectando tu orden) */
+.fab-sub-button:nth-child(1).visible { /* Este es el botón "Manual / Lápiz" */
+  transform: translateY(-75px) scale(1);
+  transition-delay: 0.05s; /* Pequeño retardo */
+}
+.fab-sub-button:nth-child(2).visible { /* Este es el botón "PDF" */
+  transform: translateY(-140px) scale(1);
+  transition-delay: 0.1s;
+}
+.fab-sub-button:nth-child(3).visible { /* Este es el botón "Galería / Imagen" */
+  transform: translateY(-205px) scale(1);
+  transition-delay: 0.15s;
+}
+.fab-sub-button:nth-child(4).visible { /* Este es el botón "Cámara" */
+  transform: translateY(-270px) scale(1);
+  transition-delay: 0.2s;
+}
 
-        <button className={`fab-main-button ${isOpen ? 'open' : ''}`} onClick={() => setIsOpen(!isOpen)}>
-          <Plus className="w-8 h-8" />
-        </button>
-      </div>
 
-      {/* 4. NAV INFERIOR */}
-      <nav className="fixed bottom-0 left-0 right-0 px-6 py-4 flex justify-around items-center backdrop-blur-3xl bg-white/50 border-t border-white/20 z-40 rounded-t-[40px]">
-        <button onClick={() => setActiveTab("home")} className={`flex flex-col items-center ${activeTab === "home" ? "text-kidus-blue" : "text-gray-400"}`}>
-          <HomeIcon className="w-6 h-6" />
-        </button>
-        <button onClick={() => setActiveTab("agenda")} className={`flex flex-col items-center ${activeTab === "agenda" ? "text-kidus-blue" : "text-gray-400"}`}>
-          <Calendar className="w-6 h-6" />
-        </button>
-        <button onClick={() => setActiveTab("family")} className={`flex flex-col items-center ${activeTab === "family" ? "text-kidus-blue" : "text-gray-400"}`}>
-          <Users className="w-6 h-6" />
-        </button>
-      </nav>
+/* 4. DRAWER (Formularios desde abajo) */
+.drawer-content {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top-left-radius: 3rem;
+  border-top-right-radius: 3rem;
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.1);
+  border-top: 1px solid rgba(255, 255, 255, 0.5);
+  padding-bottom: env(safe-area-inset-bottom);
+}
 
-      {/* 5. DRAWER (El formulario que sube) */}
-      {isDrawerOpen && (
-        <div className="fixed inset-0 z-[100] flex items-end justify-center pointer-events-none">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm pointer-events-auto" onClick={() => setIsDrawerOpen(false)} />
-          <div className="w-full max-w-md pointer-events-auto animate-in slide-in-from-bottom duration-500">
-             {dialogType === 'manual' ? (
-               <ManualEventDrawer onClose={() => setIsDrawerOpen(false)} onEventAdded={fetchAllData} members={familyMembers} />
-             ) : (
-               <UploadDocumentDrawer isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} onEventAdded={fetchAllData} members={familyMembers} />
-             )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
+/* 5. ESTADO VACÍO (Santuario de calma) */
+.sanctuary-breeze {
+  animation: float 6s ease-in-out infinite;
+}
 
-export default Index;
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-15px); }
+}
+
+/* Prohibir scrollbars visibles para el Feng Shui */
+::-webkit-scrollbar {
+  display: none;
+}
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
