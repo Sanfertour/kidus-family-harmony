@@ -159,6 +159,15 @@ const Index = () => {
         {/* VISTA: AGENDA */}
         {activeTab === "agenda" && (
           <div className="animate-in slide-in-from-right-4 duration-300">
+            <button 
+  onClick={() => setActiveTab("agenda")} // <--- ESTO ES LO QUE LO HACE OPERATIVO
+  className="glass-card p-6 rounded-[2.5rem] flex flex-col items-center gap-3 border-none bg-blue-50/50 group active:scale-95 transition-all"
+>
+  <div className="w-12 h-12 rounded-2xl bg-blue-500 flex items-center justify-center text-white shadow-lg shadow-blue-100 group-hover:rotate-12 transition-transform">
+    <CalendarIcon size={20} />
+  </div>
+  <span className="text-[11px] font-black text-blue-600 uppercase tracking-widest">Ver Agenda</span>
+</button>
             <AgendaView />
           </div>
         )}
