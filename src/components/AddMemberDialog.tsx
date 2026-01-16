@@ -19,30 +19,48 @@ export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.R
     if (!name) return;
     setLoading(true);
     
-    // 1. Obtenemos al usuario que está creando el miembro
-    const { data: { user } } = await supabase.auth.getUser();
+    try {
+      // 1. Obtenemos al usuario actual y su perfil para saber su NEST_ID
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("No hay sesión activa");
 
-    // 2. Insertamos en profiles. 
-    // IMPORTANTE: Asegúrate de que tu tabla 'profiles' tenga estas columnas.
-    const { error } = await supabase
-      .from('profiles')
-      .insert([{ 
-        display_name: name, 
-        role: role || 'Miembro',
-        avatar_url: selectedColor, // Usamos el color como "avatar" temporal
-        // Si tu tabla usa nest_id o family_id, aquí deberías vincularlo
-      }]);
+      const { data: myProfile } = await supabase
+        .from('profiles')
+        .select('nest_id')
+        .eq('id', user.id)
+        .single();
 
-    if (error) {
-      console.error(error);
-      toast({ title: "Error de conexión", description: "No se pudo añadir al nido. Revisa los permisos.", variant: "destructive" });
-    } else {
+      if (!myProfile?.nest_id) {
+        throw new Error("No tienes un Nido asignado. Ve a Ajustes primero.");
+      }
+
+      // 2. Insertamos el nuevo miembro vinculado a TU nest_id
+      const { error } = await supabase
+        .from('profiles')
+        .insert([{ 
+          display_name: name, 
+          role: role || 'Miembro',
+          avatar_url: selectedColor, 
+          nest_id: myProfile.nest_id // <--- ESTO ES LO QUE FALTABA
+        }]);
+
+      if (error) throw error;
+
       toast({ title: "¡Miembro añadido!", description: `${name} ya tiene su lugar en el nido.` });
       setName(""); setRole("");
       setIsOpen(false);
-      onMemberAdded();
+      onMemberAdded(); // Esto refresca la lista en el Index
+
+    } catch (error: any) {
+      console.error(error);
+      toast({ 
+        title: "Error de conexión", 
+        description: error.message || "No se pudo añadir al nido.", 
+        variant: "destructive" 
+      });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -60,14 +78,19 @@ export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.R
               <div className="w-14 h-14 bg-blue-500 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-blue-200 text-white">
                 <UserPlus size={28} />
               </div>
-              <h2 className="text-3xl font-black font-nunito tracking-tight">Nuevo Miembro</h2>
+              <h2 className="text-3xl font-black font-nunito tracking-tight text-gray-800">Nuevo Miembro</h2>
               <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em] mt-2">Coordinación y delegación</p>
             </div>
 
             <div className="space-y-6">
               <div>
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">¿Quién es?</label>
-                <Input placeholder="Nombre (ej: Lucas, Papá...)" value={name} onChange={(e) => setName(e.target.value)} className="h-14 rounded-2xl bg-white border-gray-100 font-bold mt-1" />
+                <Input 
+                  placeholder="Nombre (ej: Lucas, Papá...)" 
+                  value={name} 
+                  onChange={(e) => setName(e.target.value)} 
+                  className="h-14 rounded-2xl bg-white border-gray-100 font-bold mt-1 text-gray-800" 
+                />
               </div>
               
               <div>
@@ -76,6 +99,7 @@ export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.R
                   {COLORS.map(color => (
                     <button 
                       key={color} 
+                      type="button"
                       onClick={() => setSelectedColor(color)}
                       className={`w-8 h-8 rounded-full transition-all ${selectedColor === color ? 'ring-4 ring-blue-100 scale-125' : 'scale-100'}`}
                       style={{ backgroundColor: color }}
@@ -84,7 +108,11 @@ export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.R
                 </div>
               </div>
 
-              <Button onClick={handleAdd} disabled={loading || !name} className="w-full h-16 rounded-[2rem] bg-blue-600 hover:bg-blue-700 text-white font-black text-lg shadow-xl active:scale-95 transition-all">
+              <Button 
+                onClick={handleAdd} 
+                disabled={loading || !name} 
+                className="w-full h-16 rounded-[2rem] bg-blue-600 hover:bg-blue-700 text-white font-black text-lg shadow-xl active:scale-95 transition-all"
+              >
                 {loading ? "Sincronizando..." : "Vincular al Nido"}
               </Button>
             </div>
