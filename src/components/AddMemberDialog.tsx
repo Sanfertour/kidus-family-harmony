@@ -1,83 +1,76 @@
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/button"; // Asegúrate de las rutas
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, User, Palette } from "lucide-react";
+import { UserPlus, X, Sparkles } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-const COLORS = [
-  { name: 'Azul', value: '#3b82f6' },
-  { name: 'Rosa', value: '#ec4899' },
-  { name: 'Verde', value: '#10b981' },
-  { name: 'Naranja', value: '#f59e0b' },
-  { name: 'Morado', value: '#8b5cf6' }
-];
-
-// Añadido 'children' para el botón personalizado
-export const AddMemberDialog = ({ onMemberAdded, children }: { onMemberAdded: () => void, children?: React.ReactNode }) => {
+export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.ReactNode, onMemberAdded: () => void }) => {
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
-  const [selectedColor, setSelectedColor] = useState(COLORS[0].value);
   const [loading, setLoading] = useState(false);
-  const [open, setOpen] = useState(false);
   const { toast } = useToast();
 
   const handleAdd = async () => {
     if (!name) return;
     setLoading(true);
     
-    const { error } = await supabase
-      .from('profiles')
-      .insert([{ 
-        display_name: name, 
-        role: role || 'miembro',
-        color: selectedColor // Guardamos el color
-      }]);
+    // Aquí tu lógica de Supabase (ejemplo)
+    const { error } = await supabase.from('profiles').insert([{ display_name: name, role: role || 'Miembro' }]);
 
     if (error) {
-      toast({ title: "Error", description: "Vaya, algo ha fallado en la subida.", variant: "destructive" });
+      toast({ title: "Error", description: "No pudimos añadir al familiar.", variant: "destructive" });
     } else {
-      toast({ title: "¡Miembro listo!", description: `${name} ya es parte del equipo.` });
-      setName(""); setRole(""); setOpen(false);
+      toast({ title: "¡Bienvenido!", description: `${name} ya es parte del nido.` });
+      setName(""); setRole("");
       onMemberAdded();
     }
     setLoading(false);
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {children || ( // Renderiza el children si existe, si no, un botón por defecto
-          <Button size="sm" className="rounded-full bg-blue-600 hover:bg-blue-700 shadow-lg">
-            <Plus className="w-4 h-4 mr-1" /> Añadir
-          </Button>
-        )}
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md rounded-[2rem] border-none shadow-2xl">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-nunito font-extrabold text-center">Nuevo Miembro</DialogTitle>
+    <Dialog>
+      <DialogTrigger asChild>{children}</DialogTrigger>
+      <DialogContent className="sm:max-w-md bg-white/80 backdrop-blur-2xl rounded-[3rem] border-none shadow-2xl p-8 overflow-hidden">
+        {/* Adorno de fondo */}
+        <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-100/50 rounded-full blur-3xl -z-10" />
+        
+        <DialogHeader className="mb-6">
+          <div className="w-14 h-14 bg-blue-500 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-blue-200">
+            <UserPlus className="text-white w-7 h-7" />
+          </div>
+          <DialogTitle className="text-3xl font-black font-nunito tracking-tight">Nuevo Miembro</DialogTitle>
+          <p className="text-sm text-gray-500 font-bold uppercase tracking-widest mt-1">Añade equipo a tu nido</p>
         </DialogHeader>
-        <div className="space-y-6 py-4">
+
+        <div className="space-y-6">
           <div className="space-y-2">
-            <label className="text-sm font-bold ml-1">Nombre</label>
-            <Input placeholder="Ej: Lucas" value={name} onChange={(e) => setName(e.target.value)} className="rounded-xl" />
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2">Nombre del familiar</label>
+            <Input 
+              placeholder="Ej: Mamá, Lucas..." 
+              value={name} 
+              onChange={(e) => setName(e.target.value)}
+              className="h-14 rounded-2xl bg-white/50 border-gray-100 font-bold focus:ring-blue-500" 
+            />
           </div>
+          
           <div className="space-y-2">
-            <label className="text-sm font-bold ml-1">Color Identificativo</label>
-            <div className="flex justify-around p-2 bg-gray-50 rounded-2xl">
-              {COLORS.map((c) => (
-                <button
-                  key={c.value}
-                  onClick={() => setSelectedColor(c.value)}
-                  className={`w-8 h-8 rounded-full border-4 transition-all ${selectedColor === c.value ? 'border-gray-400 scale-125' : 'border-transparent'}`}
-                  style={{ backgroundColor: c.value }}
-                />
-              ))}
-            </div>
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2">Rol / Parentesco</label>
+            <Input 
+              placeholder="Ej: Capitán, Co-piloto..." 
+              value={role} 
+              onChange={(e) => setRole(e.target.value)}
+              className="h-14 rounded-2xl bg-white/50 border-gray-100 font-bold" 
+            />
           </div>
-          <Button onClick={handleAdd} disabled={loading} className="w-full h-12 rounded-xl bg-orange-500 hover:bg-orange-600 font-bold text-lg transition-all shadow-lg">
-            {loading ? "Registrando..." : "¡Al Nido!"}
+
+          <Button 
+            onClick={handleAdd} 
+            disabled={loading || !name}
+            className="w-full h-16 rounded-[2rem] bg-blue-600 hover:bg-blue-700 text-white font-black text-lg shadow-xl shadow-blue-100 transition-all active:scale-95"
+          >
+            {loading ? "Registrando..." : "Añadir al Equipo"}
           </Button>
         </div>
       </DialogContent>
