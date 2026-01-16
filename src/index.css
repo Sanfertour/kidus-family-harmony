@@ -45,13 +45,19 @@
 }
 
 /* 4. FAB RADIAL ELÁSTICO */
+/* Corrección del FAB en index.css */
 .fab-main-button {
-  width: 70px; h-70px;
+  width: 70px;
+  height: 70px;
   border-radius: 50%;
   background: linear-gradient(135deg, #ff6b6b, #ff9f43);
   box-shadow: 0 15px 35px rgba(255, 107, 107, 0.4);
-  display: flex; align-items: center; justify-content: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: all 0.5s cubic-bezier(0.68, -0.55, 0.26, 1.55);
+  border: none;
+  cursor: pointer;
 }
 
 .fab-main-button.open {
