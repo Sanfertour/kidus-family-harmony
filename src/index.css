@@ -6,78 +6,44 @@
 
 @layer base {
   :root {
-    /* KidUs Feng Shui Palette - El "Setup" de suspensión */
-    --background: 40 33% 98%;
-    --foreground: 220 25% 20%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 220 25% 20%;
-
+    --background: 210 40% 96%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100% / 0.4;
+    --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
-    --popover-foreground: 220 25% 20%;
-
-    /* Electric Blue - Color de Equipo */
+    --popover-foreground: 222 47% 11%;
     --primary: 211 100% 50%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 200 60% 94%;
-    --secondary-foreground: 211 100% 40%;
-
-    --muted: 40 20% 95%;
-    --muted-foreground: 220 10% 50%;
-
-    /* Vibrant Orange - Tu zona de potencia máxima */
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 90%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 90%;
+    --muted-foreground: 215.4 16.3% 46.9%;
     --accent: 36 100% 50%;
-    --accent-foreground: 0 0% 100%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 1.25rem;
 
-    --destructive: 36 100% 50%;
-    --destructive-foreground: 0 0% 100%;
-
-    --success: 142 70% 45%;
-    --success-foreground: 0 0% 100%;
-
-    --border: 220 20% 90%;
-    --input: 220 20% 90%;
-    --ring: 211 100% 50%;
-
-    --radius: 1rem;
-
-    /* KidUs Custom Variables */
+    /* KidUs Colors */
     --kidus-blue: 211 100% 50%;
-    --kidus-blue-light: 200 80% 85%;
+    --kidus-blue-light: 200 80% 90%;
     --kidus-orange: 36 100% 50%;
     --kidus-cream: 40 33% 98%;
     --kidus-teal: 180 50% 70%;
     
-    /* Child Colors - Categorías de usuario */
-    --child-blue: 211 100% 60%;
-    --child-pink: 340 80% 65%;
-    --child-green: 142 60% 50%;
-    --child-purple: 270 70% 60%;
-    --child-yellow: 45 100% 55%;
-
-    /* Glassmorphism - Efecto fibra de carbono transparente */
-    --glass-bg: 0 0% 100% / 0.7;
-    --glass-border: 0 0% 100% / 0.3;
-    --glass-shadow: 220 60% 50% / 0.1;
-
-    /* Sidebar - Los ajustes de control lateral */
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Glassmorphism Pro */
+    --glass-bg: 0 0% 100% / 0.25;
+    --glass-border: 0 0% 100% / 0.5;
+    --glass-shadow: 220 60% 50% / 0.08;
   }
 
   .dark {
-    --background: 220 25% 10%;
-    --foreground: 40 33% 98%;
-    --card: 220 25% 15%;
-    --border: 220 25% 25%;
-    --glass-bg: 220 25% 15% / 0.8;
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+    --glass-bg: 222 47% 11% / 0.4;
   }
 }
 
@@ -91,65 +57,41 @@
 }
 
 @layer components {
-  /* Cartas con efecto cristal */
   .glass-card {
-    @apply backdrop-blur-xl border shadow-lg;
-    background: hsl(var(--glass-bg));
-    border-color: hsl(var(--glass-border));
-    box-shadow: 0 8px 32px hsl(var(--glass-shadow));
+    @apply backdrop-blur-xl border shadow-xl;
+    background: hsla(0, 0%, 100%, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
   }
 
-  /* Botón Flotante (FAB) - Tu pulsador de tija telescópica */
   .fab-button {
     @apply w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300;
     background: linear-gradient(135deg, hsl(var(--kidus-blue)) 0%, hsl(var(--kidus-teal)) 100%);
-    box-shadow: 0 8px 24px hsl(var(--kidus-blue) / 0.4);
   }
 
-  .fab-button:hover {
-    @apply scale-110;
-    box-shadow: 0 12px 32px hsl(var(--kidus-blue) / 0.5);
-  }
+  .fab-button:hover { @apply scale-110 rotate-5; }
 
-  /* Navegación inferior - El cockpit de la app */
   .bottom-nav {
-    @apply glass-card fixed bottom-0 left-0 right-0 px-6 py-3 flex justify-around items-center;
-    border-radius: 24px 24px 0 0;
-  }
-
-  /* Animación de conflicto - ¡Alerta de zona roja! */
-  .conflict-glow {
-    animation: conflict-pulse 2s ease-in-out infinite;
-  }
-
-  @keyframes conflict-pulse {
-    0%, 100% { box-shadow: 0 0 20px hsl(var(--kidus-orange) / 0.3); }
-    50% { box-shadow: 0 0 40px hsl(var(--kidus-orange) / 0.6); }
+    @apply fixed bottom-0 left-0 right-0 px-6 py-4 flex justify-around items-center backdrop-blur-2xl border-t border-white/30;
+    background: rgba(255, 255, 255, 0.4);
+    border-radius: 32px 32px 0 0;
   }
 }
 
 @layer utilities {
-  /* Animación de ondas de fondo - Fluidez en el sendero */
   .wave-bg {
     background: linear-gradient(135deg, 
       hsl(var(--kidus-blue-light)) 0%, 
-      hsl(var(--kidus-cream)) 25%,
-      hsl(var(--kidus-teal) / 0.3) 50%,
-      hsl(var(--kidus-cream)) 75%,
+      hsl(var(--kidus-cream)) 30%,
+      hsl(var(--kidus-teal) / 0.4) 60%,
       hsl(var(--kidus-blue-light)) 100%
     );
     background-size: 400% 400%;
-    animation: wave-flow 15s ease-in-out infinite;
+    animation: wave-flow 20s ease-in-out infinite;
   }
 
   @keyframes wave-flow {
-    0% { background-position: 0% 50%; }
+    0%, 100% { background-position: 0% 50%; }
     50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-  }
-
-  /* Ajuste para Notch/Barra de inicio en móviles modernos */
-  .safe-bottom {
-    padding-bottom: max(env(safe-area-inset-bottom), 80px);
   }
 }
