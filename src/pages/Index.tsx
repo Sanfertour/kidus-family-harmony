@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { supabase } from "@/lib/supabase"; // Importante: Conexión real
+import { supabase } from "@/integrations/supabase/client"; // Importante: Conexión real
 
 import WaveBackground from "@/components/WaveBackground";
 import Header from "@/components/Header";
