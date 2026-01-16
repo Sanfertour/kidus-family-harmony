@@ -78,31 +78,71 @@ const Index = () => {
       
       <main className="container mx-auto px-6 pt-4 max-w-md relative z-10 pb-32">
         {/* VISTA: INICIO (Santuario de Calma) */}
-        {activeTab === "home" && (
-          <div className="space-y-8 animate-in fade-in duration-1000">
-            <div className="glass-card p-8 rounded-[2.5rem] sanctuary-breeze shadow-xl border-white/40">
-              <div className="flex items-center gap-3 mb-4">
-                <img src={KidusLogo} alt="Kidus Logo" className="w-10 h-10 object-contain drop-shadow-md" />
-                <h2 className="text-2xl font-black tracking-tight">Armonía en el Nido</h2>
-              </div>
-              <div className="inline-block px-3 py-1 bg-white/50 rounded-full text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-4">
-                Estado Actual
-              </div>
-              <p className="text-gray-600 text-sm leading-relaxed">
-                {events.length === 0 
-                  ? "Tu nido está en completa calma. No hay tareas pendientes para hoy." 
-                  : `Tienes ${events.length} compromisos detectados. Todo bajo control.`}
-              </p>
-            </div>
-            
-            {events.length > 0 && (
-              <div className="space-y-4">
-                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] ml-2">Próximos Eventos</h3>
-                <UpcomingEvents events={events.slice(0, 3)} />
-              </div>
-            )}
+       {activeTab === "home" && (
+  <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    
+    {/* CABECERA DINÁMICA: EL ALMA DE LA PAZ MENTAL */}
+    <div className="px-2">
+      <h1 className="text-4xl font-black font-nunito tracking-tight text-gray-800 leading-tight">
+        Tu Nido está <br/> 
+        <span className="text-blue-500">en calma.</span>
+      </h1>
+      <p className="text-sm font-bold text-gray-400 uppercase tracking-widest mt-2">
+        Sábado, 17 de Enero
+      </p>
+    </div>
+
+    {/* TARJETA DE PRÓXIMA DELEGACIÓN (EL "PLATO DEL DÍA") */}
+    <div className="relative group">
+      <div className="absolute -inset-1 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-[3rem] blur opacity-25 group-hover:opacity-40 transition duration-1000"></div>
+      <div className="relative glass-card p-8 rounded-[3rem] bg-white/80 backdrop-blur-xl border border-white/50">
+        <div className="flex justify-between items-start mb-6">
+          <div className="px-4 py-1.5 bg-orange-100 rounded-full">
+            <span className="text-[10px] font-black text-orange-600 uppercase tracking-widest">Próxima Tarea</span>
           </div>
-        )}
+          <div className="flex -space-x-2">
+             {/* Aquí irían los mini-avatares de Sujeto y Responsable */}
+             <div className="w-10 h-10 rounded-full border-2 border-white bg-blue-500 flex items-center justify-center text-white font-bold text-xs shadow-sm">L</div>
+             <div className="w-10 h-10 rounded-full border-2 border-white bg-orange-400 flex items-center justify-center text-white font-bold text-xs shadow-sm">P</div>
+          </div>
+        </div>
+        
+        <h3 className="text-2xl font-black text-gray-800 mb-2">Recoger de Fútbol</h3>
+        <p className="text-gray-500 font-medium flex items-center gap-2">
+          <Clock size={16} className="text-blue-500" /> 17:30 - 18:30
+        </p>
+
+        <div className="mt-8 p-4 bg-gray-50/50 rounded-2xl border border-gray-100 flex items-center justify-between">
+          <div>
+            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Responsable</p>
+            <p className="text-sm font-bold text-gray-700">Papá (Tú)</p>
+          </div>
+          <button className="px-4 py-2 bg-white rounded-xl shadow-sm border border-gray-100 text-xs font-black text-blue-600 active:scale-95 transition-all">
+            MARCAR HECHO
+          </button>
+        </div>
+      </div>
+    </div>
+
+    {/* ACCESO RÁPIDO A COORDINACIÓN */}
+    <div className="grid grid-cols-2 gap-4">
+      <button className="glass-card p-6 rounded-[2.5rem] flex flex-col items-center gap-3 border-none bg-blue-50/50 group active:scale-95 transition-all">
+        <div className="w-12 h-12 rounded-2xl bg-blue-500 flex items-center justify-center text-white shadow-lg shadow-blue-100 group-hover:rotate-12 transition-transform">
+          <Calendar size={20} />
+        </div>
+        <span className="text-[11px] font-black text-blue-600 uppercase tracking-widest">Ver Agenda</span>
+      </button>
+      
+      <button className="glass-card p-6 rounded-[2.5rem] flex flex-col items-center gap-3 border-none bg-orange-50/50 group active:scale-95 transition-all">
+        <div className="w-12 h-12 rounded-2xl bg-orange-500 flex items-center justify-center text-white shadow-lg shadow-orange-100 group-hover:-rotate-12 transition-transform">
+          <User size={20} />
+        </div>
+        <span className="text-[11px] font-black text-orange-600 uppercase tracking-widest">Mi Equipo</span>
+      </button>
+    </div>
+
+  </div>
+)}
 
         {/* VISTA: AGENDA */}
         {activeTab === "agenda" && (
