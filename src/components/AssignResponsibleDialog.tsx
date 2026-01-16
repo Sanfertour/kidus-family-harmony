@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, AlertTriangle, Check, Users } from "lucide-react";
+import { X, AlertTriangle, Check, Users, ShieldCheck } from "lucide-react";
 import { NestMember, EventData } from "@/types/kidus";
 import MemberAvatar from "./MemberAvatar";
 import { Button } from "./ui/button";
@@ -32,168 +32,126 @@ const AssignResponsibleDialog = ({
     }
   };
 
+  // Solo los adultos pueden ser "Responsables" de la logística
   const adults = members.filter((m) => m.role === "adult");
 
   return (
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         >
-          {/* Backdrop */}
+          {/* Backdrop con desenfoque premium */}
           <motion.div
-            className="absolute inset-0 bg-foreground/30 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/40 backdrop-blur-md"
             onClick={onClose}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
           />
 
-          {/* Dialog */}
+          {/* Dialog / Drawer (Zero Scroll Policy) */}
           <motion.div
-            className="relative w-full max-w-sm glass-card rounded-3xl p-6 shadow-2xl"
-            initial={{ scale: 0.9, y: 20 }}
-            animate={{ scale: 1, y: 0 }}
-            exit={{ scale: 0.9, y: 20 }}
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            className="relative w-full max-w-md bg-white/80 backdrop-blur-2xl rounded-t-[2.5rem] sm:rounded-[2.5rem] p-8 shadow-2xl border border-white/20"
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", damping: 25, stiffness: 200 }}
           >
-            {/* Close button */}
-            <button
-              onClick={onClose}
-              className="absolute top-4 right-4 p-1 rounded-full hover:bg-muted transition-colors"
-            >
-              <X size={20} />
-            </button>
+            {/* Indicador de arrastre para estética Mobile-First */}
+            <div className="w-12 h-1.5 bg-muted/30 rounded-full mx-auto mb-6 sm:hidden" />
 
             {/* Header */}
-            <div className="text-center mb-6">
-              {isConflict ? (
-                <>
-                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-accent/20 mb-3">
-                    <AlertTriangle className="text-accent" size={24} />
-                  </div>
-                  <h3 className="text-lg font-bold text-foreground mb-1">
-                    ¡Conflicto de Horarios!
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    ¿Quieres delegar este evento a otro miembro del Nido?
-                  </p>
-                </>
-              ) : (
-                <>
-                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/20 mb-3">
-                    <Users className="text-primary" size={24} />
-                  </div>
-                  <h3 className="text-lg font-bold text-foreground mb-1">
-                    Asignar Responsable
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    Selecciona quién será el responsable de este evento
-                  </p>
-                </>
-              )}
+            <div className="text-center mb-8">
+              <div className={`inline-flex items-center justify-center w-14 h-14 rounded-full mb-4 ${isConflict ? 'bg-orange-100' : 'bg-blue-100'}`}>
+                {isConflict ? (
+                  <AlertTriangle className="text-orange-500" size={28} />
+                ) : (
+                  <ShieldCheck className="text-blue-500" size={28} />
+                )}
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">
+                {isConflict ? "Alerta Naranja" : "Gestión de Logística"}
+              </h3>
+              <p className="text-sm text-slate-500 px-6">
+                {isConflict 
+                  ? "Hay un solapamiento. ¿Quién se encargará de gestionar este cambio?" 
+                  : "Todo evento requiere un responsable adulto asignado."}
+              </p>
             </div>
 
-            {/* Event preview */}
+            {/* Event Preview con Glassmorphism */}
             {eventData?.title && (
-              <div className="bg-muted/50 rounded-xl p-3 mb-4">
-                <p className="text-sm font-medium text-foreground">
-                  {eventData.title}
+              <div className="bg-white/40 border border-white/60 rounded-2xl p-4 mb-8 shadow-sm">
+                <p className="text-sm font-bold text-slate-800">{eventData.title}</p>
+                <p className="text-xs text-slate-500 mt-1 uppercase tracking-wider">
+                  {eventData.startTime} - {eventData.endTime}
                 </p>
-                {eventData.startTime && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {eventData.date} • {eventData.startTime} - {eventData.endTime}
-                  </p>
-                )}
               </div>
             )}
 
-            {/* Member selection */}
-            <div className="flex justify-center gap-4 mb-6">
+            {/* Selector de Avatares (Obligatorio) */}
+            <div className="flex justify-center items-end gap-6 mb-10">
               {adults.map((member) => (
-                <motion.div
-                  key={member.id}
-                  className="flex flex-col items-center gap-2"
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <div
-                    className={`relative ${
-                      selectedMemberId === member.id
-                        ? "ring-2 ring-primary ring-offset-2 rounded-full"
-                        : ""
-                    }`}
-                  >
+                <div key={member.id} className="flex flex-col items-center gap-3">
+                  <div className="relative">
                     <MemberAvatar
                       member={member}
                       size="lg"
+                      isSelected={selectedMemberId === member.id}
                       onClick={() => setSelectedMemberId(member.id)}
                     />
                     {selectedMemberId === member.id && (
-                      <motion.div
-                        className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-primary text-white flex items-center justify-center"
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ type: "spring", stiffness: 400 }}
+                      <motion.div 
+                        layoutId="check"
+                        className="absolute -top-1 -right-1 bg-green-500 text-white rounded-full p-1 shadow-lg"
                       >
-                        <Check size={12} />
+                        <Check size={14} strokeWidth={3} />
                       </motion.div>
                     )}
                   </div>
-                  <span className="text-xs font-medium text-foreground">
+                  <span className={`text-[10px] font-bold uppercase tracking-widest ${selectedMemberId === member.id ? 'text-primary' : 'text-slate-400'}`}>
                     {member.name.split(" ")[0]}
                   </span>
-                </motion.div>
+                </div>
               ))}
               
-              {/* "Toda la Familia" option */}
-              <motion.div
-                className="flex flex-col items-center gap-2"
-                whileTap={{ scale: 0.95 }}
-              >
-                <div
-                  className={`relative w-16 h-16 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center cursor-pointer ${
-                    selectedMemberId === "family"
-                      ? "ring-2 ring-primary ring-offset-2"
-                      : ""
-                  }`}
+              <div className="flex flex-col items-center gap-3">
+                <button
                   onClick={() => setSelectedMemberId("family")}
+                  className={`w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 ${
+                    selectedMemberId === "family"
+                      ? "bg-slate-900 text-white scale-110 shadow-xl"
+                      : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                  }`}
                 >
-                  <Users size={24} className="text-white" />
-                  {selectedMemberId === "family" && (
-                    <motion.div
-                      className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-primary text-white flex items-center justify-center"
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ type: "spring", stiffness: 400 }}
-                    >
-                      <Check size={12} />
-                    </motion.div>
-                  )}
-                </div>
-                <span className="text-xs font-medium text-foreground">
-                  Todo el Nido
+                  <Users size={24} />
+                </button>
+                <span className={`text-[10px] font-bold uppercase tracking-widest ${selectedMemberId === "family" ? 'text-slate-900' : 'text-slate-400'}`}>
+                  El Nido
                 </span>
-              </motion.div>
+              </div>
             </div>
 
-            {/* Action buttons */}
-            <div className="flex gap-3">
+            {/* Botones de Acción */}
+            <div className="flex gap-4">
               <Button
-                variant="outline"
-                className="flex-1"
+                variant="ghost"
+                className="flex-1 text-slate-400 hover:text-slate-600 font-bold"
                 onClick={onClose}
               >
-                Cancelar
+                DESCARTAR
               </Button>
               <Button
-                className="flex-1"
+                className={`flex-1 rounded-2xl h-12 font-bold transition-all ${
+                  selectedMemberId 
+                    ? "bg-primary shadow-lg shadow-primary/30" 
+                    : "bg-slate-200 text-slate-400"
+                }`}
                 onClick={handleConfirm}
                 disabled={!selectedMemberId}
               >
-                {isConflict ? "Delegar" : "Asignar"}
+                {isConflict ? "DELEGAR" : "CONFIRMAR"}
               </Button>
             </div>
           </motion.div>
