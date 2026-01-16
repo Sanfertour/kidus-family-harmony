@@ -1,1 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
+@layer base {
+  :root {
+    --background: 210 40% 96%;
+    --foreground: 222 47% 11%;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: sans-serif;
+  }
+}
+
+@layer components {
+  .glass-card {
+    background: rgba(255, 255, 255, 0.4);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 1rem;
+  }
+  
+  .wave-bg {
+    background: linear-gradient(135deg, #e0f2fe 0%, #fffaf0 100%);
+    min-height: 100vh;
+  }
+}
