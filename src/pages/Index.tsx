@@ -1,176 +1,97 @@
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { LogOut, UserPlus, Settings as SettingsIcon, Trash2 } from "lucide-react";
-
-import WaveBackground from "@/components/WaveBackground";
+import { Settings, Users, Calendar, Home as HomeIcon, Plus } from "lucide-react";
 import Header from "@/components/Header";
-import BottomNav from "@/components/BottomNav";
-import FABRadial from "@/components/FABRadial";
 import UpcomingEvents from "@/components/UpcomingEvents";
-import ZenState from "@/components/ZenState";
-import CalendarView from "@/components/CalendarView";
-import MemberAvatar from "@/components/MemberAvatar";
-import AssignResponsibleDialog from "@/components/AssignResponsibleDialog";
-import { NestMember, EventData } from "@/types/kidus";
-import { useConflictDetection } from "@/hooks/useConflictDetection";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("home");
-  const [nestName, setNestName] = useState("Cargando Nido...");
-  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
-  const [members, setMembers] = useState<NestMember[]>([]);
-  const [events, setEvents] = useState<EventData[]>([]);
-  const [showSettings, setShowSettings] = useState(false);
-  const [showAssignDialog, setShowAssignDialog] = useState(false);
+  const [familyMembers, setFamilyMembers] = useState([]);
+  const { toast } = useToast();
 
-  // 🔄 SINCRONIZACIÓN REALTIME
+  // Cargar miembros de la familia desde Supabase
   useEffect(() => {
-    fetchNidoData();
-
-    const channel = supabase
-      .channel('db-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'members' }, () => fetchNidoData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => fetchNidoData())
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
+    const fetchFamily = async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*');
+      if (data) setFamilyMembers(data);
+    };
+    fetchFamily();
   }, []);
 
-  const fetchNidoData = async () => {
-    try {
-      // 1. Obtener datos del Nido
-      const { data: nestData } = await supabase.from('nests').select('name').single();
-      if (nestData) setNestName(nestData.name);
-
-      // 2. Obtener Miembros
-      const { data: membersData } = await supabase.from('members').select('*');
-      if (membersData) {
-        setMembers(membersData.map(m => ({
-          id: m.id,
-          name: m.name,
-          role: m.role,
-          color: m.color || "#94a3b8",
-          avatar: m.avatar_url
-        })));
-      }
-
-      // 3. Obtener Eventos
-      const { data: eventsData } = await supabase.from('events').select('*');
-      if (eventsData) {
-        setEvents(eventsData.map(e => ({
-          id: e.id,
-          title: e.title,
-          date: e.date,
-          startTime: e.start_time,
-          endTime: e.end_time,
-          memberId: e.member_id,
-          memberName: membersData?.find(m => m.id === e.member_id)?.name || "Alguien",
-          memberColor: membersData?.find(m => m.id === e.member_id)?.color || "#000",
-          type: e.type,
-          isPrivate: e.is_private
-        })));
-      }
-    } catch (error) {
-      console.error("Error cargando el Nido:", error);
-    }
-  };
-
-  const { eventsWithConflicts, conflicts } = useConflictDetection(events);
-
-  // Filtrar eventos por miembro seleccionado
-  const filteredEvents = selectedMemberId 
-    ? eventsWithConflicts.filter(e => e.memberId === selectedMemberId)
-    : eventsWithConflicts;
-
-  const handleAddMember = async () => {
-    const name = prompt("Nombre del nuevo miembro:");
-    if (!name) return;
-    
-    const { error } = await supabase.from('members').insert([
-      { name, role: 'child', color: '#FF6B6B' }
-    ]);
-    
-    if (error) toast.error("Error al añadir miembro");
-    else toast.success(`${name} se ha unido al Nido`);
-  };
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    window.location.reload();
-  };
-
   return (
-    <div className="min-h-screen max-h-screen overflow-hidden relative flex flex-col bg-slate-50">
-      <WaveBackground />
-
-      <div className="relative z-10 flex flex-col flex-1 overflow-hidden">
-        <Header 
-          nestName={nestName} 
-          notificationCount={conflicts.length} 
-          onSettingsClick={() => setShowSettings(true)}
-        />
-
-        <main className="flex-1 overflow-y-auto pb-24 scrollbar-hide">
-          {/* Dashboard Principal */}
-          {activeTab === "home" && (
-            <div className="p-4 space-y-6">
-              {/* Filtro Rápido de Miembros */}
-              <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                <button
-                  onClick={() => setSelectedMemberId(null)}
-                  className={`flex-shrink-0 px-5 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                    !selectedMemberId ? "bg-slate-900 text-white shadow-lg" : "bg-white/40 text-slate-500"
-                  }`}
-                >
-                  EL NIDO
-                </button>
-                {members.map((member) => (
-                  <MemberAvatar
-                    key={member.id}
-                    member={member}
-                    isSelected={selectedMemberId === member.id}
-                    onClick={() => setSelectedMemberId(member.id)}
-                    showName
-                  />
-                ))}
-              </div>
-
-              {filteredEvents.length > 0 ? (
-                <UpcomingEvents events={filteredEvents} members={members} />
-              ) : (
-                <ZenState message={selectedMemberId ? "Sin tareas pendientes" : "Tu Nido está en paz"} />
-              )}
+    <div className="min-h-screen wave-bg pb-24 font-sans antialiased">
+      <Header />
+      
+      <main className="container mx-auto px-4 pt-4 animate-in fade-in duration-700">
+        {activeTab === "home" && (
+          <div className="space-y-6">
+            <div className="glass-card p-6 rounded-3xl">
+              <h2 className="text-2xl font-bold text-kidus-blue mb-1">¡Hola, Familia! 👋</h2>
+              <p className="text-muted-foreground italic">"Un nido en calma es un equipo fuerte."</p>
             </div>
-          )}
+            <UpcomingEvents />
+          </div>
+        )}
 
-          {/* Vista de Calendario */}
-          {activeTab === "calendar" && (
-            <div className="p-4">
-              <CalendarView events={eventsWithConflicts} members={members} selectedMemberId={selectedMemberId} />
+        {activeTab === "family" && (
+          <div className="space-y-6 animate-in slide-in-from-bottom-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold font-nunito">Mi Familia</h2>
+              <Button size="sm" className="rounded-full bg-kidus-blue hover:bg-kidus-blue/90">
+                <Plus className="w-4 h-4 mr-1" /> Añadir
+              </Button>
             </div>
-          )}
+            <div className="grid grid-cols-2 gap-4">
+              {familyMembers.map((member: any) => (
+                <div key={member.id} className="glass-card p-4 rounded-2xl flex flex-col items-center text-center">
+                  <div className="w-16 h-16 rounded-full bg-kidus-teal/20 flex items-center justify-center mb-2 border-2 border-white">
+                    <Users className="w-8 h-8 text-kidus-blue" />
+                  </div>
+                  <span className="font-bold">{member.display_name || 'Miembro'}</span>
+                  <span className="text-xs text-muted-foreground uppercase">{member.role || 'Sin rol'}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
-          {/* Vista de Familia (Gestión Real) */}
-          {activeTab === "family" && (
-            <div className="p-6 space-y-6">
-              <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-black text-slate-900">Miembros</h2>
-                <Button onClick={handleAddMember} className="rounded-full h-10 w-10 p-0 bg-primary shadow-lg">
-                  <UserPlus size={20} />
-                </Button>
-              </div>
-              <div className="grid grid-cols-1 gap-4">
-                {members.map(member => (
-                  <motion.div 
-                    key={member.id}
-                    className="bg-white/60 backdrop-blur-md p-4 rounded-3xl border border-white flex items-center justify-between shadow-sm"
-                    whileHover={{ scale: 1.02 }}
-                  >
-                    <div className="flex items-center gap-4">
-                      <MemberAvatar member={member} size="md" />
-                      <div>
-                        <p className="font-bold text-slate-800">{member.name}</p>
-                        <p className="text-[10px] font-bold uppercase
+        {activeTab === "settings" && (
+          <div className="space-y-4 animate-in fade-in">
+            <h2 className="text-2xl font-bold mb-4">Ajustes del Nido</h2>
+            <div className="glass-card p-4 rounded-2xl space-y-3">
+              <Button variant="ghost" className="w-full justify-start text-left hover:bg-white/20">Perfil de Usuario</Button>
+              <Button variant="ghost" className="w-full justify-start text-left hover:bg-white/20">Vincular Pareja (Delegación)</Button>
+              <Button variant="ghost" className="w-full justify-start text-left text-red-500 hover:bg-red-50/50" onClick={() => supabase.auth.signOut()}>Cerrar Sesión</Button>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* Navegación Inferior Estilo Cockpit */}
+      <nav className="fixed bottom-0 left-0 right-0 px-6 py-4 flex justify-around items-center backdrop-blur-2xl border-t border-white/30 bg-white/40 rounded-t-[32px] shadow-2xl z-50">
+        <button onClick={() => setActiveTab("home")} className={`flex flex-col items-center transition-all ${activeTab === "home" ? "text-kidus-blue scale-110" : "text-gray-400"}`}>
+          <HomeIcon className="w-6 h-6" />
+          <span className="text-[10px] font-bold mt-1">Inicio</span>
+        </button>
+        <button onClick={() => setActiveTab("agenda")} className={`flex flex-col items-center transition-all ${activeTab === "agenda" ? "text-kidus-blue scale-110" : "text-gray-400"}`}>
+          <Calendar className="w-6 h-6" />
+          <span className="text-[10px] font-bold mt-1">Agenda</span>
+        </button>
+        <button onClick={() => setActiveTab("family")} className={`flex flex-col items-center transition-all ${activeTab === "family" ? "text-kidus-blue scale-110" : "text-gray-400"}`}>
+          <Users className="w-6 h-6" />
+          <span className="text-[10px] font-bold mt-1">Familia</span>
+        </button>
+        <button onClick={() => setActiveTab("settings")} className={`flex flex-col items-center transition-all ${activeTab === "settings" ? "text-kidus-blue scale-110" : "text-gray-400"}`}>
+          <Settings className="w-6 h-6" />
+          <span className="text-[10px] font-bold mt-1">Ajustes</span>
+        </button>
+      </nav>
+    </div>
+  );
+};
+
+export default Index;
