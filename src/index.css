@@ -4,25 +4,36 @@
 
 @layer base {
   :root {
-    --background: 210 40% 96%;
+    --background: 210 40% 98%;
     --foreground: 222 47% 11%;
-  }
-  body {
-    @apply bg-background text-foreground;
-    font-family: sans-serif;
+    --kidus-blue: 211 100% 50%;
+    --kidus-teal: 180 50% 70%;
   }
 }
 
-@layer components {
-  .glass-card {
-    background: rgba(255, 255, 255, 0.4);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 1rem;
-  }
-  
-  .wave-bg {
-    background: linear-gradient(135deg, #e0f2fe 0%, #fffaf0 100%);
-    min-height: 100vh;
-  }
+.wave-bg {
+  background: linear-gradient(135deg, #e0f2fe 0%, #fdfcfb 50%, #f0fdfa 100%);
+  background-size: 400% 400%;
+  animation: gradient 15s ease infinite;
+  min-height: 100vh;
+}
+
+@keyframes gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 10px 30px -10px rgba(0,0,0,0.05);
+  transition: all 0.3s ease;
+}
+
+.glass-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 15px 35px -10px rgba(0,0,0,0.1);
 }
