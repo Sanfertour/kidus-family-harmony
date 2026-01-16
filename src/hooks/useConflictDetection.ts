@@ -1,8 +1,7 @@
 import { useMemo } from "react";
 import { EventData, ConflictInfo } from "@/types/kidus";
-import { parse, isWithinInterval, areIntervalsOverlapping } from "date-fns";
+import { parse, areIntervalsOverlapping } from "date-fns";
 
-// Parse time string "HH:mm" to Date object for comparison
 const parseTimeToDate = (dateStr: string, timeStr: string): Date => {
   return parse(`${dateStr} ${timeStr}`, "yyyy-MM-dd HH:mm", new Date());
 };
@@ -11,13 +10,11 @@ export const useConflictDetection = (events: EventData[]) => {
   const eventsWithConflicts = useMemo(() => {
     const conflictMap = new Map<string, string[]>();
 
-    // Compare each pair of events
     for (let i = 0; i < events.length; i++) {
       for (let j = i + 1; j < events.length; j++) {
         const eventA = events[i];
         const eventB = events[j];
 
-        // Only check same date events
         if (eventA.date !== eventB.date) continue;
 
         try {
@@ -32,24 +29,17 @@ export const useConflictDetection = (events: EventData[]) => {
           );
 
           if (hasOverlap) {
-            // Mark both events as conflicting
-            if (!conflictMap.has(eventA.id)) {
-              conflictMap.set(eventA.id, []);
-            }
-            if (!conflictMap.has(eventB.id)) {
-              conflictMap.set(eventB.id, []);
-            }
+            if (!conflictMap.has(eventA.id)) conflictMap.set(eventA.id, []);
+            if (!conflictMap.has(eventB.id)) conflictMap.set(eventB.id, []);
             conflictMap.get(eventA.id)!.push(eventB.id);
             conflictMap.get(eventB.id)!.push(eventA.id);
           }
         } catch (e) {
-          // Skip if date parsing fails
-          console.warn("Could not parse dates for conflict detection", e);
+          console.warn("Error en detección de colisión", e);
         }
       }
     }
 
-    // Return events with conflict info
     return events.map((event) => ({
       ...event,
       hasConflict: conflictMap.has(event.id),
@@ -63,13 +53,26 @@ export const useConflictDetection = (events: EventData[]) => {
 
     eventsWithConflicts.forEach((event) => {
       if (event.hasConflict && !processed.has(event.id)) {
+        // Lógica de Alerta Naranja Silenciosa
+        const otherEvents = eventsWithConflicts.filter(e => 
+          event.conflictWith?.includes(e.id)
+        );
+
+        const hasPrivateConflict = otherEvents.some(e => e.isPrivate);
+        
+        // Si el choque es con algo privado, el mensaje es genérico para proteger la privacidad
+        const message = hasPrivateConflict 
+          ? `Conflicto: ${event.memberName} ya tiene un compromiso (Evento Privado)`
+          : `Conflicto: ${event.title} se solapa con otro evento.`;
+
         result.push({
           eventId: event.id,
           conflictingEventIds: event.conflictWith || [],
-          message: `${event.title} tiene un conflicto horario`,
+          message,
+          isPrivateConflict: hasPrivateConflict
         });
+        
         processed.add(event.id);
-        event.conflictWith?.forEach((id) => processed.add(id));
       }
     });
 
