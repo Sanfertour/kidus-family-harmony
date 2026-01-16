@@ -1,15 +1,15 @@
-// KidUs Core Types
+// KidUs Core Types - Optimización "El Nido"
 
 export interface NestMember {
   id: string;
   name: string;
   role: "adult" | "child";
   color: string;
-  avatar?: string; // URL to uploaded photo
+  avatar?: string;
   school?: string;
   grade?: string;
   class?: string;
-  custodyDays?: number[]; // 0-6 representing days of week
+  custodyDays?: number[]; 
 }
 
 export interface EventData {
@@ -19,60 +19,32 @@ export interface EventData {
   startTime: string;
   endTime: string;
   location?: string;
-  // Interesado - who the event is for (defines color)
+  // Interesado (Sujeto): Define el color de la tarjeta
   memberId: string;
   memberName: string;
   memberColor: string;
-  // Event metadata
+  // Tipo de evento (Incluye 'meal' para automatización de menús)
   type: "school" | "activity" | "medical" | "family" | "work" | "meal";
-  // Responsable - who is managing logistics
+  // Responsable (Logística): El adulto que gestiona
   assignedToId?: string;
   assignedToName?: string;
   notes?: string;
-  // Conflict detection
+  // Alerta Naranja: Detección de colisiones
   hasConflict?: boolean;
   conflictWith?: string[];
-  // Privacy mode
+  // Modo Privado/Sorpresa: Oculta detalles al resto
   isPrivate?: boolean;
 }
 
+// Estructura para la Alerta Naranja
 export interface ConflictInfo {
   eventId: string;
   conflictingEventIds: string[];
   message: string;
+  isPrivateConflict: boolean; // Indica si el choque es con un evento oculto
 }
 
-export interface CustodyBlock {
-  date: string;
-  memberId: string;
-  memberColor: string;
-  memberName: string;
-}
-
-// Database types (maps to Supabase tables)
-export interface DbNest {
-  id: string;
-  name: string;
-  share_code: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface DbNestMember {
-  id: string;
-  nest_id: string;
-  user_id?: string;
-  name: string;
-  role: "adult" | "child";
-  color: string;
-  avatar_url?: string;
-  school?: string;
-  grade?: string;
-  class?: string;
-  custody_days?: number[];
-  created_at: string;
-  updated_at: string;
-}
+// --- Tipos de Base de Datos (Mapeo directo a Supabase) ---
 
 export interface DbEvent {
   id: string;
@@ -82,20 +54,10 @@ export interface DbEvent {
   start_time: string;
   end_time: string;
   location?: string;
-  member_id: string;
-  assigned_to_id?: string;
+  member_id: string; // Interesado
+  assigned_to_id?: string; // Responsable
   type: "school" | "activity" | "medical" | "family" | "work" | "meal";
   notes?: string;
   is_private: boolean;
   created_at: string;
-  updated_at: string;
-}
-
-export interface DbProfile {
-  id: string;
-  user_id: string;
-  nest_id?: string;
-  display_name?: string;
-  created_at: string;
-  updated_at: string;
 }
