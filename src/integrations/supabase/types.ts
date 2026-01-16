@@ -14,7 +14,239 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      events: {
+        Row: {
+          assigned_to_id: string | null
+          created_at: string
+          date: string
+          end_time: string
+          id: string
+          is_private: boolean
+          location: string | null
+          member_id: string
+          nest_id: string
+          notes: string | null
+          start_time: string
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to_id?: string | null
+          created_at?: string
+          date: string
+          end_time: string
+          id?: string
+          is_private?: boolean
+          location?: string | null
+          member_id: string
+          nest_id: string
+          notes?: string | null
+          start_time: string
+          title: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to_id?: string | null
+          created_at?: string
+          date?: string
+          end_time?: string
+          id?: string
+          is_private?: boolean
+          location?: string | null
+          member_id?: string
+          nest_id?: string
+          notes?: string | null
+          start_time?: string
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_assigned_to_id_fkey"
+            columns: ["assigned_to_id"]
+            isOneToOne: false
+            referencedRelation: "nest_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "nest_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_nest_id_fkey"
+            columns: ["nest_id"]
+            isOneToOne: false
+            referencedRelation: "nests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nest_members: {
+        Row: {
+          avatar_url: string | null
+          class: string | null
+          color: string
+          created_at: string
+          custody_days: number[] | null
+          grade: string | null
+          id: string
+          name: string
+          nest_id: string
+          role: string
+          school: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          class?: string | null
+          color?: string
+          created_at?: string
+          custody_days?: number[] | null
+          grade?: string | null
+          id?: string
+          name: string
+          nest_id: string
+          role: string
+          school?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          class?: string | null
+          color?: string
+          created_at?: string
+          custody_days?: number[] | null
+          grade?: string | null
+          id?: string
+          name?: string
+          nest_id?: string
+          role?: string
+          school?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nest_members_nest_id_fkey"
+            columns: ["nest_id"]
+            isOneToOne: false
+            referencedRelation: "nests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nests: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          share_code: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name?: string
+          share_code?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          share_code?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          id: string
+          nest_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          nest_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          nest_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_nest_id_fkey"
+            columns: ["nest_id"]
+            isOneToOne: false
+            referencedRelation: "nests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_menus: {
+        Row: {
+          child_id: string
+          created_at: string
+          file_url: string | null
+          id: string
+          month: number
+          nest_id: string
+          year: number
+        }
+        Insert: {
+          child_id: string
+          created_at?: string
+          file_url?: string | null
+          id?: string
+          month: number
+          nest_id: string
+          year: number
+        }
+        Update: {
+          child_id?: string
+          created_at?: string
+          file_url?: string | null
+          id?: string
+          month?: number
+          nest_id?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_menus_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "nest_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_menus_nest_id_fkey"
+            columns: ["nest_id"]
+            isOneToOne: false
+            referencedRelation: "nests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
