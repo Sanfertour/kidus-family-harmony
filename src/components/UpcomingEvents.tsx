@@ -1,62 +1,31 @@
-import { motion } from "framer-motion";
-import EventCard from "./EventCard";
-import { EventData, NestMember } from "@/types/kidus";
-import { CalendarDays } from "lucide-react";
+import { Calendar } from "lucide-react";
 
-interface UpcomingEventsProps {
-  events: EventData[];
-  members?: NestMember[];
-  onDelegate?: (eventId: string) => void;
-  onConflictResolve?: (eventId: string) => void;
-}
-
-const UpcomingEvents = ({ events, members = [], onDelegate, onConflictResolve }: UpcomingEventsProps) => {
-  const container = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.08,
-      },
-    },
-  };
-
-  const today = new Date().toLocaleDateString("es-ES", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
+const UpcomingEvents = ({ events = [] }: { events?: any[] }) => {
+  // Blindaje total: si no hay eventos o es undefined, mostramos el estado vacío
+  if (!events || events.length === 0) {
+    return (
+      <div className="glass-card p-6 rounded-3xl text-center opacity-60">
+        <Calendar className="w-10 h-10 mx-auto mb-2 text-kidus-blue/40" />
+        <p className="text-sm font-medium">No hay eventos próximos</p>
+      </div>
+    );
+  }
 
   return (
-    <section className="px-4 py-3">
-      <div className="flex items-center gap-2 mb-3">
-        <CalendarDays className="w-4 h-4 text-primary" />
-        <h2 className="text-sm font-semibold text-foreground">Próximos eventos</h2>
-      </div>
-
-      <div className="mb-2">
-        <span className="text-xs font-medium text-muted-foreground capitalize">
-          {today}
-        </span>
-      </div>
-
-      <motion.div
-        className="space-y-2"
-        variants={container}
-        initial="hidden"
-        animate="show"
-      >
-        {events.map((event) => (
-          <EventCard 
-            key={event.id} 
-            event={event} 
-            members={members}
-            onDelegate={onDelegate}
-            onConflictResolve={onConflictResolve}
-          />
-        ))}
-      </motion.div>
-    </section>
+    <div className="space-y-3">
+      <h3 className="font-bold text-lg px-2">Próximos en el Nido</h3>
+      {events.map((event) => (
+        <div key={event.id} className="glass-card p-4 rounded-2xl flex items-center gap-4">
+          <div className="w-12 h-12 rounded-full bg-kidus-blue/10 flex items-center justify-center text-kidus-blue">
+            <Calendar className="w-6 h-6" />
+          </div>
+          <div>
+            <h4 className="font-bold">{event.title}</h4>
+            <p className="text-xs text-muted-foreground">{event.time}</p>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 };
 
