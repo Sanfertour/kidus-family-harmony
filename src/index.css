@@ -2,11 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Fuentes: Inter para lectura técnica y Nunito para un look más orgánico */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap');
 
 @layer base {
   :root {
-    /* KidUs Feng Shui Palette */
+    /* KidUs Feng Shui Palette - El "Setup" de suspensión */
     --background: 40 33% 98%;
     --foreground: 220 25% 20%;
 
@@ -16,27 +17,23 @@
     --popover: 0 0% 100%;
     --popover-foreground: 220 25% 20%;
 
-    /* Electric Blue - Primary */
+    /* Electric Blue - Color de Equipo */
     --primary: 211 100% 50%;
     --primary-foreground: 0 0% 100%;
 
-    /* Soft Blue for secondary */
     --secondary: 200 60% 94%;
     --secondary-foreground: 211 100% 40%;
 
-    /* Muted cream tones */
     --muted: 40 20% 95%;
     --muted-foreground: 220 10% 50%;
 
-    /* Vibrant Orange - Accent */
+    /* Vibrant Orange - Tu zona de potencia máxima */
     --accent: 36 100% 50%;
     --accent-foreground: 0 0% 100%;
 
-    /* Alert/Conflict color */
     --destructive: 36 100% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Success green */
     --success: 142 70% 45%;
     --success-foreground: 0 0% 100%;
 
@@ -53,23 +50,19 @@
     --kidus-cream: 40 33% 98%;
     --kidus-teal: 180 50% 70%;
     
-    /* Child Colors */
+    /* Child Colors - Categorías de usuario */
     --child-blue: 211 100% 60%;
     --child-pink: 340 80% 65%;
     --child-green: 142 60% 50%;
     --child-purple: 270 70% 60%;
     --child-yellow: 45 100% 55%;
 
-    /* Glassmorphism */
+    /* Glassmorphism - Efecto fibra de carbono transparente */
     --glass-bg: 0 0% 100% / 0.7;
     --glass-border: 0 0% 100% / 0.3;
     --glass-shadow: 220 60% 50% / 0.1;
 
-    /* Gradients */
-    --gradient-wave-1: linear-gradient(135deg, hsl(211 100% 50%) 0%, hsl(180 50% 70%) 50%, hsl(200 80% 85%) 100%);
-    --gradient-wave-2: linear-gradient(225deg, hsl(36 100% 50%) 0%, hsl(40 100% 70%) 100%);
-    --gradient-zen: linear-gradient(180deg, hsl(40 33% 98%) 0%, hsl(200 60% 94%) 100%);
-
+    /* Sidebar - Los ajustes de control lateral */
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
     --sidebar-primary: 240 5.9% 10%;
@@ -83,54 +76,23 @@
   .dark {
     --background: 220 25% 10%;
     --foreground: 40 33% 98%;
-
     --card: 220 25% 15%;
-    --card-foreground: 40 33% 98%;
-
-    --popover: 220 25% 15%;
-    --popover-foreground: 40 33% 98%;
-
-    --primary: 211 100% 55%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 220 25% 20%;
-    --secondary-foreground: 200 80% 85%;
-
-    --muted: 220 25% 18%;
-    --muted-foreground: 220 10% 60%;
-
-    --accent: 36 100% 55%;
-    --accent-foreground: 0 0% 100%;
-
-    --destructive: 36 100% 55%;
-    --destructive-foreground: 0 0% 100%;
-
     --border: 220 25% 25%;
-    --input: 220 25% 25%;
-    --ring: 211 100% 55%;
-
     --glass-bg: 220 25% 15% / 0.8;
-    --glass-border: 220 25% 30% / 0.3;
   }
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
-
+  * { @apply border-border; }
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-family: 'Inter', 'Nunito', sans-serif;
   }
-
-  h1, h2, h3, h4, h5, h6 {
-    font-family: 'Nunito', 'Inter', sans-serif;
-  }
+  h1, h2, h3, h4, h5, h6 { font-family: 'Nunito', 'Inter', sans-serif; }
 }
 
 @layer components {
-  /* Glassmorphism Card */
+  /* Cartas con efecto cristal */
   .glass-card {
     @apply backdrop-blur-xl border shadow-lg;
     background: hsl(var(--glass-bg));
@@ -138,7 +100,7 @@
     box-shadow: 0 8px 32px hsl(var(--glass-shadow));
   }
 
-  /* FAB Styles */
+  /* Botón Flotante (FAB) - Tu pulsador de tija telescópica */
   .fab-button {
     @apply w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300;
     background: linear-gradient(135deg, hsl(var(--kidus-blue)) 0%, hsl(var(--kidus-teal)) 100%);
@@ -146,70 +108,29 @@
   }
 
   .fab-button:hover {
-    transform: scale(1.1);
+    @apply scale-110;
     box-shadow: 0 12px 32px hsl(var(--kidus-blue) / 0.5);
   }
 
-  .fab-button:active {
-    transform: scale(0.95);
-  }
-
-  /* Zen State */
-  .zen-state {
-    @apply text-center py-12 px-6;
-  }
-
-  /* Child color badges */
-  .child-badge {
-    @apply px-3 py-1 rounded-full text-sm font-medium;
-  }
-
-  /* Event card with child color accent */
-  .event-card {
-    @apply glass-card rounded-2xl p-4 relative overflow-hidden;
-  }
-
-  .event-card::before {
-    content: '';
-    @apply absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl;
-    background: var(--child-color, hsl(var(--kidus-blue)));
-  }
-
-  /* Conflict glow animation */
-  .conflict-glow {
-    animation: conflict-pulse 2s ease-in-out infinite;
-  }
-
-  @keyframes conflict-pulse {
-    0%, 100% {
-      box-shadow: 0 0 20px hsl(var(--kidus-orange) / 0.3);
-    }
-    50% {
-      box-shadow: 0 0 40px hsl(var(--kidus-orange) / 0.6);
-    }
-  }
-
-  /* Bottom nav */
+  /* Navegación inferior - El cockpit de la app */
   .bottom-nav {
     @apply glass-card fixed bottom-0 left-0 right-0 px-6 py-3 flex justify-around items-center;
     border-radius: 24px 24px 0 0;
   }
 
-  .nav-item {
-    @apply flex flex-col items-center gap-1 text-muted-foreground transition-colors duration-200;
+  /* Animación de conflicto - ¡Alerta de zona roja! */
+  .conflict-glow {
+    animation: conflict-pulse 2s ease-in-out infinite;
   }
 
-  .nav-item.active {
-    @apply text-primary;
-  }
-
-  .nav-item:hover {
-    @apply text-primary;
+  @keyframes conflict-pulse {
+    0%, 100% { box-shadow: 0 0 20px hsl(var(--kidus-orange) / 0.3); }
+    50% { box-shadow: 0 0 40px hsl(var(--kidus-orange) / 0.6); }
   }
 }
 
 @layer utilities {
-  /* Wave animation */
+  /* Animación de ondas de fondo - Fluidez en el sendero */
   .wave-bg {
     background: linear-gradient(135deg, 
       hsl(var(--kidus-blue-light)) 0%, 
@@ -228,33 +149,7 @@
     100% { background-position: 0% 50%; }
   }
 
-  /* Subtle float animation */
-  .float-gentle {
-    animation: float-gentle 6s ease-in-out infinite;
-  }
-
-  @keyframes float-gentle {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-10px); }
-  }
-
-  /* Tick animation */
-  .tick-animate {
-    animation: tick-pop 0.3s ease-out;
-  }
-
-  @keyframes tick-pop {
-    0% { transform: scale(0); }
-    50% { transform: scale(1.2); }
-    100% { transform: scale(1); }
-  }
-
-  /* Radial menu animation */
-  .radial-item {
-    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-  }
-
-  /* Safe area for mobile */
+  /* Ajuste para Notch/Barra de inicio en móviles modernos */
   .safe-bottom {
     padding-bottom: max(env(safe-area-inset-bottom), 80px);
   }
