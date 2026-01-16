@@ -9,48 +9,37 @@
     --background: 210 40% 96%;
     --foreground: 222 47% 11%;
     --card: 0 0% 100% / 0.4;
-    --card-foreground: 222 47% 11%;
     --primary: 211 100% 50%;
-    --primary-foreground: 210 40% 98%;
-    --accent: 36 100% 50%;
-    --radius: 1.25rem;
     --kidus-blue: 211 100% 50%;
     --kidus-blue-light: 200 80% 90%;
     --kidus-cream: 40 33% 98%;
     --kidus-teal: 180 50% 70%;
+    --radius: 1.25rem;
   }
-}
 
-@layer base {
-  * { @apply border-border; }
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    @apply bg-background text-foreground;
     font-family: 'Inter', 'Nunito', sans-serif;
+    margin: 0;
   }
 }
 
 @layer components {
   .glass-card {
-    @apply backdrop-blur-xl border shadow-xl;
-    background: hsla(0, 0%, 100%, 0.3);
-    border-color: rgba(255, 255, 255, 0.5);
-  }
-
-  .fab-button {
-    @apply w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300;
-    background: linear-gradient(135deg, hsl(var(--kidus-blue)) 0%, hsl(var(--kidus-teal)) 100%);
-  }
-
-  .fab-button:hover {
-    @apply scale-110;
+    background: rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 1.5rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
   }
 
   .wave-bg {
     background: linear-gradient(135deg, 
-      hsl(var(--kidus-blue-light)) 0%, 
-      hsl(var(--kidus-cream)) 30%,
-      hsl(var(--kidus-teal) / 0.4) 60%,
-      hsl(var(--kidus-blue-light)) 100%
+      hsl(200, 80%, 90%) 0%, 
+      hsl(40, 33%, 98%) 30%,
+      rgba(180, 220, 220, 0.4) 60%,
+      hsl(200, 80%, 90%) 100%
     );
     background-size: 400% 400%;
     animation: wave-flow 20s ease-in-out infinite;
