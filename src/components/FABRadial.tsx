@@ -5,15 +5,14 @@ import { Plus, Camera, Image, FileText, PenLine, X } from "lucide-react";
 interface FABOption {
   id: string;
   icon: React.ElementType;
-  label: string;
   color: string;
 }
 
 const fabOptions: FABOption[] = [
-  { id: "camera", icon: Camera, label: "Cámara", color: "hsl(211 100% 50%)" },
-  { id: "gallery", icon: Image, label: "Galería", color: "hsl(180 50% 50%)" },
-  { id: "pdf", icon: FileText, label: "PDF", color: "hsl(36 100% 50%)" },
-  { id: "manual", icon: PenLine, label: "Manual", color: "hsl(270 70% 60%)" },
+  { id: "camera", icon: Camera, color: "hsl(211 100% 50%)" },
+  { id: "gallery", icon: Image, color: "hsl(180 50% 50%)" },
+  { id: "pdf", icon: FileText, color: "hsl(36 100% 50%)" },
+  { id: "manual", icon: PenLine, color: "hsl(270 70% 60%)" },
 ];
 
 interface FABRadialProps {
@@ -30,30 +29,17 @@ const FABRadial = ({ onOptionSelect }: FABRadialProps) => {
     setIsOpen(false);
   };
 
-  // Calculate positions for 90° arc - increased radius for better spacing
+  // Calculate positions for 90° arc
   const getPosition = (index: number, total: number) => {
-    const startAngle = -180; // Start from left
-    const endAngle = -90; // End at top
+    const startAngle = -180;
+    const endAngle = -90;
     const angle = startAngle + ((endAngle - startAngle) / (total - 1)) * index;
     const radians = (angle * Math.PI) / 180;
-    const radius = 110; // Increased from 80 to 110
+    const radius = 90;
     return {
       x: Math.cos(radians) * radius,
       y: Math.sin(radians) * radius,
     };
-  };
-
-  // Calculate label position based on button position
-  const getLabelPosition = (index: number, total: number) => {
-    const { x, y } = getPosition(index, total);
-    // Position labels to the left of buttons on the left side, above for top buttons
-    if (x < -50) {
-      return { left: "-80px", top: "50%", transform: "translateY(-50%)" };
-    } else if (y < -50) {
-      return { left: "50%", top: "-36px", transform: "translateX(-50%)" };
-    } else {
-      return { left: "-75px", top: "50%", transform: "translateY(-50%)" };
-    }
   };
 
   return (
@@ -72,17 +58,16 @@ const FABRadial = ({ onOptionSelect }: FABRadialProps) => {
         )}
       </AnimatePresence>
 
-      {/* Radial options */}
+      {/* Radial options - Icons only, no labels */}
       <AnimatePresence>
         {isOpen &&
           fabOptions.map((option, index) => {
             const position = getPosition(index, fabOptions.length);
-            const labelStyle = getLabelPosition(index, fabOptions.length);
             const Icon = option.icon;
             return (
               <motion.button
                 key={option.id}
-                className="absolute w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-white"
+                className="absolute w-12 h-12 rounded-full shadow-xl flex items-center justify-center text-white"
                 style={{ backgroundColor: option.color, zIndex: 45 }}
                 initial={{ scale: 0, x: 0, y: 0, opacity: 0 }}
                 animate={{
@@ -94,31 +79,15 @@ const FABRadial = ({ onOptionSelect }: FABRadialProps) => {
                 exit={{ scale: 0, x: 0, y: 0, opacity: 0 }}
                 transition={{
                   type: "spring",
-                  stiffness: 400,
-                  damping: 20,
-                  delay: index * 0.05,
+                  stiffness: 500,
+                  damping: 25,
+                  delay: index * 0.04,
                 }}
-                whileHover={{ scale: 1.15 }}
+                whileHover={{ scale: 1.2 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={() => handleOptionClick(option.id)}
               >
-                <Icon size={22} />
-                <motion.span
-                  className="absolute whitespace-nowrap text-xs font-semibold px-3 py-1.5 rounded-lg shadow-lg"
-                  style={{
-                    ...labelStyle,
-                    zIndex: 50,
-                    backgroundColor: "hsl(var(--card))",
-                    color: "hsl(var(--foreground))",
-                    border: "1px solid hsl(var(--border))",
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-                  }}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: index * 0.05 + 0.15 }}
-                >
-                  {option.label}
-                </motion.span>
+                <Icon size={20} strokeWidth={2.5} />
               </motion.button>
             );
           })}
@@ -132,12 +101,12 @@ const FABRadial = ({ onOptionSelect }: FABRadialProps) => {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         animate={{ rotate: isOpen ? 45 : 0 }}
-        transition={{ type: "spring", stiffness: 400, damping: 20 }}
+        transition={{ type: "spring", stiffness: 500, damping: 25 }}
       >
         {isOpen ? (
-          <X size={26} className="text-white" />
+          <X size={24} className="text-white" />
         ) : (
-          <Plus size={26} className="text-white" />
+          <Plus size={24} className="text-white" />
         )}
       </motion.button>
     </div>
