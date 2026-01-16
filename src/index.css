@@ -8,14 +8,19 @@
     --foreground: 222 47% 11%;
     --kidus-blue: 211 100% 50%;
     --kidus-teal: 180 50% 70%;
+    --radius: 2rem;
   }
 }
 
+/* 1. FONDO WAVY DINÁMICO (Orgánico y lento) */
 .wave-bg {
   background: linear-gradient(135deg, #e0f2fe 0%, #fdfcfb 50%, #f0fdfa 100%);
   background-size: 400% 400%;
   animation: gradient 15s ease infinite;
   min-height: 100vh;
+  position: fixed;
+  inset: 0;
+  z-index: -1;
 }
 
 @keyframes gradient {
@@ -24,96 +29,124 @@
   100% { background-position: 0% 50%; }
 }
 
+/* 2. GLASSMORPHISM (Capas de cristal esmerilado) */
 .glass-card {
-  background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.7);
-  box-shadow: 0 10px 30px -10px rgba(0,0,0,0.05);
-  border-radius: 2rem; /* Aseguramos esquinas redondeadas */
-  transition: all 0.3s ease;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+  border-radius: 2rem;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .glass-card:hover {
+  background: rgba(255, 255, 255, 0.55);
   transform: translateY(-2px);
-  box-shadow: 0 15px 35px -10px rgba(0,0,0,0.1);
+  box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.1);
 }
 
-/* Nuevas clases para el FAB Radial */
+/* 3. FAB RADIAL (Tu motor visual) */
 .fab-radial-container {
   position: fixed;
-  bottom: 110px; /* Ajusta la posición para que esté sobre la nav */
+  bottom: 110px; /* Sobre la barra de navegación */
   right: 24px;
   z-index: 50;
   display: flex;
-  flex-direction: column-reverse; /* Botón principal abajo */
+  flex-direction: column-reverse;
   align-items: center;
-  gap: 10px; /* Espacio entre los botones */
+  gap: 12px;
 }
 
 .fab-main-button {
-  width: 60px;
-  height: 60px;
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%); /* Naranja a Rojo para el + */
-  box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+  background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+  box-shadow: 0 12px 24px rgba(239, 68, 68, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  font-size: 2rem;
-  transition: transform 0.3s ease, background 0.3s ease;
+  transition: all 0.5s cubic-bezier(0.68, -0.6, 0.32, 1.6);
   cursor: pointer;
-  position: relative;
   z-index: 10;
+  border: 2px solid rgba(255, 255, 255, 0.3);
 }
 
 .fab-main-button.open {
-  transform: rotate(135deg); /* Gira el + para que sea una X */
-  background: linear-gradient(135deg, #ef4444 0%, #f59e0b 100%);
+  transform: rotate(135deg);
+  background: linear-gradient(135deg, #374151 0%, #111827 100%);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
 }
 
 .fab-sub-button {
-  width: 50px;
-  height: 50px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #3b82f6; /* Azul KidUs para los iconos */
-  transition: transform 0.3s ease, opacity 0.3s ease;
+  color: #3b82f6;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   opacity: 0;
-  transform: translateY(20px) scale(0.8);
-  pointer-events: none; /* No clickable cuando está oculto */
-  position: absolute; /* Para apilarlos y que se desplieguen */
-  bottom: 0px; /* Posición inicial apilados */
-  right: 0px;
+  transform: translateY(20px) scale(0.5);
+  pointer-events: none;
+  position: absolute;
+  bottom: 0px;
 }
 
 .fab-sub-button.visible {
   opacity: 1;
-  pointer-events: auto; /* Clickable cuando visible */
+  pointer-events: auto;
 }
 
-/* Animación para desplegar los botones */
-.fab-sub-button:nth-child(1).visible { /* Lápiz (Manual) */
-  transform: translateY(-70px) scale(1);
-  transition-delay: 0.05s;
+/* Animaciones de despliegue según tu lógica */
+.fab-sub-button:nth-child(1).visible { /* Lápiz / Manual */
+  transform: translateY(-75px) scale(1);
 }
 .fab-sub-button:nth-child(2).visible { /* PDF */
-  transform: translateY(-130px) scale(1);
-  transition-delay: 0.1s;
+  transform: translateY(-140px) scale(1);
 }
 .fab-sub-button:nth-child(3).visible { /* Galería */
-  transform: translateY(-190px) scale(1);
-  transition-delay: 0.15s;
+  transform: translateY(-205px) scale(1);
 }
 .fab-sub-button:nth-child(4).visible { /* Cámara */
-  transform: translateY(-250px) scale(1);
-  transition-delay: 0.2s;
+  transform: translateY(-270px) scale(1);
+}
+
+/* 4. DRAWER (Formularios desde abajo) */
+.drawer-content {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top-left-radius: 3rem;
+  border-top-right-radius: 3rem;
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.1);
+  border-top: 1px solid rgba(255, 255, 255, 0.5);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* 5. ESTADO VACÍO (Santuario de calma) */
+.sanctuary-breeze {
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-15px); }
+}
+
+/* Prohibir scrollbars visibles para el Feng Shui */
+::-webkit-scrollbar {
+  display: none;
+}
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
