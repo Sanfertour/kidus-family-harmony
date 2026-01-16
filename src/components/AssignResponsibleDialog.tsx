@@ -174,7 +174,7 @@ const AssignResponsibleDialog = ({
                   )}
                 </div>
                 <span className="text-xs font-medium text-foreground">
-                  Familia
+                  Todo el Nido
                 </span>
               </motion.div>
             </div>

@@ -1,21 +1,22 @@
 import { motion } from "framer-motion";
 import EventCard from "./EventCard";
-import { EventData } from "@/types/kidus";
+import { EventData, NestMember } from "@/types/kidus";
 import { CalendarDays } from "lucide-react";
 
 interface UpcomingEventsProps {
   events: EventData[];
+  members?: NestMember[];
   onDelegate?: (eventId: string) => void;
   onConflictResolve?: (eventId: string) => void;
 }
 
-const UpcomingEvents = ({ events, onDelegate, onConflictResolve }: UpcomingEventsProps) => {
+const UpcomingEvents = ({ events, members = [], onDelegate, onConflictResolve }: UpcomingEventsProps) => {
   const container = {
     hidden: { opacity: 0 },
     show: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.1,
+        staggerChildren: 0.08,
       },
     },
   };
@@ -27,20 +28,20 @@ const UpcomingEvents = ({ events, onDelegate, onConflictResolve }: UpcomingEvent
   });
 
   return (
-    <section className="px-4 py-4">
-      <div className="flex items-center gap-2 mb-4">
-        <CalendarDays className="w-5 h-5 text-primary" />
-        <h2 className="text-base font-semibold text-foreground">Próximos eventos</h2>
+    <section className="px-4 py-3">
+      <div className="flex items-center gap-2 mb-3">
+        <CalendarDays className="w-4 h-4 text-primary" />
+        <h2 className="text-sm font-semibold text-foreground">Próximos eventos</h2>
       </div>
 
-      <div className="mb-3">
-        <span className="text-sm font-medium text-muted-foreground capitalize">
-          Hoy, {today}
+      <div className="mb-2">
+        <span className="text-xs font-medium text-muted-foreground capitalize">
+          {today}
         </span>
       </div>
 
       <motion.div
-        className="space-y-3"
+        className="space-y-2"
         variants={container}
         initial="hidden"
         animate="show"
@@ -49,6 +50,7 @@ const UpcomingEvents = ({ events, onDelegate, onConflictResolve }: UpcomingEvent
           <EventCard 
             key={event.id} 
             event={event} 
+            members={members}
             onDelegate={onDelegate}
             onConflictResolve={onConflictResolve}
           />

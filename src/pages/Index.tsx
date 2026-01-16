@@ -20,21 +20,21 @@ const mockMembers: NestMember[] = [
     id: "adult-1",
     name: "Ana García",
     role: "adult",
-    color: "hsl(270, 70%, 60%)", // Purple
-    custodyDays: [1, 2, 3], // Mon, Tue, Wed
+    color: "hsl(270, 70%, 60%)",
+    custodyDays: [1, 2, 3],
   },
   {
     id: "adult-2",
     name: "Carlos García",
     role: "adult",
-    color: "hsl(211, 100%, 50%)", // Blue
-    custodyDays: [4, 5, 6, 0], // Thu, Fri, Sat, Sun
+    color: "hsl(211, 100%, 50%)",
+    custodyDays: [4, 5, 6, 0],
   },
   {
     id: "child-1",
     name: "Lucía García",
     role: "child",
-    color: "hsl(340, 80%, 65%)", // Pink
+    color: "hsl(340, 80%, 65%)",
     school: "CEIP San Fernando",
     grade: "3º Primaria",
     class: "3ºB",
@@ -43,7 +43,7 @@ const mockMembers: NestMember[] = [
     id: "child-2",
     name: "Pablo García",
     role: "child",
-    color: "hsl(142, 60%, 50%)", // Green
+    color: "hsl(142, 60%, 50%)",
     school: "CEIP San Fernando",
     grade: "1º Primaria",
     class: "1ºA",
@@ -54,7 +54,7 @@ const mockEvents: EventData[] = [
   {
     id: "1",
     title: "Excursión al Zoo",
-    date: "2026-01-15",
+    date: "2026-01-16",
     startTime: "09:00",
     endTime: "14:00",
     location: "Zoo de Madrid",
@@ -68,7 +68,7 @@ const mockEvents: EventData[] = [
   {
     id: "2",
     title: "Clase de Natación",
-    date: "2026-01-15",
+    date: "2026-01-16",
     startTime: "10:00",
     endTime: "11:30",
     location: "Polideportivo Municipal",
@@ -82,7 +82,7 @@ const mockEvents: EventData[] = [
   {
     id: "3",
     title: "Reunión de Padres",
-    date: "2026-01-16",
+    date: "2026-01-17",
     startTime: "16:00",
     endTime: "17:00",
     location: "Aula 3ºB",
@@ -94,7 +94,7 @@ const mockEvents: EventData[] = [
   {
     id: "4",
     title: "Reunión Trabajo",
-    date: "2026-01-15",
+    date: "2026-01-16",
     startTime: "09:30",
     endTime: "11:00",
     memberId: "adult-1",
@@ -126,7 +126,6 @@ const Index = () => {
     };
     toast.info(messages[optionId] || "Opción seleccionada");
     
-    // For manual entry, show assign dialog
     if (optionId === "manual") {
       setIsConflictMode(false);
       setShowAssignDialog(true);
@@ -154,7 +153,7 @@ const Index = () => {
             ? {
                 ...e,
                 assignedToId: memberId,
-                assignedToName: memberId === "family" ? "Familia" : member?.name.split(" ")[0] || "",
+                assignedToName: memberId === "family" ? "Nido" : member?.name.split(" ")[0] || "",
               }
             : e
         )
@@ -165,7 +164,7 @@ const Index = () => {
           : "Responsable asignado",
         {
           description: memberId === "family" 
-            ? "Toda la familia es responsable"
+            ? "Todo el Nido es responsable"
             : `Asignado a ${member?.name.split(" ")[0]}`,
         }
       );
@@ -198,23 +197,23 @@ const Index = () => {
     : undefined;
 
   return (
-    <div className="min-h-screen relative">
+    <div className="min-h-screen max-h-screen overflow-hidden relative flex flex-col">
       <WaveBackground />
 
-      <div className="relative z-10 safe-bottom">
-        <Header userName="Familia García" notificationCount={conflicts.length} />
+      <div className="relative z-10 flex flex-col flex-1 overflow-hidden">
+        <Header nestName="Familia García" notificationCount={conflicts.length} />
 
-        <main className="pb-4">
+        <main className="flex-1 overflow-y-auto pb-20">
           {/* Members filter bar */}
           <motion.section
-            className="px-4 py-3"
+            className="px-4 py-2"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <div className="flex items-center gap-3 overflow-x-auto pb-2">
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
               <button
                 onClick={() => handleMemberFilter(null)}
-                className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                   !selectedMemberId
                     ? "bg-primary text-white shadow-lg"
                     : "bg-muted text-muted-foreground hover:bg-muted/80"
@@ -226,7 +225,7 @@ const Index = () => {
                 <MemberAvatar
                   key={member.id}
                   member={member}
-                  size="md"
+                  size="sm"
                   isSelected={selectedMemberId === member.id}
                   onClick={() => handleMemberFilter(member.id)}
                   showName
@@ -234,38 +233,38 @@ const Index = () => {
               ))}
               <button
                 onClick={handleAddMember}
-                className="flex-shrink-0 w-12 h-12 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                className="flex-shrink-0 w-8 h-8 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center text-muted-foreground hover:border-primary hover:text-primary transition-colors text-sm"
               >
                 +
               </button>
             </div>
           </motion.section>
 
-          {/* Quick stats */}
+          {/* Quick stats - compact */}
           <motion.section
             className="px-4 py-2"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
+            transition={{ delay: 0.1 }}
           >
-            <div className="grid grid-cols-3 gap-3">
-              <div className="glass-card rounded-2xl p-4 text-center">
-                <span className="text-2xl font-bold text-primary">
+            <div className="grid grid-cols-3 gap-2">
+              <div className="glass-card rounded-xl p-3 text-center">
+                <span className="text-xl font-bold text-primary">
                   {filteredEvents.length}
                 </span>
-                <p className="text-xs text-muted-foreground mt-1">Esta semana</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Esta semana</p>
               </div>
-              <div className="glass-card rounded-2xl p-4 text-center">
-                <span className="text-2xl font-bold text-accent">
+              <div className="glass-card rounded-xl p-3 text-center">
+                <span className="text-xl font-bold text-accent">
                   {filteredEvents.filter((e) => e.hasConflict).length}
                 </span>
-                <p className="text-xs text-muted-foreground mt-1">Conflictos</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Conflictos</p>
               </div>
-              <div className="glass-card rounded-2xl p-4 text-center">
-                <span className="text-2xl font-bold text-success">
+              <div className="glass-card rounded-xl p-3 text-center">
+                <span className="text-xl font-bold text-success">
                   {filteredEvents.filter((e) => e.assignedToId).length}
                 </span>
-                <p className="text-xs text-muted-foreground mt-1">Asignados</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Asignados</p>
               </div>
             </div>
           </motion.section>
@@ -284,6 +283,7 @@ const Index = () => {
             filteredEvents.length > 0 ? (
               <UpcomingEvents
                 events={filteredEvents}
+                members={mockMembers}
                 onDelegate={handleDelegate}
                 onConflictResolve={handleConflictResolve}
               />
