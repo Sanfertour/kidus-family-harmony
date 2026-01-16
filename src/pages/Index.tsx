@@ -1,6 +1,18 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Settings, Users, Calendar, Home as HomeIcon, Plus, clock, user, Camera, Image, FileText, Edit } from "lucide-react";
+import { 
+  Settings, 
+  Users, 
+  Calendar, 
+  Home as HomeIcon, 
+  Plus, 
+  Clock, // Corregido: de 'clock' a 'Clock'
+  User,  // Corregido: de 'user' a 'User'
+  Camera, 
+  Image, 
+  FileText, 
+  Edit 
+} from "lucide-react";
 import Header from "@/components/Header";
 import UpcomingEvents from "@/components/UpcomingEvents";
 import { AgendaView } from "@/components/AgendaView";
