@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { 
-  Settings, Users, Calendar, Home as HomeIcon, Plus, Edit, User as UserIcon 
+  Settings, Users, Calendar, Home as HomeIcon, Plus, Edit, Trash2 
 } from "lucide-react";
 import Header from "@/components/Header";
 import { AgendaView } from "@/components/AgendaView";
@@ -9,7 +9,7 @@ import { AddMemberDialog } from "@/components/AddMemberDialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { ManualEventDrawer } from "@/components/ManualEventDrawer";
-import ZenBackground from "@/components/ZenBackground"; // <--- 1. IMPORTACIÓN DEL FONDO
+import ZenBackground from "@/components/ZenBackground";
 
 const Index = () => {
   const [session, setSession] = useState<any>(null);
@@ -78,6 +78,25 @@ const Index = () => {
     }
   };
 
+  // FUNCIÓN PARA ELIMINAR MIEMBROS
+  const handleDeleteMember = async (memberId: string, name: string) => {
+    if (!confirm(`¿Seguro que quieres eliminar a ${name} del equipo?`)) return;
+    
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', memberId);
+
+      if (error) throw error;
+      
+      toast({ title: "Miembro eliminado", description: "El equipo se ha actualizado." });
+      fetchAllData();
+    } catch (err) {
+      toast({ title: "Error", description: "No se pudo eliminar al miembro.", variant: "destructive" });
+    }
+  };
+
   const handleCreateNewNest = async () => {
     setLoading(true);
     try {
@@ -105,7 +124,6 @@ const Index = () => {
       setShowOnboarding(false);
       await fetchAllData(); 
     } catch (err: any) {
-      console.error("Error en el nido:", err);
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
       setLoading(false);
@@ -153,7 +171,7 @@ const Index = () => {
   if (loading) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-[#FAFBFF]">
-        <ZenBackground /> {/* <--- Fondo también en carga */}
+        <ZenBackground />
         <div className="animate-pulse flex flex-col items-center gap-4 relative z-10">
           <div className="w-12 h-12 bg-blue-500 rounded-2xl rotate-12 shadow-lg" />
           <p className="text-[10px] font-black text-blue-400 uppercase tracking-[0.3em]">Sincronizando...</p>
@@ -162,7 +180,6 @@ const Index = () => {
     );
   }
 
-  // Vista de Login / Sin sesión
   if (!session) {
     return (
       <div className="min-h-screen w-full flex flex-col items-center justify-center p-6 bg-transparent relative overflow-hidden">
@@ -187,7 +204,6 @@ const Index = () => {
     );
   }
 
-  // Vista de Onboarding
   if (showOnboarding) {
     return (
       <div className="min-h-screen w-full flex flex-col items-center justify-center p-6 bg-transparent relative overflow-hidden">
@@ -222,12 +238,9 @@ const Index = () => {
     );
   }
 
-  // VISTA PRINCIPAL
   return (
     <div className="relative min-h-screen w-full overflow-hidden pb-32 font-nunito">
-      {/* 2. LLAMADA AL FONDO ZEN - Se coloca aquí para que esté bajo todo */}
       <ZenBackground />
-      
       <Header />
       
       <main className="container mx-auto px-6 pt-4 max-w-md relative z-10">
@@ -236,7 +249,6 @@ const Index = () => {
             <div className="px-2">
               <h1 className="text-4xl font-black text-gray-800 leading-tight">Tu Nido está <br/> <span className="text-blue-500">en calma.</span></h1>
             </div>
-            {/* Tarjetas con fondo ligeramente transparente para dejar ver el movimiento zen */}
             <div className="relative p-8 rounded-[3.5rem] bg-white/70 backdrop-blur-md shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-white/50">
                 <div className="px-4 py-1.5 bg-orange-100 rounded-full w-fit mb-4">
                   <span className="text-[10px] font-black text-orange-600 uppercase tracking-widest">Estado</span>
@@ -273,12 +285,23 @@ const Index = () => {
             
             <div className="grid grid-cols-2 gap-5">
               {familyMembers.map((member) => (
-                <div key={member.id} className="p-6 rounded-[3rem] flex flex-col items-center bg-white/70 backdrop-blur-md shadow-[0_10px_30px_rgba(0,0,0,0.03)] border border-white/50 relative group">
+                <div key={member.id} className="p-6 rounded-[3rem] flex flex-col items-center bg-white/70 backdrop-blur-md shadow-[0_10px_30px_rgba(0,0,0,0.03)] border border-white/50 relative group transition-all">
+                  
+                  {/* Botón Borrar (Visible al pasar el ratón) */}
+                  <button 
+                    onClick={() => handleDeleteMember(member.id, member.display_name)}
+                    className="absolute top-4 left-4 p-2 opacity-0 group-hover:opacity-100 transition-all text-red-400 hover:text-red-600 hover:scale-125"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+
                   <div className={`absolute top-4 right-4 w-2 h-2 rounded-full ${member.role === 'autonomous' ? 'bg-blue-400' : 'bg-orange-300'}`} />
+                  
+                  {/* Avatar con Color dinámico */}
                   <div 
                     className="w-20 h-20 rounded-[2.5rem] flex items-center justify-center text-2xl font-black text-white shadow-xl transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 mb-4"
                     style={{ 
-                      backgroundColor: member.avatar_url?.startsWith('#') ? member.avatar_url : '#CBD5E1' 
+                      backgroundColor: member.avatar_url && member.avatar_url.startsWith('#') ? member.avatar_url : '#CBD5E1' 
                     }}
                   >
                     {!member.avatar_url || member.avatar_url.startsWith('#') ? (
@@ -287,7 +310,8 @@ const Index = () => {
                       <img src={member.avatar_url} className="w-full h-full object-cover rounded-[2.5rem]" alt="" />
                     )}
                   </div>
-                  <span className="font-black text-gray-800 text-sm tracking-tight">{member.display_name}</span>
+                  
+                  <span className="font-black text-gray-800 text-sm tracking-tight text-center">{member.display_name}</span>
                   <span className="text-[9px] font-black text-gray-300 uppercase tracking-[0.2em] mt-1">
                     {member.role === 'autonomous' ? 'Autónomo' : 'Dependiente'}
                   </span>
@@ -331,7 +355,7 @@ const Index = () => {
         ))}
       </nav>
 
-      {/* FAB (Botón Flotante) */}
+      {/* FAB */}
       <div className="fixed bottom-32 right-8 z-50">
           <button 
             onClick={() => setIsFabOpen(!isFabOpen)} 
