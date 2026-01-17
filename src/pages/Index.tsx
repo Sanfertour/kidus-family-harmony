@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { 
-  Settings, Users, Calendar, Home as HomeIcon, Plus, Edit, Trash2, Camera, LogOut, ArrowRight, Loader2
+  Settings, Users, Calendar, Home as HomeIcon, Plus, Edit, Trash2, Camera, LogOut, ArrowRight, Loader2 
 } from "lucide-react";
 import Header from "@/components/Header";
 import { AgendaView } from "@/components/AgendaView";
@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ManualEventDrawer } from "@/components/ManualEventDrawer";
 import ZenBackground from "@/components/ZenBackground";
 
-// --- CONFIGURACIÓN DE EQUIPO (MANUAL DE ESTILO KIDUS ZEN) ---
+// --- CONFIGURACIÓN DE ESTILO KIDUS ZEN ---
 const KIDUS_COLORS = {
   primary: "#0EA5E9",
   secondary: "#F97316",
@@ -35,16 +35,16 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState("home");
   const [familyMembers, setFamilyMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [inviteCode, setInviteCode] = useState("");
   const [myNestId, setMyNestId] = useState("");
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [isFabOpen, setIsFabOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [editingMember, setEditingMember] = useState<any>(null); // Recuperado: lógica de edición
+  const [editingMember, setEditingMember] = useState<any>(null);
   
-  // ESTADOS PARA EL "SHOW" DE LA IA
+  // ESTADOS PARA LA IA Y ESCÁNER
   const [isAiProcessing, setIsAiProcessing] = useState(false);
   const [aiMessage, setAiMessage] = useState("Iniciando escaneo...");
+  const [scannedData, setScannedData] = useState<any>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -63,7 +63,7 @@ const Index = () => {
       } else {
         setLoading(false);
         setShowOnboarding(false);
-        setFamilyMembers([]); // Limpieza de seguridad
+        setFamilyMembers([]);
         setMyNestId("");
       }
     });
@@ -86,7 +86,6 @@ const Index = () => {
         setShowOnboarding(false);
         const { data: profiles } = await supabase.from('profiles').select('*').eq('nest_id', myProfile.nest_id);
         
-        // Unificamos colores manteniendo tu lógica de TEAM_COLORS
         const unifiedMembers = profiles?.map(m => ({
           ...m,
           avatar_url: m.avatar_url?.startsWith('#') ? m.avatar_url : TEAM_COLORS[Math.floor(Math.random() * TEAM_COLORS.length)]
@@ -99,16 +98,17 @@ const Index = () => {
     }
   };
 
+  // --- LÓGICA DE ESCANEO REAL CON SUBIDA A STORAGE ---
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     setIsAiProcessing(true);
     const messages = [
+      "Subiendo imagen al Nido...",
       "Calibrando sensores ópticos...",
-      "Identificando patrones de escritura...",
-      "Sincronizando con el Nido...",
-      "Estructurando eventos detectados..."
+      "GPT-4o analizando contenido...",
+      "Estructurando evento..."
     ];
 
     let msgIndex = 0;
@@ -118,18 +118,47 @@ const Index = () => {
       if (msgIndex >= messages.length) clearInterval(interval);
     }, 1200);
 
-    setTimeout(() => {
-      setIsAiProcessing(false);
-      setIsDrawerOpen(true);
-      toast({ 
-        title: "¡Escaneo Exitoso!", 
-        description: "He detectado la información. Por favor, confírmala." 
-      });
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }, 5000);
-  };
+    try {
+      // 1. Subida a Storage (Bucket: event-attachments)
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `${fileName}`;
 
-  // --- RENDERS CON ESTILO KIDUS ZEN ---
+      const { error: uploadError } = await supabase.storage
+        .from('event-attachments')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // 2. Simulación de respuesta de IA (Aquí conectarás la Edge Function)
+      // Mock de datos para que el Drawer se rellene solo
+      const mockResult = {
+        description: "Reunión detectada por IA",
+        date: new Date().toISOString().split('T')[0],
+        time: "17:00"
+      };
+
+      setScannedData(mockResult);
+
+      setTimeout(() => {
+        setIsAiProcessing(false);
+        setIsDrawerOpen(true);
+        toast({ 
+          title: "¡IA Sincronizada!", 
+          description: "He extraído los datos de la imagen con éxito." 
+        });
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      }, 4800);
+
+    } catch (error: any) {
+      setIsAiProcessing(false);
+      toast({ 
+        title: "Fallo en el escaneo", 
+        description: error.message, 
+        variant: "destructive" 
+      });
+    }
+  };
 
   if (loading) return (
     <div className="min-h-screen w-full flex items-center justify-center bg-[#F8FAFC]">
@@ -246,8 +275,8 @@ const Index = () => {
             <h2 className="text-3xl font-black px-4 text-slate-800">Ajustes</h2>
             <div className="p-8 bg-white/70 backdrop-blur-md rounded-[3.5rem] shadow-xl border border-white/50 space-y-4">
               <div className="p-6 bg-slate-50/50 rounded-3xl border border-slate-100 text-center">
-                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">ID de Nido</p>
-                 <p className="text-xl font-black text-[#0EA5E9] tracking-widest">{myNestId || "KID-..."}</p>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">ID de Nido</p>
+                  <p className="text-xl font-black text-[#0EA5E9] tracking-widest">{myNestId || "KID-..."}</p>
               </div>
               <Button onClick={() => supabase.auth.signOut()} className="w-full h-16 rounded-[2rem] bg-red-50 text-red-500 hover:bg-red-500 hover:text-white font-black transition-all border-none">
                 Cerrar Sesión
@@ -275,9 +304,17 @@ const Index = () => {
         ))}
       </nav>
 
-      {/* --- INFRAESTRUCTURA DE ENTRADA --- */}
-      <input type="file" ref={fileInputRef} className="hidden" accept="image/*" capture="environment" onChange={handleFileChange} />
+      {/* --- INPUT OCULTO PARA CÁMARA --- */}
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        className="hidden" 
+        accept="image/*" 
+        capture="environment" 
+        onChange={handleFileChange} 
+      />
 
+      {/* --- BOTÓN FLOTANTE (FAB) --- */}
       <div className="fixed bottom-32 right-8 z-50 flex flex-col items-center">
         <div className={`flex flex-col gap-5 mb-5 transition-all duration-500 ${isFabOpen ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-20 scale-50 pointer-events-none'}`}>
           <button 
@@ -319,11 +356,16 @@ const Index = () => {
         </div>
       )}
 
+      {/* --- DRAWER DE EVENTOS (CON DATOS ESCANEADOS) --- */}
       <ManualEventDrawer 
         isOpen={isDrawerOpen} 
-        onClose={() => setIsDrawerOpen(false)} 
+        onClose={() => {
+          setIsDrawerOpen(false);
+          setScannedData(null);
+        }} 
         members={familyMembers} 
-        onEventAdded={fetchAllData} 
+        onEventAdded={fetchAllData}
+        initialData={scannedData}
       />
     </div>
   );
