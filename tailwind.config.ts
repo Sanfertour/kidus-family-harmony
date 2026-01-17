@@ -93,6 +93,14 @@ export default {
         'card-hover': '0 12px 40px hsl(var(--kidus-blue) / 0.15)',
       },
       keyframes: {
+        // --- NUEVAS KEYFRAMES PARA EL MODO ZEN ---
+        "wave-blob": {
+          "0%": { transform: "translate(0px, 0px) scale(1) rotate(0deg)" },
+          "33%": { transform: "translate(30px, -50px) scale(1.1) rotate(2deg)" },
+          "66%": { transform: "translate(-20px, 20px) scale(0.9) rotate(-2deg)" },
+          "100%": { transform: "translate(0px, 0px) scale(1) rotate(0deg)" },
+        },
+        // --- TUS KEYFRAMES ORIGINALES ---
         "accordion-down": {
           from: { height: "0" },
           to: { height: "var(--radix-accordion-content-height)" },
@@ -119,6 +127,11 @@ export default {
         },
       },
       animation: {
+        // --- NUEVAS ANIMACIONES ZEN ---
+        "wave-slow": "wave-blob 25s infinite alternate ease-in-out",
+        "wave-medium": "wave-blob 18s infinite alternate-reverse ease-in-out",
+        "wave-fast": "wave-blob 12s infinite alternate ease-in-out",
+        // --- TUS ANIMACIONES ORIGINALES ---
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "fade-in": "fade-in 0.4s ease-out",
