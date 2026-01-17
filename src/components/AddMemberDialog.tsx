@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+// ✅ Corregido: Importación desde la ruta de dialog
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/button"; // Ajusta el import según tu librería de UI
+} from "@/components/ui/dialog"; 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -26,17 +27,19 @@ export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.R
     try {
       // 1. Obtenemos el nest_id del usuario actual (el tuyo)
       const { data: { user } } = await supabase.auth.getUser();
-      const { data: profile } = await supabase
+      if (!user) throw new Error("No hay sesión activa");
+
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('nest_id')
-        .eq('id', user?.id)
+        .eq('id', user.id)
         .single();
 
-      if (!profile?.nest_id) throw new Error("No tienes un nido asignado");
+      if (profileError || !profile?.nest_id) throw new Error("No tienes un nido asignado");
 
       // 2. Insertamos al miembro pasivo
-      // IMPORTANTE: No enviamos 'id', Supabase generará uno aleatorio
-      const { error } = await supabase
+      // IMPORTANTE: Al no enviar 'id', Supabase usará gen_random_uuid() por defecto
+      const { error: insertError } = await supabase
         .from('profiles')
         .insert({
           display_name: name,
@@ -45,16 +48,20 @@ export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.R
           updated_at: new Date().toISOString()
         });
 
-      if (error) throw error;
+      if (insertError) throw insertError;
 
-      toast({ title: "Miembro añadido", description: `${name} ya es parte del nido.` });
+      toast({ 
+        title: "¡Miembro añadido!", 
+        description: `${name} ya forma parte del equipo.` 
+      });
+      
       setName("");
-      onMemberAdded(); // Refresca la lista en el Index
+      onMemberAdded(); // Esto refresca la lista en tu Index.tsx
     } catch (error: any) {
       console.error("Error añadiendo miembro:", error);
       toast({ 
-        title: "Error", 
-        description: "No se pudo añadir al miembro. Revisa los permisos.", 
+        title: "Error de conexión", 
+        description: error.message || "No se pudo añadir al miembro.", 
         variant: "destructive" 
       });
     } finally {
@@ -65,12 +72,13 @@ export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.R
   return (
     <Dialog>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-md rounded-[2rem] border-none shadow-2xl">
+      <DialogContent className="sm:max-w-md rounded-[2.5rem] border-none shadow-2xl bg-white">
         <DialogHeader>
           <DialogTitle className="text-2xl font-black text-gray-800 flex items-center gap-2">
             <UserPlus className="text-blue-500" /> Nuevo Miembro
           </DialogTitle>
         </DialogHeader>
+        
         <form onSubmit={handleSubmit} className="space-y-6 pt-4">
           <div className="space-y-2">
             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Nombre Completo</label>
@@ -78,7 +86,7 @@ export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.R
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Ej: Lucía o Mateo"
-              className="h-14 rounded-2xl border-gray-100 bg-gray-50/50 font-bold focus:ring-2 focus:ring-blue-100 transition-all"
+              className="h-14 rounded-2xl border-gray-100 bg-gray-50/50 font-bold focus:ring-2 focus:ring-blue-100 transition-all outline-none"
             />
           </div>
 
@@ -112,7 +120,7 @@ export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.R
             disabled={loading}
             className="w-full h-14 rounded-2xl bg-blue-500 hover:bg-blue-600 text-white font-black shadow-lg shadow-blue-100 transition-all active:scale-95"
           >
-            {loading ? "AÑADIENDO..." : "GUARDAR MIEMBRO"}
+            {loading ? "GUARDANDO..." : "CONFIRMAR"}
           </Button>
         </form>
       </DialogContent>
