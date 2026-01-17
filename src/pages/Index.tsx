@@ -98,7 +98,7 @@ const Index = () => {
     }
   };
 
-  // --- LÓGICA DE ESCANEO REAL CON SUBIDA A STORAGE ---
+  // --- LÓGICA DE ESCANEO REAL CON LLAMADA A EDGE FUNCTION ---
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -107,7 +107,7 @@ const Index = () => {
     const messages = [
       "Subiendo imagen al Nido...",
       "Calibrando sensores ópticos...",
-      "GPT-4o analizando contenido...",
+      "Gemini analizando contenido...",
       "Estructurando evento..."
     ];
 
@@ -116,7 +116,7 @@ const Index = () => {
       setAiMessage(messages[msgIndex]);
       msgIndex++;
       if (msgIndex >= messages.length) clearInterval(interval);
-    }, 1200);
+    }, 1500);
 
     try {
       // 1. Subida a Storage (Bucket: event-attachments)
@@ -130,31 +130,42 @@ const Index = () => {
 
       if (uploadError) throw uploadError;
 
-      // 2. Simulación de respuesta de IA (Aquí conectarás la Edge Function)
-      // Mock de datos para que el Drawer se rellene solo
-      const mockResult = {
-        description: "Reunión detectada por IA",
-        date: new Date().toISOString().split('T')[0],
-        time: "17:00"
-      };
+      // 2. Obtener URL pública de la imagen
+      const { data: { publicUrl } } = supabase.storage
+        .from('event-attachments')
+        .getPublicUrl(filePath);
 
-      setScannedData(mockResult);
+      // 3. Llamada Real a la Edge Function de Gemini
+      const { data: aiResult, error: aiError } = await supabase.functions.invoke('process-image-ai', {
+        body: { imageUrl: publicUrl }
+      });
 
-      setTimeout(() => {
-        setIsAiProcessing(false);
-        setIsDrawerOpen(true);
-        toast({ 
-          title: "¡IA Sincronizada!", 
-          description: "He extraído los datos de la imagen con éxito." 
-        });
-        if (fileInputRef.current) fileInputRef.current.value = "";
-      }, 4800);
+      if (aiError) throw aiError;
+
+      // 4. Cargamos los datos extraídos por la IA en el estado
+      setScannedData({
+        description: aiResult.description || "Nuevo Evento Escaneado",
+        date: aiResult.date || new Date().toISOString().split('T')[0],
+        time: aiResult.time || "12:00"
+      });
+
+      setIsAiProcessing(false);
+      setIsDrawerOpen(true);
+      toast({ 
+        title: "¡IA KidUs Sincronizada!", 
+        description: "He extraído los datos de la imagen con éxito." 
+      });
+      
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      clearInterval(interval);
 
     } catch (error: any) {
+      clearInterval(interval);
       setIsAiProcessing(false);
+      console.error("Error en IA:", error);
       toast({ 
         title: "Fallo en el escaneo", 
-        description: error.message, 
+        description: "No he podido procesar la imagen. Inténtalo de nuevo.", 
         variant: "destructive" 
       });
     }
