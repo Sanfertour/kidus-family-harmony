@@ -82,25 +82,39 @@ const Index = () => {
     }
   };
 
-  const handleCreateNewNest = async () => {
-    setLoading(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+ const handleCreateNewNest = async () => {
+  setLoading(true);
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
 
-      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-      const randomPart = Array.from({ length: 6 }, () => chars.charAt(Math.floor(Math.random() * chars.length))).join('');
-      const newId = `KID-${randomPart}`;
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const randomPart = Array.from({ length: 6 }, () => chars.charAt(Math.floor(Math.random() * chars.length))).join('');
+    const newId = `KID-${randomPart}`;
 
-      const { error } = await supabase
-        .from('profiles')
-        .update({ nest_id: newId })
-        .eq('id', user.id);
-      
-      if (error) throw error;
+    // USAMOS UPSERT: Si no existe el perfil, lo crea. Si existe, lo actualiza.
+    const { error } = await supabase
+      .from('profiles')
+      .upsert({ 
+        id: user.id, 
+        nest_id: newId,
+        updated_at: new Date().toISOString() 
+      });
+    
+    if (error) throw error;
 
-      toast({ title: "Nido Creado", description: `Tu código: ${newId}` });
-      
+    toast({ title: "Nido Creado", description: `Tu código: ${newId}` });
+    
+    setMyNestId(newId);
+    setShowOnboarding(false);
+    await fetchAllData(); 
+  } catch (err) {
+    console.error("Error completo:", err);
+    toast({ title: "Error de Servidor", description: "Revisa las políticas RLS en Supabase.", variant: "destructive" });
+  } finally {
+    setLoading(false);
+  }
+};
       // Actualización forzada del estado para saltar el glitch
       setMyNestId(newId);
       setShowOnboarding(false);
