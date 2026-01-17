@@ -79,43 +79,44 @@ const Index = () => {
   };
 
   const handleCreateNewNest = async () => {
-    setLoading(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Sesión no encontrada");
+  setLoading(true);
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("Sesión no encontrada");
 
-      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-      const randomPart = Array.from({ length: 6 }, () => chars.charAt(Math.floor(Math.random() * chars.length))).join('');
-      const newId = `KID-${randomPart}`;
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const randomPart = Array.from({ length: 6 }, () => chars.charAt(Math.floor(Math.random() * chars.length))).join('');
+    const newId = `KID-${randomPart}`;
 
-      const { error } = await supabase
-        .from('profiles')
-        .upsert({ 
-          id: user.id, 
-          nest_id: newId,
-          display_name: user.user_metadata?.full_name || "Líder del Nido",
-          role: 'admin', // El creador es el admin por defecto
-          updated_at: new Date().toISOString() 
-        }, { onConflict: 'id' });
-      
-      if (error) throw error;
+    // Enviamos solo lo estrictamente necesario para evitar conflictos de RLS
+    const { error } = await supabase
+      .from('profiles')
+      .upsert({ 
+        id: user.id, 
+        nest_id: newId,
+        display_name: user.user_metadata?.full_name || "Líder del Nido",
+        role: 'admin',
+        updated_at: new Date().toISOString() 
+      }); // Quitamos el onConflict explícito, upsert lo maneja por la PK (id)
+    
+    if (error) throw error;
 
-      toast({ title: "Nido Creado", description: `Tu código: ${newId}` });
-      
-      setMyNestId(newId);
-      setShowOnboarding(false);
-      await fetchAllData(); 
-    } catch (err: any) {
-      console.error("Error en el nido:", err);
-      toast({ 
-        title: "Error de Sincronización", 
-        description: "La base de datos rechazó el registro.", 
-        variant: "destructive" 
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+    toast({ title: "Nido Creado", description: `Tu código: ${newId}` });
+    
+    setMyNestId(newId);
+    setShowOnboarding(false);
+    await fetchAllData(); 
+  } catch (err: any) {
+    console.error("Error en el nido:", err);
+    toast({ 
+      title: "Error de Seguridad", 
+      description: err.message || "Revisa las políticas de Supabase.", 
+      variant: "destructive" 
+    });
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleLinkNest = async () => {
     if (!inviteCode.startsWith('KID-')) {
