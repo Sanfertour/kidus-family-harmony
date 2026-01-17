@@ -21,6 +21,7 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   const [inviteCode, setInviteCode] = useState("");
   const [myNestId, setMyNestId] = useState("");
+  const [showOnboarding, setShowOnboarding] = useState(false);
   
   // --- ESTADOS DE UI ---
   const [isFabOpen, setIsFabOpen] = useState(false);
@@ -31,22 +32,20 @@ const Index = () => {
 
   // --- LÓGICA DE AUTENTICACIÓN ---
   useEffect(() => {
-    // 1. Comprobar sesión inicial
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session) fetchAllData();
     });
 
-    // 2. Escuchar cambios (Login/Logout)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (session) {
         fetchAllData();
       } else {
-        // Limpieza si sale
         setFamilyMembers([]);
         setEvents([]);
         setMyNestId("");
+        setShowOnboarding(false);
       }
     });
 
@@ -69,29 +68,56 @@ const Index = () => {
     }
   };
 
-  // --- CARGA DE DATOS ---
+  // --- CARGA DE DATOS FILTRADA POR NEST_ID ---
   const fetchAllData = async () => {
     setLoading(true);
     try {
-      const { data: profiles } = await supabase.from('profiles').select('*');
-      const { data: eventData } = await supabase.from('events').select('*').order('start_time', { ascending: true });
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // 1. Obtener perfil del usuario actual
+      const { data: myProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      // 2. Si no tiene nest_id o no existe perfil, activamos onboarding
+      if (!myProfile || !myProfile.nest_id) {
+        setShowOnboarding(true);
+        setLoading(false);
+        return;
+      }
+
+      // 3. Si tiene nest_id, cargamos el resto de datos del nido
+      setShowOnboarding(false);
+      setMyNestId(myProfile.nest_id);
+
+      const { data: profiles } = await supabase.from('profiles').select('*').eq('nest_id', myProfile.nest_id);
+      const { data: eventData } = await supabase.from('events').select('*').eq('nest_id', myProfile.nest_id).order('start_time', { ascending: true });
       
       setFamilyMembers(profiles || []);
       setEvents(eventData || []);
       
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user && profiles) {
-        const myProfile = profiles.find(p => p.id === user.id);
-        if (myProfile) setMyNestId(myProfile.nest_id);
-      }
     } catch (err) {
-      console.error("Error:", err);
+      console.error("Error cargando datos:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  // --- ACCIONES ---
+  // --- ACCIONES DE NIDO ---
+  const handleCreateNewNest = async () => {
+    const newId = `KID-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase.from('profiles').update({ nest_id: newId }).eq('id', user?.id);
+    
+    if (!error) {
+      toast({ title: "Nido Creado", description: "Ya puedes empezar a organizar tu familia." });
+      fetchAllData();
+    }
+  };
+
   const handleLinkNest = async () => {
     if (!inviteCode.startsWith('KID-')) {
       toast({ title: "Código inválido", description: "Usa el formato KID-XXXX", variant: "destructive" });
@@ -108,7 +134,6 @@ const Index = () => {
     
     if (!updateError) {
       toast({ title: "¡Tándem Conectado!", description: "Nido vinculado con éxito." });
-      setMyNestId(partnerProfile.nest_id);
       fetchAllData();
     }
   };
@@ -145,7 +170,52 @@ const Index = () => {
     );
   }
 
-  // --- VISTA 2: DASHBOARD PRINCIPAL ---
+  // --- VISTA 2: ONBOARDING (ELECCIÓN DE NIDO) ---
+  if (showOnboarding) {
+    return (
+      <div className="min-h-screen w-full flex flex-col items-center justify-center p-6 bg-white font-nunito relative overflow-hidden">
+        <div className="wave-bg opacity-20" />
+        <div className="relative z-10 w-full max-w-md space-y-8 animate-in fade-in slide-in-from-bottom-10 duration-700">
+          <div className="text-center space-y-4">
+            <div className="w-20 h-20 bg-orange-500 rounded-3xl flex items-center justify-center mx-auto shadow-xl rotate-3">
+               <HomeIcon className="text-white" size={40} />
+            </div>
+            <h2 className="text-4xl font-black text-gray-800 tracking-tight">Tu Nido</h2>
+            <p className="text-gray-500 font-medium">¿Cómo quieres empezar hoy?</p>
+          </div>
+
+          <div className="grid gap-4">
+            <button 
+              onClick={handleCreateNewNest}
+              className="p-6 bg-blue-50 hover:bg-blue-100 rounded-[2.5rem] border-2 border-blue-100 text-left transition-all active:scale-95 group"
+            >
+              <h4 className="font-black text-blue-600 text-lg">Crear mi propio Nido</h4>
+              <p className="text-[10px] text-blue-400 font-bold uppercase mt-1 tracking-widest">Uso personal o nuevo equipo</p>
+            </button>
+
+            <div className="p-6 bg-indigo-50 rounded-[2.5rem] border-2 border-indigo-100 space-y-4">
+              <div>
+                <h4 className="font-black text-indigo-600 text-lg">Unirme a mi pareja</h4>
+                <p className="text-[10px] text-indigo-400 font-bold uppercase mt-1 tracking-widest">Si ya tienen un código KID-</p>
+              </div>
+              <div className="flex gap-2">
+                <input 
+                  value={inviteCode}
+                  onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                  placeholder="KID-XXXXXX"
+                  className="flex-1 h-12 rounded-xl border-none px-4 font-black tracking-widest text-sm shadow-inner uppercase"
+                />
+                <Button onClick={handleLinkNest} className="h-12 px-4 rounded-xl bg-indigo-600 text-white font-black">UNIRME</Button>
+              </div>
+            </div>
+          </div>
+          <Button variant="ghost" onClick={handleSignOut} className="w-full text-gray-400 font-bold">Cancelar y Salir</Button>
+        </div>
+      </div>
+    );
+  }
+
+  // --- VISTA 3: DASHBOARD PRINCIPAL ---
   return (
     <div className="relative min-h-screen w-full overflow-hidden font-nunito bg-[#FAFBFF]">
       <div className="wave-bg" />
@@ -217,7 +287,7 @@ const Index = () => {
             <div className="grid grid-cols-2 gap-4">
               {familyMembers.map((member) => (
                 <div key={member.id} className="glass-card p-6 flex flex-col items-center group transition-all">
-                  <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mb-3 shadow-inner" style={{ backgroundColor: member.avatar_url || '#F0F7FF' }}>
+                  <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mb-3 shadow-inner">
                     <span className="text-2xl font-black text-blue-500">{member.display_name?.charAt(0).toUpperCase()}</span>
                   </div>
                   <span className="font-black text-gray-700 tracking-tight">{member.display_name}</span>
