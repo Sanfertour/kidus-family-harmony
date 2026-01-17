@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { 
-  Settings, Users, Calendar, Home as HomeIcon, Plus, Edit, Trash2 
+  Settings, Users, Calendar, Home as HomeIcon, Plus, Edit, Trash2, Check
 } from "lucide-react";
 import Header from "@/components/Header";
 import { AgendaView } from "@/components/AgendaView";
@@ -10,6 +10,11 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { ManualEventDrawer } from "@/components/ManualEventDrawer";
 import ZenBackground from "@/components/ZenBackground";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+
+// Paleta de colores para el equipo
+const TEAM_COLORS = ["#0EA5E9", "#F97316", "#8B5CF6", "#10B981", "#EC4899", "#F43F5E", "#F59E0B"];
 
 const Index = () => {
   const [session, setSession] = useState<any>(null);
@@ -22,6 +27,7 @@ const Index = () => {
   
   const [isFabOpen, setIsFabOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState<any>(null);
 
   const { toast } = useToast();
 
@@ -69,7 +75,14 @@ const Index = () => {
           .eq('nest_id', myProfile.nest_id);
         
         if (profilesError) throw profilesError;
-        setFamilyMembers(profiles || []);
+        
+        // CORRECCIÓN DE GRISES: Si un miembro no tiene color (#), le asignamos uno aleatorio de la paleta
+        const membersWithColor = profiles?.map(m => ({
+          ...m,
+          avatar_url: m.avatar_url?.startsWith('#') ? m.avatar_url : TEAM_COLORS[Math.floor(Math.random() * TEAM_COLORS.length)]
+        })) || [];
+        
+        setFamilyMembers(membersWithColor);
       }
     } catch (err) {
       console.error("Error en la brisa de datos:", err);
@@ -78,22 +91,35 @@ const Index = () => {
     }
   };
 
-  // FUNCIÓN PARA ELIMINAR MIEMBROS
   const handleDeleteMember = async (memberId: string, name: string) => {
     if (!confirm(`¿Seguro que quieres eliminar a ${name} del equipo?`)) return;
-    
+    try {
+      const { error } = await supabase.from('profiles').delete().eq('id', memberId);
+      if (error) throw error;
+      toast({ title: "Miembro eliminado" });
+      fetchAllData();
+    } catch (err) {
+      toast({ title: "Error", variant: "destructive" });
+    }
+  };
+
+  const handleUpdateMember = async () => {
+    if (!editingMember) return;
     try {
       const { error } = await supabase
         .from('profiles')
-        .delete()
-        .eq('id', memberId);
+        .update({ 
+          display_name: editingMember.display_name,
+          avatar_url: editingMember.avatar_url 
+        })
+        .eq('id', editingMember.id);
 
       if (error) throw error;
-      
-      toast({ title: "Miembro eliminado", description: "El equipo se ha actualizado." });
+      toast({ title: "Perfil actualizado" });
+      setEditingMember(null);
       fetchAllData();
     } catch (err) {
-      toast({ title: "Error", description: "No se pudo eliminar al miembro.", variant: "destructive" });
+      toast({ title: "Error al actualizar", variant: "destructive" });
     }
   };
 
@@ -114,12 +140,11 @@ const Index = () => {
           nest_id: newId,
           display_name: user.user_metadata?.full_name || "Líder del Nido",
           role: 'admin',
+          avatar_url: TEAM_COLORS[0], // Color inicial
           updated_at: new Date().toISOString() 
         });
       
       if (error) throw error;
-
-      toast({ title: "Nido Creado", description: `Tu código: ${newId}` });
       setMyNestId(newId);
       setShowOnboarding(false);
       await fetchAllData(); 
@@ -132,7 +157,7 @@ const Index = () => {
 
   const handleLinkNest = async () => {
     if (!inviteCode.startsWith('KID-')) {
-      toast({ title: "Código inválido", description: "Usa el formato KID-XXXXXX", variant: "destructive" });
+      toast({ title: "Código inválido", variant: "destructive" });
       return;
     }
     setLoading(true);
@@ -156,13 +181,11 @@ const Index = () => {
         .eq('id', user?.id);
       
       if (error) throw error;
-
-      toast({ title: "¡Conectados!", description: "Te has unido al nido." });
       setMyNestId(partnerProfile.nest_id);
       setShowOnboarding(false);
       await fetchAllData();
     } catch (err) {
-      toast({ title: "Error", description: "No se pudo vincular.", variant: "destructive" });
+      toast({ title: "Error", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -285,30 +308,28 @@ const Index = () => {
             
             <div className="grid grid-cols-2 gap-5">
               {familyMembers.map((member) => (
-                <div key={member.id} className="p-6 rounded-[3rem] flex flex-col items-center bg-white/70 backdrop-blur-md shadow-[0_10px_30px_rgba(0,0,0,0.03)] border border-white/50 relative group transition-all">
-                  
-                  {/* Botón Borrar (Visible al pasar el ratón) */}
+                <div 
+                  key={member.id} 
+                  onClick={() => setEditingMember(member)}
+                  className="p-6 rounded-[3rem] flex flex-col items-center bg-white/70 backdrop-blur-md shadow-[0_10px_30px_rgba(0,0,0,0.03)] border border-white/50 relative group transition-all cursor-pointer hover:scale-[1.02] hover:bg-white active:scale-95"
+                >
                   <button 
-                    onClick={() => handleDeleteMember(member.id, member.display_name)}
-                    className="absolute top-4 left-4 p-2 opacity-0 group-hover:opacity-100 transition-all text-red-400 hover:text-red-600 hover:scale-125"
+                    onClick={(e) => {
+                      e.stopPropagation(); // Evita abrir el editor al borrar
+                      handleDeleteMember(member.id, member.display_name);
+                    }}
+                    className="absolute top-4 left-4 p-2 opacity-0 group-hover:opacity-100 transition-all text-red-400 hover:text-red-600"
                   >
                     <Trash2 size={16} />
                   </button>
 
                   <div className={`absolute top-4 right-4 w-2 h-2 rounded-full ${member.role === 'autonomous' ? 'bg-blue-400' : 'bg-orange-300'}`} />
                   
-                  {/* Avatar con Color dinámico */}
                   <div 
-                    className="w-20 h-20 rounded-[2.5rem] flex items-center justify-center text-2xl font-black text-white shadow-xl transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 mb-4"
-                    style={{ 
-                      backgroundColor: member.avatar_url && member.avatar_url.startsWith('#') ? member.avatar_url : '#CBD5E1' 
-                    }}
+                    className="w-20 h-20 rounded-[2.5rem] flex items-center justify-center text-2xl font-black text-white shadow-xl transition-all duration-500 mb-4"
+                    style={{ backgroundColor: member.avatar_url }}
                   >
-                    {!member.avatar_url || member.avatar_url.startsWith('#') ? (
-                      member.display_name?.charAt(0).toUpperCase()
-                    ) : (
-                      <img src={member.avatar_url} className="w-full h-full object-cover rounded-[2.5rem]" alt="" />
-                    )}
+                    {member.display_name?.charAt(0).toUpperCase()}
                   </div>
                   
                   <span className="font-black text-gray-800 text-sm tracking-tight text-center">{member.display_name}</span>
@@ -336,6 +357,54 @@ const Index = () => {
           </div>
         )}
       </main>
+
+      {/* MODAL DE EDICIÓN DE MIEMBRO */}
+      <Dialog open={!!editingMember} onOpenChange={() => setEditingMember(null)}>
+        <DialogContent className="max-w-[340px] rounded-[3rem] border-none bg-white/90 backdrop-blur-xl p-8 outline-none shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black text-center text-gray-800">Editar Miembro</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-8 py-4 flex flex-col items-center">
+            {/* Vista Previa del Avatar */}
+            <div 
+              className="w-24 h-24 rounded-[2.5rem] flex items-center justify-center text-4xl font-black text-white shadow-2xl transition-all duration-500"
+              style={{ backgroundColor: editingMember?.avatar_url }}
+            >
+              {editingMember?.display_name?.charAt(0).toUpperCase()}
+            </div>
+
+            <Input 
+              placeholder="Nombre del miembro"
+              value={editingMember?.display_name || ""}
+              onChange={(e) => setEditingMember({...editingMember, display_name: e.target.value})}
+              className="h-14 rounded-2xl border-none bg-gray-100 font-bold text-center text-lg"
+            />
+
+            <div className="space-y-3 w-full">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Elige un color</p>
+              <div className="flex flex-wrap justify-center gap-3">
+                {TEAM_COLORS.map(color => (
+                  <button
+                    key={color}
+                    onClick={() => setEditingMember({...editingMember, avatar_url: color})}
+                    className={`w-10 h-10 rounded-xl transition-all ${editingMember?.avatar_url === color ? 'scale-125 ring-4 ring-white shadow-lg' : 'opacity-60 hover:opacity-100'}`}
+                    style={{ backgroundColor: color }}
+                  >
+                    {editingMember?.avatar_url === color && <Check className="text-white mx-auto" size={20} />}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <Button 
+              onClick={handleUpdateMember}
+              className="w-full h-14 rounded-2xl bg-blue-500 hover:bg-blue-600 text-white font-black text-sm tracking-widest transition-all"
+            >
+              GUARDAR CAMBIOS
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Navegación Zen */}
       <nav className="fixed bottom-0 left-0 right-0 h-28 bg-white/60 backdrop-blur-3xl border-t border-white/20 flex justify-around items-center px-10 z-40 rounded-t-[4rem] shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
