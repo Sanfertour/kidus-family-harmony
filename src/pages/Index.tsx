@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ManualEventDrawer } from "@/components/ManualEventDrawer";
 import ZenBackground from "@/components/ZenBackground";
 
-// --- CONFIGURACIÓN DE EQUIPO (MANUAL DE ESTILO) ---
+// --- CONFIGURACIÓN DE EQUIPO (MANUAL DE ESTILO KIDUS ZEN) ---
 const KIDUS_COLORS = {
   primary: "#0EA5E9",
   secondary: "#F97316",
@@ -40,7 +40,7 @@ const Index = () => {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [isFabOpen, setIsFabOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [editingMember, setEditingMember] = useState<any>(null);
+  const [editingMember, setEditingMember] = useState<any>(null); // Recuperado: lógica de edición
   
   // ESTADOS PARA EL "SHOW" DE LA IA
   const [isAiProcessing, setIsAiProcessing] = useState(false);
@@ -58,10 +58,13 @@ const Index = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      if (session) fetchAllData();
-      else {
+      if (session) {
+        fetchAllData();
+      } else {
         setLoading(false);
         setShowOnboarding(false);
+        setFamilyMembers([]); // Limpieza de seguridad
+        setMyNestId("");
       }
     });
 
@@ -83,6 +86,7 @@ const Index = () => {
         setShowOnboarding(false);
         const { data: profiles } = await supabase.from('profiles').select('*').eq('nest_id', myProfile.nest_id);
         
+        // Unificamos colores manteniendo tu lógica de TEAM_COLORS
         const unifiedMembers = profiles?.map(m => ({
           ...m,
           avatar_url: m.avatar_url?.startsWith('#') ? m.avatar_url : TEAM_COLORS[Math.floor(Math.random() * TEAM_COLORS.length)]
@@ -95,14 +99,11 @@ const Index = () => {
     }
   };
 
-  // LOGICA DEL ESCANEO "IA"
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     setIsAiProcessing(true);
-    
-    // Secuencia de mensajes dinámicos para el "efecto IA"
     const messages = [
       "Calibrando sensores ópticos...",
       "Identificando patrones de escritura...",
@@ -117,10 +118,9 @@ const Index = () => {
       if (msgIndex >= messages.length) clearInterval(interval);
     }, 1200);
 
-    // Simulación de procesamiento
     setTimeout(() => {
       setIsAiProcessing(false);
-      setIsDrawerOpen(true); // Abrimos el drawer con los datos "leídos"
+      setIsDrawerOpen(true);
       toast({ 
         title: "¡Escaneo Exitoso!", 
         description: "He detectado la información. Por favor, confírmala." 
@@ -129,10 +129,12 @@ const Index = () => {
     }, 5000);
   };
 
+  // --- RENDERS CON ESTILO KIDUS ZEN ---
+
   if (loading) return (
     <div className="min-h-screen w-full flex items-center justify-center bg-[#F8FAFC]">
       <ZenBackground />
-      <div className="animate-bounce w-16 h-16 bg-[#0EA5E9] rounded-[2rem] shadow-2xl flex items-center justify-center border-4 border-white">
+      <div className="animate-bounce w-16 h-16 bg-[#0EA5E9] rounded-[2rem] shadow-2xl flex items-center justify-center border-4 border-white relative z-10">
         <Loader2 className="text-white animate-spin" size={24} />
       </div>
     </div>
@@ -154,8 +156,8 @@ const Index = () => {
             <p className="text-slate-400 font-black uppercase tracking-[0.4em] text-[10px]">Harmony & Focus</p>
           </div>
           <Button 
-            onClick={() => supabase.auth.signInWithOAuth({ provider: 'google' })} 
-            className="w-full h-20 rounded-[2.5rem] bg-white border border-slate-100 text-slate-700 font-black flex gap-4 shadow-xl active:scale-95 transition-all hover:bg-slate-50 group"
+            onClick={() => supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } })} 
+            className="w-full h-20 rounded-[2.5rem] bg-white border border-slate-100 text-slate-700 font-black flex gap-4 shadow-xl active:scale-95 transition-all hover:bg-slate-50 group shadow-slate-200/50"
           >
             <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-slate-50 group-hover:scale-110 transition-transform">
               <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="Google" />
@@ -179,20 +181,20 @@ const Index = () => {
               <h1 className="text-4xl font-black text-slate-800 leading-tight">Tu Nido está <br/> <span style={{color: KIDUS_COLORS.primary}}>en calma.</span></h1>
             </div>
             
-            <div className="relative p-8 rounded-[3.5rem] bg-white/70 backdrop-blur-md shadow-xl shadow-slate-200/50 border border-white">
+            <div className="relative p-8 rounded-[3.5rem] bg-white/70 backdrop-blur-md shadow-xl shadow-slate-200/50 border border-white/50">
                 <div className="px-4 py-1.5 bg-sky-100 rounded-full w-fit mb-4">
-                  <span className="text-[10px] font-black text-sky-600 uppercase tracking-widest tracking-[0.2em]">Resumen</span>
+                  <span className="text-[10px] font-black text-sky-600 uppercase tracking-[0.2em]">Resumen</span>
                 </div>
                 <h3 className="text-2xl font-black text-slate-800 mb-2">Estado del equipo</h3>
                 <p className="text-slate-500 font-medium">{familyMembers.length} integrantes sincronizados.</p>
             </div>
             
             <div className="grid grid-cols-2 gap-4">
-              <button onClick={() => setActiveTab("agenda")} className="p-8 rounded-[3rem] flex flex-col items-center gap-3 bg-[#0EA5E9] text-white shadow-xl shadow-blue-100 active:scale-95 transition-all">
+              <button onClick={() => setActiveTab("agenda")} className="p-8 rounded-[3rem] flex flex-col items-center gap-3 bg-[#0EA5E9] text-white shadow-xl shadow-blue-100 active:scale-95 transition-all hover:scale-[1.02]">
                 <Calendar size={24} strokeWidth={3} />
                 <span className="text-[11px] font-black uppercase tracking-[0.2em]">Agenda</span>
               </button>
-              <button onClick={() => setActiveTab("family")} className="p-8 rounded-[3rem] flex flex-col items-center gap-3 bg-white/80 text-[#F97316] border border-white shadow-xl shadow-slate-200/40 active:scale-95 transition-all">
+              <button onClick={() => setActiveTab("family")} className="p-8 rounded-[3rem] flex flex-col items-center gap-3 bg-white/80 text-[#F97316] border border-white shadow-xl shadow-slate-200/40 active:scale-95 transition-all hover:scale-[1.02]">
                 <Users size={24} strokeWidth={3} />
                 <span className="text-[11px] font-black uppercase tracking-[0.2em]">Equipo</span>
               </button>
@@ -200,14 +202,14 @@ const Index = () => {
           </div>
         )}
 
-        {activeTab === "agenda" && <AgendaView />}
+        {activeTab === "agenda" && <div className="animate-in fade-in duration-500"><AgendaView /></div>}
 
         {activeTab === "family" && (
           <div className="space-y-6 animate-in slide-in-from-right-4 duration-500">
             <div className="flex justify-between items-center px-4">
               <h2 className="text-3xl font-black text-slate-800">Mi Equipo</h2>
               <AddMemberDialog onMemberAdded={fetchAllData}>
-                <button className="w-14 h-14 bg-[#0EA5E9] rounded-2xl flex items-center justify-center text-white shadow-xl active:scale-90 transition-all hover:rotate-90">
+                <button className="w-14 h-14 bg-[#0EA5E9] rounded-[1.5rem] flex items-center justify-center text-white shadow-xl active:scale-90 transition-all hover:rotate-90">
                   <Plus size={28} strokeWidth={3} />
                 </button>
               </AddMemberDialog>
@@ -218,13 +220,13 @@ const Index = () => {
                 <div 
                   key={member.id} 
                   onClick={() => setEditingMember(member)}
-                  className="p-8 rounded-[3.5rem] flex flex-col items-center bg-white/70 backdrop-blur-md border border-white relative group transition-all cursor-pointer hover:shadow-2xl hover:scale-[1.02] active:scale-95"
+                  className="p-8 rounded-[3.5rem] flex flex-col items-center bg-white/70 backdrop-blur-md border border-white/50 relative group transition-all cursor-pointer hover:shadow-2xl hover:scale-[1.02] active:scale-95"
                 >
                   <div className="absolute top-6 left-6 opacity-0 group-hover:opacity-100 transition-all text-slate-300 hover:text-red-500">
                     <Trash2 size={16} />
                   </div>
                   <div 
-                    className="w-20 h-20 rounded-[2.5rem] flex items-center justify-center text-2xl font-black text-white shadow-xl mb-4 transition-transform group-hover:scale-110"
+                    className="w-20 h-20 rounded-[2.5rem] flex items-center justify-center text-2xl font-black text-white shadow-xl mb-4 transition-transform group-hover:scale-110 shadow-slate-200/50"
                     style={{ backgroundColor: member.avatar_url }}
                   >
                     {member.display_name?.charAt(0).toUpperCase()}
@@ -241,10 +243,12 @@ const Index = () => {
 
         {activeTab === "settings" && (
           <div className="space-y-8 animate-in slide-in-from-right-4 duration-500">
-            <div className="px-4">
-              <h2 className="text-3xl font-black text-slate-800">Ajustes</h2>
-            </div>
-            <div className="p-8 bg-white/70 backdrop-blur-md rounded-[4rem] shadow-xl border border-white">
+            <h2 className="text-3xl font-black px-4 text-slate-800">Ajustes</h2>
+            <div className="p-8 bg-white/70 backdrop-blur-md rounded-[3.5rem] shadow-xl border border-white/50 space-y-4">
+              <div className="p-6 bg-slate-50/50 rounded-3xl border border-slate-100 text-center">
+                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">ID de Nido</p>
+                 <p className="text-xl font-black text-[#0EA5E9] tracking-widest">{myNestId || "KID-..."}</p>
+              </div>
               <Button onClick={() => supabase.auth.signOut()} className="w-full h-16 rounded-[2rem] bg-red-50 text-red-500 hover:bg-red-500 hover:text-white font-black transition-all border-none">
                 Cerrar Sesión
               </Button>
@@ -272,26 +276,19 @@ const Index = () => {
       </nav>
 
       {/* --- INFRAESTRUCTURA DE ENTRADA --- */}
-      <input 
-        type="file" 
-        ref={fileInputRef} 
-        className="hidden" 
-        accept="image/*" 
-        capture="environment" 
-        onChange={handleFileChange} 
-      />
+      <input type="file" ref={fileInputRef} className="hidden" accept="image/*" capture="environment" onChange={handleFileChange} />
 
       <div className="fixed bottom-32 right-8 z-50 flex flex-col items-center">
         <div className={`flex flex-col gap-5 mb-5 transition-all duration-500 ${isFabOpen ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-20 scale-50 pointer-events-none'}`}>
           <button 
             onClick={() => { setIsFabOpen(false); fileInputRef.current?.click(); }}
-            className="w-14 h-14 bg-[#8B5CF6] rounded-3xl flex items-center justify-center text-white shadow-xl border-4 border-white group transition-all active:scale-90"
+            className="w-14 h-14 bg-[#8B5CF6] rounded-[1.8rem] flex items-center justify-center text-white shadow-xl border-4 border-white active:scale-90 transition-all shadow-slate-200/50"
           >
             <Camera size={26} strokeWidth={2.5} />
           </button>
           <button 
             onClick={() => { setIsFabOpen(false); setIsDrawerOpen(true); }}
-            className="w-14 h-14 bg-[#F97316] rounded-3xl flex items-center justify-center text-white shadow-xl border-4 border-white group transition-all active:scale-90"
+            className="w-14 h-14 bg-[#F97316] rounded-[1.8rem] flex items-center justify-center text-white shadow-xl border-4 border-white active:scale-90 transition-all shadow-slate-200/50"
           >
             <Edit size={26} strokeWidth={2.5} />
           </button>
