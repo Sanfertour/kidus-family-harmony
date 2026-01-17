@@ -1,6 +1,17 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Clock, User, Bell, Lock, AlertTriangle, ShieldCheck, Share2, Heart, Calendar as CalendarIcon, ChevronRight } from 'lucide-center';
+import { 
+  Clock, 
+  User, 
+  Bell, 
+  Lock, 
+  AlertTriangle, 
+  ShieldCheck, 
+  Share2, 
+  Heart, 
+  Calendar as CalendarIcon, 
+  ChevronRight 
+} from 'lucide-react';
 import { format, startOfWeek, addDays, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
