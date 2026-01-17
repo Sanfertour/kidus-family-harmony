@@ -10,6 +10,7 @@ export const AgendaView = () => {
   const [loading, setLoading] = useState(true);
   const [conflicts, setConflicts] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [nestId, setNestId] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Generar días de la semana actual para el Mini Calendario
@@ -21,6 +22,7 @@ export const AgendaView = () => {
     if (!user) return;
 
     const { data: profile } = await supabase.from('profiles').select('nest_id').eq('id', user.id).single();
+    if (profile) setNestId(profile.nest_id);
 
     const { data: eventsData, error } = await supabase
       .from('events')
@@ -52,19 +54,58 @@ export const AgendaView = () => {
     setConflicts(conflictIds);
   };
 
-  const handleDelegarInterno = async (eventId: string) => {
-    toast({ 
-      title: "Solicitud de Relevo", 
-      description: "Enviando notificación al equipo del Nido...",
+  // --- LÓGICA DE DELEGACIÓN REAL ---
+  const handleDelegarInterno = async (event: any) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || !nestId) return;
+
+    // Buscamos al otro miembro del nido
+    const { data: members } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('nest_id', nestId)
+      .neq('id', user.id);
+
+    const { error } = await supabase.from('notifications').insert({
+      nest_id: nestId,
+      sender_id: user.id,
+      receiver_id: members?.[0]?.id || null, // Se envía al compañero
+      event_id: event.id,
+      type: 'DELEGATION_REQUEST',
+      message: `Petición de relevo para: ${event.description}`
     });
+
+    if (!error) {
+      toast({ 
+        title: "Solicitud de Relevo", 
+        description: "Enviando notificación al equipo del Nido...",
+      });
+    }
   };
 
-  const handleRedApoyo = async (eventId: string) => {
-    toast({ 
-      title: "Red de Apoyo Activada", 
-      description: "Informando al Nido que un apoyo externo se encarga.",
-      className: "bg-emerald-50 text-emerald-700 border-emerald-200"
+  const handleRedApoyo = async (event: any) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || !nestId) return;
+
+    const nombreApoyo = prompt("¿Quién de la Red de Apoyo se encarga? (Ej: Abuela Carmen)");
+    if (!nombreApoyo) return;
+
+    const { error } = await supabase.from('notifications').insert({
+      nest_id: nestId,
+      sender_id: user.id,
+      event_id: event.id,
+      type: 'EXTERNAL_SUPPORT_NOTICE',
+      message: `${nombreApoyo} se encargará de: ${event.description}`,
+      metadata: { externo: nombreApoyo }
     });
+
+    if (!error) {
+      toast({ 
+        title: "Red de Apoyo Activada", 
+        description: `Se ha avisado al nido que ${nombreApoyo} se encarga.`,
+        className: "bg-emerald-50 text-emerald-700 border-emerald-200"
+      });
+    }
   };
 
   useEffect(() => { fetchEvents(); }, []);
@@ -154,11 +195,10 @@ export const AgendaView = () => {
                       </div>
                     </div>
 
-                    {/* LÓGICA DE GESTIÓN DE CONFLICTOS */}
                     {isConflict ? (
                       <div className="flex gap-2">
-                        <ActionButton icon={<Share2 size={16} />} onClick={() => handleDelegarInterno(event.id)} label="Delegar" color="hover:text-[#0EA5E9]" />
-                        <ActionButton icon={<Heart size={16} />} onClick={() => handleRedApoyo(event.id)} label="Apoyo" color="hover:text-emerald-500" />
+                        <ActionButton icon={<Share2 size={16} />} onClick={() => handleDelegarInterno(event)} label="Delegar" color="hover:text-[#0EA5E9]" />
+                        <ActionButton icon={<Heart size={16} />} onClick={() => handleRedApoyo(event)} label="Apoyo" color="hover:text-emerald-500" />
                       </div>
                     ) : (
                       <div className="flex items-center gap-1 text-slate-300">
