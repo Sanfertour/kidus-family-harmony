@@ -1,22 +1,27 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Clock, User, Bell, Lock, AlertTriangle, ShieldCheck, Share2 } from 'lucide-react';
-import { format } from 'date-fns';
+import { Clock, User, Bell, Lock, AlertTriangle, ShieldCheck, Share2, Heart, Calendar as CalendarIcon, ChevronRight } from 'lucide-react';
+import { format, startOfWeek, addDays, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useToast } from '@/hooks/use-toast';
 
 export const AgendaView = () => {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [conflicts, setConflicts] = useState<string[]>([]); // IDs de eventos con colisión
+  const [conflicts, setConflicts] = useState<string[]>([]);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const { toast } = useToast();
+
+  // Generar días de la semana actual para el Mini Calendario
+  const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+  const weekDays = [...Array(7)].map((_, i) => addDays(weekStart, i));
 
   const fetchEvents = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // 1. Traer perfil para saber el nest_id
     const { data: profile } = await supabase.from('profiles').select('nest_id').eq('id', user.id).single();
 
-    // 2. Traer eventos (mapeo real de tu DB)
     const { data: eventsData, error } = await supabase
       .from('events')
       .select(`
@@ -33,8 +38,6 @@ export const AgendaView = () => {
     setLoading(false);
   };
 
-  // --- SILENT COLLISION DETECTION ---
-  // Audita si un mismo miembro tiene dos cosas a la vez
   const detectCollisions = (allEvents: any[]) => {
     const conflictIds: string[] = [];
     allEvents.forEach((e1, idx) => {
@@ -42,116 +45,149 @@ export const AgendaView = () => {
         if (idx !== idx2 && e1.assigned_to === e2.assigned_to) {
           const d1 = new Date(e1.event_date).getTime();
           const d2 = new Date(e2.event_date).getTime();
-          // Margen de 1 hora para considerar colisión
-          if (Math.abs(d1 - d2) < 3600000) {
-            conflictIds.push(e1.id);
-          }
+          if (Math.abs(d1 - d2) < 3600000) conflictIds.push(e1.id);
         }
       });
     });
     setConflicts(conflictIds);
   };
 
+  const handleDelegarInterno = async (eventId: string) => {
+    toast({ 
+      title: "Solicitud de Relevo", 
+      description: "Enviando notificación al equipo del Nido...",
+    });
+  };
+
+  const handleRedApoyo = async (eventId: string) => {
+    toast({ 
+      title: "Red de Apoyo Activada", 
+      description: "Informando al Nido que un apoyo externo se encarga.",
+      className: "bg-emerald-50 text-emerald-700 border-emerald-200"
+    });
+  };
+
   useEffect(() => { fetchEvents(); }, []);
 
   return (
-    <div className="space-y-8 pb-32 animate-in fade-in duration-700">
-      {/* HEADER DE AGENDA */}
-      <div className="flex justify-between items-start px-2">
-        <div className="space-y-1">
+    <div className="space-y-8 pb-32 animate-in fade-in duration-700 font-nunito">
+      {/* HEADER Y CAMPANA */}
+      <div className="flex justify-between items-center px-4">
+        <div>
           <h2 className="text-4xl font-black text-slate-800 tracking-tight">Agenda</h2>
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Logística Zen</p>
+          <p className="text-[10px] font-black text-[#0EA5E9] uppercase tracking-[0.3em]">Sincronización Familiar</p>
         </div>
-        {/* CAMPANA DE NOTIFICACIONES (ALERTA NARANJA) */}
         <div className="relative">
-          <button className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${conflicts.length > 0 ? 'bg-orange-50 text-orange-500 animate-pulse' : 'bg-white text-slate-300'}`}>
-            <Bell size={24} strokeWidth={conflicts.length > 0 ? 3 : 2} />
-            {conflicts.length > 0 && (
-              <span className="absolute top-2 right-2 w-4 h-4 bg-orange-600 rounded-full border-2 border-white" />
-            )}
+          <button className={`w-14 h-14 rounded-[1.5rem] flex items-center justify-center transition-all ${conflicts.length > 0 ? 'bg-orange-50 text-orange-500 shadow-lg shadow-orange-100 animate-pulse' : 'bg-white text-slate-300 shadow-sm border border-slate-100'}`}>
+            <Bell size={24} strokeWidth={2.5} />
+            {conflicts.length > 0 && <span className="absolute top-3 right-3 w-3 h-3 bg-orange-600 rounded-full border-2 border-white" />}
           </button>
         </div>
       </div>
 
-      <div className="space-y-6">
-        {events.map((event) => {
-          const isConflict = conflicts.includes(event.id);
-          const isPrivate = event.is_private; // Asumimos esta columna en tu DB
-          const isMyEvent = true; // Aquí iría lógica de si el user actual es el dueño
+      {/* MINI CALENDARIO SEMANAL */}
+      <div className="px-4 overflow-x-auto no-scrollbar">
+        <div className="flex gap-3 pb-2">
+          {weekDays.map((day, i) => {
+            const isSelected = isSameDay(day, selectedDate);
+            const hasEvents = events.some(e => isSameDay(new Date(e.event_date), day));
+            
+            return (
+              <button 
+                key={i}
+                onClick={() => setSelectedDate(day)}
+                className={`flex-shrink-0 w-16 h-24 rounded-[2rem] flex flex-col items-center justify-center transition-all duration-300 ${isSelected ? 'bg-slate-900 text-white shadow-xl scale-105' : 'bg-white text-slate-400 border border-slate-50'}`}
+              >
+                <span className="text-[9px] font-black uppercase tracking-widest mb-2">{format(day, 'EEE', { locale: es })}</span>
+                <span className="text-xl font-black">{format(day, 'd')}</span>
+                {hasEvents && <div className={`w-1.5 h-1.5 rounded-full mt-2 ${isSelected ? 'bg-[#0EA5E9]' : 'bg-slate-200'}`} />}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
-          return (
-            <div key={event.id} className="relative group">
-              <div className={`
-                p-8 rounded-[3.5rem] backdrop-blur-md border transition-all duration-500
-                ${isPrivate ? 'bg-slate-900/5 border-slate-200' : 'bg-white/70 border-white/50 shadow-xl shadow-slate-200/40'}
-                ${isConflict ? 'ring-2 ring-orange-400 ring-offset-4 ring-offset-[#F8FAFC]' : ''}
-              `}>
-                
-                <div className="flex justify-between items-start mb-6">
-                  <div className="space-y-2">
-                    {/* INDICADORES DE ESTADO */}
-                    <div className="flex gap-2">
-                      {isPrivate && (
-                        <div className="px-3 py-1 bg-slate-800 rounded-full flex items-center gap-2">
-                          <Lock size={10} className="text-white" />
-                          <span className="text-[8px] font-black text-white uppercase tracking-widest">Privado</span>
-                        </div>
-                      )}
-                      {isConflict && (
-                        <div className="px-3 py-1 bg-orange-600 rounded-full flex items-center gap-2">
-                          <AlertTriangle size={10} className="text-white" />
-                          <span className="text-[8px] font-black text-white uppercase tracking-widest">Alerta Naranja</span>
-                        </div>
-                      )}
+      {/* LISTADO DE EVENTOS */}
+      <div className="px-4 space-y-6">
+        <div className="flex items-center justify-between px-2">
+          <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Tareas Próximas</h3>
+          <ChevronRight size={16} className="text-slate-300" />
+        </div>
+
+        {events.length === 0 ? (
+          <div className="p-10 text-center bg-slate-50 rounded-[3rem] border-2 border-dashed border-slate-100">
+            <CalendarIcon size={40} className="mx-auto text-slate-200 mb-4" />
+            <p className="text-slate-400 font-bold">No hay planes para hoy</p>
+          </div>
+        ) : (
+          events.map((event) => {
+            const isConflict = conflicts.includes(event.id);
+            const isPrivate = event.is_private;
+            
+            return (
+              <div key={event.id} className="relative group">
+                <div className={`p-8 rounded-[3rem] backdrop-blur-md border transition-all duration-500 ${isPrivate ? 'bg-slate-900/5 border-slate-200' : 'bg-white/80 border-white/50 shadow-xl shadow-slate-200/40'} ${isConflict ? 'ring-2 ring-orange-400 ring-offset-4' : ''}`}>
+                  
+                  <div className="flex justify-between items-start mb-6">
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        {isPrivate && <Badge icon={<Lock size={10} />} label="Privado" color="bg-slate-800" />}
+                        {isConflict && <Badge icon={<AlertTriangle size={10} />} label="Alerta Naranja" color="bg-orange-600" />}
+                      </div>
+                      <h4 className={`text-2xl font-black leading-tight ${isPrivate ? 'text-slate-400 blur-[3px]' : 'text-slate-800'}`}>
+                        {isPrivate ? 'Ocupado' : event.description}
+                      </h4>
                     </div>
-
-                    {/* TÍTULO CON PRIVACIDAD INTELIGENTE */}
-                    <h4 className={`text-2xl font-black leading-tight ${isPrivate ? 'text-slate-400 blur-[2px] select-none' : 'text-slate-800'}`}>
-                      {isPrivate ? 'Ocupado (Evento Privado)' : event.description}
-                    </h4>
+                    <div className="bg-white px-4 py-3 rounded-2xl shadow-sm border border-slate-50 text-center">
+                      <span className="block text-sm font-black text-[#0EA5E9]">{format(new Date(event.event_date), "HH:mm")}</span>
+                    </div>
                   </div>
 
-                  <div className="bg-white px-4 py-3 rounded-[1.5rem] shadow-sm text-center min-w-[70px]">
-                    <span className="block text-sm font-black text-[#0EA5E9]">{format(new Date(event.event_date), "HH:mm")}</span>
-                    <span className="block text-[8px] font-black text-slate-300 uppercase">{format(new Date(event.event_date), "EEE", { locale: es })}</span>
+                  <div className="flex items-center justify-between pt-6 border-t border-slate-100/50">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-[#0EA5E9] flex items-center justify-center text-white font-black text-xs">
+                        {event.profiles?.display_name?.charAt(0)}
+                      </div>
+                      <div>
+                        <p className="text-[8px] font-black text-slate-300 uppercase">Miembro</p>
+                        <p className="text-xs font-black text-slate-700">{event.profiles?.display_name}</p>
+                      </div>
+                    </div>
+
+                    {/* LÓGICA DE GESTIÓN DE CONFLICTOS */}
+                    {isConflict ? (
+                      <div className="flex gap-2">
+                        <ActionButton icon={<Share2 size={16} />} onClick={() => handleDelegarInterno(event.id)} label="Delegar" color="hover:text-[#0EA5E9]" />
+                        <ActionButton icon={<Heart size={16} />} onClick={() => handleRedApoyo(event.id)} label="Apoyo" color="hover:text-emerald-500" />
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1 text-slate-300">
+                        <ShieldCheck size={16} />
+                        <span className="text-[9px] font-black uppercase tracking-widest">Ok</span>
+                      </div>
+                    )}
                   </div>
                 </div>
-
-                {/* FILA DE GESTIÓN Y RELEVO */}
-                <div className="flex items-center justify-between pt-6 border-t border-slate-100/50">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-[#0EA5E9] flex items-center justify-center text-white font-black text-xs shadow-lg">
-                      {event.profiles?.display_name?.charAt(0)}
-                    </div>
-                    <div>
-                      <p className="text-[8px] font-black text-slate-300 uppercase">Para</p>
-                      <p className="text-xs font-black text-slate-700">{event.profiles?.display_name}</p>
-                    </div>
-                  </div>
-
-                  {/* ACCIÓN DE DELEGAR (EL SALVADOR) */}
-                  <button className="flex items-center gap-2 px-5 py-3 bg-white rounded-2xl border border-slate-100 shadow-sm text-slate-500 hover:text-[#0EA5E9] hover:border-[#0EA5E9] transition-all active:scale-95">
-                    <Share2 size={16} />
-                    <span className="text-[10px] font-black uppercase tracking-wider">Delegar</span>
-                  </button>
-                </div>
-
-                {/* MENSAJE DE COLISIÓN */}
-                {isConflict && (
-                  <div className="mt-4 p-4 bg-orange-50 rounded-2xl border border-orange-100 flex items-center gap-3">
-                    <div className="p-2 bg-orange-600 rounded-xl text-white">
-                      <AlertTriangle size={14} />
-                    </div>
-                    <p className="text-[10px] font-black text-orange-800 uppercase leading-relaxed tracking-tight">
-                      Conflicto: {event.profiles?.display_name} ya tiene un compromiso en esta franja.
-                    </p>
-                  </div>
-                )}
               </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
     </div>
   );
 };
+
+// Componentes internos de soporte (Helpers)
+const Badge = ({ icon, label, color }: { icon: any, label: string, color: string }) => (
+  <div className={`px-3 py-1 ${color} rounded-full flex items-center gap-2`}>
+    <span className="text-white">{icon}</span>
+    <span className="text-[8px] font-black text-white uppercase tracking-widest">{label}</span>
+  </div>
+);
+
+const ActionButton = ({ icon, onClick, label, color }: { icon: any, onClick: () => void, label: string, color: string }) => (
+  <button onClick={onClick} className={`flex flex-col items-center gap-1 p-2 bg-white rounded-2xl border border-slate-50 shadow-sm transition-all active:scale-95 ${color}`}>
+    {icon}
+    <span className="text-[7px] font-black uppercase">{label}</span>
+  </button>
+);
