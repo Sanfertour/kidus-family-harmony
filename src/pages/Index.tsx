@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { 
-  Settings, Users, Calendar, Home as HomeIcon, Plus, Edit, Trash2, Check, LogOut, ArrowRight
+  Settings, Users, Calendar, Home as HomeIcon, Plus, Edit, Trash2, Camera, LogOut, ArrowRight, Loader2
 } from "lucide-react";
 import Header from "@/components/Header";
 import { AgendaView } from "@/components/AgendaView";
@@ -10,8 +10,6 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { ManualEventDrawer } from "@/components/ManualEventDrawer";
 import ZenBackground from "@/components/ZenBackground";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 
 // --- CONFIGURACIÓN DE EQUIPO (MANUAL DE ESTILO) ---
 const KIDUS_COLORS = {
@@ -43,7 +41,12 @@ const Index = () => {
   const [isFabOpen, setIsFabOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<any>(null);
-
+  
+  // ESTADOS PARA EL "SHOW" DE LA IA
+  const [isAiProcessing, setIsAiProcessing] = useState(false);
+  const [aiMessage, setAiMessage] = useState("Iniciando escaneo...");
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -92,27 +95,45 @@ const Index = () => {
     }
   };
 
-  const handleUpdateMember = async () => {
-    if (!editingMember) return;
-    const { error } = await supabase
-      .from('profiles')
-      .update({ display_name: editingMember.display_name, avatar_url: editingMember.avatar_url })
-      .eq('id', editingMember.id);
+  // LOGICA DEL ESCANEO "IA"
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-    if (!error) {
-      toast({ title: "Perfil actualizado" });
-      setEditingMember(null);
-      fetchAllData();
-    }
+    setIsAiProcessing(true);
+    
+    // Secuencia de mensajes dinámicos para el "efecto IA"
+    const messages = [
+      "Calibrando sensores ópticos...",
+      "Identificando patrones de escritura...",
+      "Sincronizando con el Nido...",
+      "Estructurando eventos detectados..."
+    ];
+
+    let msgIndex = 0;
+    const interval = setInterval(() => {
+      setAiMessage(messages[msgIndex]);
+      msgIndex++;
+      if (msgIndex >= messages.length) clearInterval(interval);
+    }, 1200);
+
+    // Simulación de procesamiento
+    setTimeout(() => {
+      setIsAiProcessing(false);
+      setIsDrawerOpen(true); // Abrimos el drawer con los datos "leídos"
+      toast({ 
+        title: "¡Escaneo Exitoso!", 
+        description: "He detectado la información. Por favor, confírmala." 
+      });
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }, 5000);
   };
-
-  // --- COMPONENTES DE INTERFAZ UNIFICADOS ---
 
   if (loading) return (
     <div className="min-h-screen w-full flex items-center justify-center bg-[#F8FAFC]">
       <ZenBackground />
-      <div className="animate-bounce w-16 h-16 bg-[#0EA5E9] rounded-[2rem] shadow-2xl flex items-center justify-center">
-        <div className="w-6 h-6 border-4 border-white border-t-transparent rounded-full animate-spin" />
+      <div className="animate-bounce w-16 h-16 bg-[#0EA5E9] rounded-[2rem] shadow-2xl flex items-center justify-center border-4 border-white">
+        <Loader2 className="text-white animate-spin" size={24} />
       </div>
     </div>
   );
@@ -141,44 +162,6 @@ const Index = () => {
             </div>
             <span className="tracking-tight text-lg uppercase">Entrar con Google</span>
           </Button>
-        </div>
-      </div>
-    );
-  }
-
-  if (showOnboarding) {
-    return (
-      <div className="min-h-screen w-full flex flex-col items-center justify-center p-6 bg-[#F8FAFC] relative overflow-hidden font-nunito">
-        <ZenBackground />
-        <div className="relative z-10 w-full max-w-md space-y-10 animate-in fade-in slide-in-from-bottom-10 duration-700">
-          <div className="text-center space-y-4">
-            <div className="w-24 h-24 bg-[#F97316] rounded-[2.5rem] flex items-center justify-center mx-auto shadow-2xl rotate-3">
-               <HomeIcon className="text-white" size={40} />
-            </div>
-            <h2 className="text-4xl font-black text-slate-800 tracking-tight">Crea tu Nido</h2>
-            <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">El comienzo de la calma</p>
-          </div>
-          <div className="grid gap-6">
-            <button onClick={() => {}} className="p-8 bg-white/70 backdrop-blur-md hover:bg-white rounded-[3.5rem] border border-white text-left transition-all active:scale-95 shadow-xl shadow-slate-200/50 group">
-              <div className="flex justify-between items-center mb-2">
-                <h4 className="font-black text-[#0EA5E9] text-xl">Iniciar Nido Nuevo</h4>
-                <ArrowRight size={20} className="text-[#0EA5E9] group-hover:translate-x-2 transition-transform" />
-              </div>
-              <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Para nuevas familias</p>
-            </button>
-            <div className="p-8 bg-white/70 backdrop-blur-md rounded-[3.5rem] border border-white space-y-6 shadow-xl shadow-slate-200/50">
-              <h4 className="font-black text-[#8B5CF6] text-xl">Unirme a un Nido</h4>
-              <div className="flex gap-3">
-                <input 
-                  value={inviteCode} 
-                  onChange={(e) => setInviteCode(e.target.value.toUpperCase())} 
-                  placeholder="KID-XXXXXX" 
-                  className="flex-1 h-14 rounded-2xl border-none px-6 font-black tracking-[0.2em] text-sm bg-slate-100 focus:ring-2 focus:ring-violet-200 transition-all outline-none" 
-                />
-                <Button className="h-14 px-6 rounded-2xl bg-[#8B5CF6] text-white font-black hover:bg-violet-600 transition-all">UNIRSE</Button>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     );
@@ -237,12 +220,9 @@ const Index = () => {
                   onClick={() => setEditingMember(member)}
                   className="p-8 rounded-[3.5rem] flex flex-col items-center bg-white/70 backdrop-blur-md border border-white relative group transition-all cursor-pointer hover:shadow-2xl hover:scale-[1.02] active:scale-95"
                 >
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); }}
-                    className="absolute top-6 left-6 opacity-0 group-hover:opacity-100 transition-all text-slate-300 hover:text-red-500"
-                  >
+                  <div className="absolute top-6 left-6 opacity-0 group-hover:opacity-100 transition-all text-slate-300 hover:text-red-500">
                     <Trash2 size={16} />
-                  </button>
+                  </div>
                   <div 
                     className="w-20 h-20 rounded-[2.5rem] flex items-center justify-center text-2xl font-black text-white shadow-xl mb-4 transition-transform group-hover:scale-110"
                     style={{ backgroundColor: member.avatar_url }}
@@ -263,22 +243,17 @@ const Index = () => {
           <div className="space-y-8 animate-in slide-in-from-right-4 duration-500">
             <div className="px-4">
               <h2 className="text-3xl font-black text-slate-800">Ajustes</h2>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Configuración del nido</p>
             </div>
-            <div className="p-8 space-y-10 bg-white/70 backdrop-blur-md rounded-[4rem] shadow-xl border border-white">
-              <div className="p-8 bg-slate-50/80 rounded-[2.5rem] border-2 border-dashed border-slate-100 text-center group transition-all hover:border-sky-200">
-                <p className="text-[10px] font-black text-slate-400 uppercase mb-3 tracking-widest">Código de Invitación</p>
-                <p className="text-3xl font-black tracking-[0.3em] text-slate-800 group-hover:text-[#0EA5E9] transition-colors">{myNestId}</p>
-              </div>
-              <Button onClick={() => supabase.auth.signOut()} className="w-full h-16 rounded-[2rem] bg-red-50 text-red-500 hover:bg-red-500 hover:text-white font-black transition-all border-none shadow-sm flex gap-3">
-                <LogOut size={18} />
-                <span className="tracking-widest text-xs uppercase">Cerrar Sesión</span>
+            <div className="p-8 bg-white/70 backdrop-blur-md rounded-[4rem] shadow-xl border border-white">
+              <Button onClick={() => supabase.auth.signOut()} className="w-full h-16 rounded-[2rem] bg-red-50 text-red-500 hover:bg-red-500 hover:text-white font-black transition-all border-none">
+                Cerrar Sesión
               </Button>
             </div>
           </div>
         )}
       </main>
 
+      {/* --- NAVEGACIÓN --- */}
       <nav className="fixed bottom-0 left-0 right-0 h-28 bg-white/80 backdrop-blur-xl border-t border-slate-50 flex justify-around items-center px-10 z-40 rounded-t-[4rem] shadow-[0_-10px_40px_rgba(0,0,0,0.03)]">
         {[
           { id: "home", icon: HomeIcon },
@@ -296,9 +271,7 @@ const Index = () => {
         ))}
       </nav>
 
-{/* --- INFRAESTRUCTURA DE ENTRADA (MANUAL DE ESTILO KIDUS) --- */}
-      
-      {/* INPUT OCULTO: El motor de captura de imágenes */}
+      {/* --- INFRAESTRUCTURA DE ENTRADA --- */}
       <input 
         type="file" 
         ref={fileInputRef} 
@@ -308,60 +281,54 @@ const Index = () => {
         onChange={handleFileChange} 
       />
 
-      {/* FAB RADIAL: Sistema de abanico en cascada */}
       <div className="fixed bottom-32 right-8 z-50 flex flex-col items-center">
-        
-        {/* BOTONES SECUNDARIOS (Abanico) */}
-        <div className={`flex flex-col gap-5 mb-5 transition-all duration-500 ease-[cubic-bezier(0.175,0.885,0.32,1.275)] ${
-          isFabOpen ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-20 scale-50 pointer-events-none'
-        }`}>
-          
-          {/* Acción: Cámara / Escaneo */}
+        <div className={`flex flex-col gap-5 mb-5 transition-all duration-500 ${isFabOpen ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-20 scale-50 pointer-events-none'}`}>
           <button 
-            onClick={() => {
-              setIsFabOpen(false);
-              fileInputRef.current?.click();
-            }}
-            className="w-14 h-14 bg-[#8B5CF6] rounded-3xl flex items-center justify-center text-white shadow-fab hover:scale-110 active:scale-95 transition-all border-4 border-white group"
+            onClick={() => { setIsFabOpen(false); fileInputRef.current?.click(); }}
+            className="w-14 h-14 bg-[#8B5CF6] rounded-3xl flex items-center justify-center text-white shadow-xl border-4 border-white group transition-all active:scale-90"
           >
-            <Camera size={26} strokeWidth={2.5} className="group-hover:rotate-12 transition-transform" />
+            <Camera size={26} strokeWidth={2.5} />
           </button>
-
-          {/* Acción: Entrada Manual */}
           <button 
-            onClick={() => {
-              setIsFabOpen(false);
-              setIsDrawerOpen(true);
-            }}
-            className="w-14 h-14 bg-[#F97316] rounded-3xl flex items-center justify-center text-white shadow-fab hover:scale-110 active:scale-95 transition-all border-4 border-white group"
+            onClick={() => { setIsFabOpen(false); setIsDrawerOpen(true); }}
+            className="w-14 h-14 bg-[#F97316] rounded-3xl flex items-center justify-center text-white shadow-xl border-4 border-white group transition-all active:scale-90"
           >
-            <Edit size={26} strokeWidth={2.5} className="group-hover:-rotate-12 transition-transform" />
+            <Edit size={26} strokeWidth={2.5} />
           </button>
         </div>
 
-        {/* BOTÓN MAESTRO (TRIGGER) */}
         <button 
           onClick={() => setIsFabOpen(!isFabOpen)} 
-          className={`w-18 h-18 rounded-[2.2rem] flex items-center justify-center text-white shadow-2xl transition-all duration-500 z-50 ${
-            isFabOpen 
-              ? 'rotate-45 bg-slate-800 scale-90' 
-              : 'bg-[#0EA5E9] hover:scale-110 active:scale-95 shadow-sky-200/50'
-          }`}
-          style={{ width: '72px', height: '72px' }}
+          className={`w-[72px] h-[72px] rounded-[2.2rem] flex items-center justify-center text-white shadow-2xl transition-all duration-500 z-50 ${isFabOpen ? 'rotate-45 bg-slate-800 scale-90' : 'bg-[#0EA5E9] hover:scale-110 active:scale-95 shadow-sky-200/50'}`}
         >
           <Plus size={36} strokeWidth={3} />
         </button>
       </div>
 
-      {/* COMPONENTES EMERGENTES */}
+      {/* --- OVERLAY DE IA (MAGIA VISUAL) --- */}
+      {isAiProcessing && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-white/80 backdrop-blur-2xl animate-in fade-in duration-500">
+          <div className="flex flex-col items-center gap-8 p-10 text-center">
+            <div className="relative">
+              <div className="w-24 h-24 border-8 border-slate-100 rounded-[3rem] animate-[spin_4s_linear_infinite]" />
+              <div className="absolute inset-0 border-8 border-t-[#0EA5E9] rounded-[3rem] animate-spin" />
+              <Camera className="absolute inset-0 m-auto text-[#0EA5E9] animate-pulse" size={32} />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-2xl font-black text-slate-800 tracking-tight">Escaneo Inteligente</h3>
+              <p className="text-[#0EA5E9] font-black text-[10px] uppercase tracking-[0.3em] animate-pulse">{aiMessage}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <ManualEventDrawer 
         isOpen={isDrawerOpen} 
         onClose={() => setIsDrawerOpen(false)} 
         members={familyMembers} 
         onEventAdded={fetchAllData} 
       />
-      
-    </div> // Cierre del contenedor principal (relative min-h-screen)
+    </div>
   );
 };
 
