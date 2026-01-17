@@ -13,23 +13,14 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Sparkles, ShieldCheck, HeartHandshake, UserCircle2 } from "lucide-react";
 
-// Colores Vivos pero Elegantes (Basados en tu estética MTB-Zen)
+// Colores Vivos pero Elegantes (Corregidos para que tengan la propiedad hex y bg)
 const TEAM_COLORS = [
-  { name: 'Vital', hex: '#00B4D8' }, // Azul
-  { name: 'Natura', hex: '#52B788' }, // Verde
-  { name: 'Energía', hex: '#F9C74F' }, // Amarillo
-  { name: 'Calma', hex: '#9B5DE5' }, // Púrpura
-  { name: 'Fuego', hex: '#F94144' }, // Rojo
+  { name: 'Vital', hex: '#00B4D8', bg: 'bg-[#00B4D8]', shadow: 'shadow-blue-200' },
+  { name: 'Natura', hex: '#52B788', bg: 'bg-[#52B788]', shadow: 'shadow-green-200' },
+  { name: 'Energía', hex: '#F9C74F', bg: 'bg-[#F9C74F]', shadow: 'shadow-yellow-200' },
+  { name: 'Calma', hex: '#9B5DE5', bg: 'bg-[#9B5DE5]', shadow: 'shadow-purple-200' },
+  { name: 'Fuego', hex: '#F94144', bg: 'bg-[#F94144]', shadow: 'shadow-red-200' },
 ];
-
-// Y en el handleSubmit asegúrate de guardar el hex:
-const { error } = await supabase.from('profiles').insert({
-  display_name: name,
-  nest_id: myProfile?.nest_id,
-  role: role,
-  avatar_url: selectedColor.hex, // <--- Guardamos el #HEX
-  updated_at: new Date().toISOString()
-});
 
 export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.ReactNode, onMemberAdded: () => void }) => {
   const [name, setName] = useState("");
@@ -45,15 +36,20 @@ export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.R
     
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      const { data: myProfile } = await supabase.from('profiles').select('nest_id').eq('id', user?.id).single();
+      if (!user) throw new Error("No hay sesión de usuario");
 
+      const { data: myProfile } = await supabase
+        .from('profiles')
+        .select('nest_id')
+        .eq('id', user.id)
+        .single();
+
+      // AQUÍ ES DONDE SE GUARDA TODO CORRECTAMENTE
       const { error } = await supabase.from('profiles').insert({
         display_name: name,
         nest_id: myProfile?.nest_id,
         role: role,
-        // Guardamos el color en una columna de metadatos o usamos avatar_url 
-        // pero solo si el componente de imagen sabe manejarlo. 
-        // Por ahora, lo guardamos limpio.
+        avatar_url: selectedColor.hex, // Guardamos el HEX elegido
         updated_at: new Date().toISOString()
       });
 
@@ -64,7 +60,7 @@ export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.R
       onMemberAdded();
     } catch (error: any) {
       console.error("Error:", error);
-      toast({ title: "Aviso", description: "No se pudo guardar. Revisa el SQL.", variant: "destructive" });
+      toast({ title: "Aviso", description: "No se pudo guardar el miembro.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -73,7 +69,6 @@ export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.R
   return (
     <Dialog>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      {/* Esquinas rounded-[4rem] para ese efecto orgánico zen */}
       <DialogContent className="sm:max-w-md border-none bg-white/90 backdrop-blur-2xl shadow-[0_40px_80px_-15px_rgba(0,0,0,0.15)] rounded-[4rem] p-10 overflow-hidden">
         
         {/* Decoración superior sutil */}
