@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { 
-  Settings, Users, Calendar, Home as HomeIcon, Plus, 
-  Edit 
+  Settings, Users, Calendar, Home as HomeIcon, Plus, Edit 
 } from "lucide-react";
 import Header from "@/components/Header";
 import { AgendaView } from "@/components/AgendaView";
@@ -15,7 +14,6 @@ const Index = () => {
   const [session, setSession] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("home");
   const [familyMembers, setFamilyMembers] = useState<any[]>([]);
-  const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [inviteCode, setInviteCode] = useState("");
   const [myNestId, setMyNestId] = useState("");
@@ -64,14 +62,15 @@ const Index = () => {
         setMyNestId(myProfile.nest_id);
         setShowOnboarding(false);
         
-        const { data: profiles } = await supabase.from('profiles').select('*').eq('nest_id', myProfile.nest_id);
-        const { data: eventData } = await supabase.from('events').select('*').eq('nest_id', myProfile.nest_id).order('start_time', { ascending: true });
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('nest_id', myProfile.nest_id);
         
         setFamilyMembers(profiles || []);
-        setEvents(eventData || []);
       }
     } catch (err) {
-      console.error("Error cargando datos:", err);
+      console.error("Error en la brisa de datos:", err);
     } finally {
       setLoading(false);
     }
@@ -81,32 +80,36 @@ const Index = () => {
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) throw new Error("Sesión no encontrada");
 
       const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
       const randomPart = Array.from({ length: 6 }, () => chars.charAt(Math.floor(Math.random() * chars.length))).join('');
       const newId = `KID-${randomPart}`;
 
-      // UPSERT para evitar errores 500 si el perfil ya existe o no
+      // UPSERT Maestro: Crea o actualiza con elegancia
       const { error } = await supabase
         .from('profiles')
         .upsert({ 
           id: user.id, 
           nest_id: newId,
+          display_name: user.user_metadata?.full_name || "Líder del Nido",
           updated_at: new Date().toISOString() 
-        });
+        }, { onConflict: 'id' });
       
       if (error) throw error;
 
       toast({ title: "Nido Creado", description: `Tu código: ${newId}` });
       
-      // Actualizamos estados locales inmediatamente
       setMyNestId(newId);
       setShowOnboarding(false);
       await fetchAllData(); 
-    } catch (err) {
-      console.error("Error creando nido:", err);
-      toast({ title: "Error", description: "No se pudo crear el nido. Revisa el RLS.", variant: "destructive" });
+    } catch (err: any) {
+      console.error("Error en el nido:", err);
+      toast({ 
+        title: "Error de Sincronización", 
+        description: "Asegúrate de haber ejecutado el SQL en Supabase.", 
+        variant: "destructive" 
+      });
     } finally {
       setLoading(false);
     }
@@ -119,15 +122,23 @@ const Index = () => {
     }
     setLoading(true);
     try {
-      const { data: partnerProfile } = await supabase.from('profiles').select('nest_id').eq('nest_id', inviteCode.toUpperCase()).maybeSingle();
+      const { data: partnerProfile } = await supabase
+        .from('profiles')
+        .select('nest_id')
+        .eq('nest_id', inviteCode.toUpperCase())
+        .limit(1)
+        .maybeSingle();
       
       if (!partnerProfile) {
-        toast({ title: "Error", description: "Nido no encontrado.", variant: "destructive" });
+        toast({ title: "Error", description: "Ese nido no existe todavía.", variant: "destructive" });
         return;
       }
 
       const { data: { user } } = await supabase.auth.getUser();
-      const { error } = await supabase.from('profiles').update({ nest_id: partnerProfile.nest_id }).eq('id', user?.id);
+      const { error } = await supabase
+        .from('profiles')
+        .update({ nest_id: partnerProfile.nest_id })
+        .eq('id', user?.id);
       
       if (error) throw error;
 
@@ -136,7 +147,7 @@ const Index = () => {
       setShowOnboarding(false);
       await fetchAllData();
     } catch (err) {
-      toast({ title: "Error", description: "Error al vincular.", variant: "destructive" });
+      toast({ title: "Error", description: "No pudimos unir los nidos.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -146,8 +157,8 @@ const Index = () => {
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-[#FAFBFF]">
         <div className="animate-pulse flex flex-col items-center gap-4">
-          <div className="w-12 h-12 bg-blue-500 rounded-2xl rotate-12" />
-          <p className="text-[10px] font-black text-blue-400 uppercase tracking-[0.3em]">Sincronizando...</p>
+          <div className="w-12 h-12 bg-blue-500 rounded-2xl rotate-12 shadow-lg shadow-blue-200" />
+          <p className="text-[10px] font-black text-blue-400 uppercase tracking-[0.3em]">Fluyendo con el nido...</p>
         </div>
       </div>
     );
@@ -157,14 +168,17 @@ const Index = () => {
     return (
       <div className="min-h-screen w-full flex flex-col items-center justify-center p-6 bg-[#FAFBFF] font-nunito relative overflow-hidden">
         <div className="relative z-10 text-center space-y-10">
-          <div className="w-24 h-24 bg-blue-500 rounded-[2.5rem] flex items-center justify-center mx-auto shadow-2xl rotate-12">
+          <div className="w-24 h-24 bg-blue-500 rounded-[2.5rem] flex items-center justify-center mx-auto shadow-2xl rotate-12 transition-transform hover:rotate-0 duration-500">
             <span className="text-4xl font-black text-white -rotate-12">K</span>
           </div>
           <div className="space-y-2">
             <h1 className="text-6xl font-black text-gray-800 tracking-tighter">KidUs</h1>
             <p className="text-gray-400 font-bold uppercase tracking-[0.4em] text-[10px]">Harmony & Focus</p>
           </div>
-          <Button onClick={() => supabase.auth.signInWithOAuth({ provider: 'google' })} className="w-full max-w-xs h-16 rounded-[2rem] bg-white border-2 border-gray-100 text-gray-700 font-black flex gap-4 shadow-xl">
+          <Button 
+            onClick={() => supabase.auth.signInWithOAuth({ provider: 'google' })} 
+            className="w-full max-w-xs h-16 rounded-[2rem] bg-white border-2 border-gray-100 text-gray-700 font-black flex gap-4 shadow-xl active:scale-95 transition-all"
+          >
             <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="Google" />
             ENTRAR CON GOOGLE
           </Button>
@@ -176,27 +190,32 @@ const Index = () => {
   if (showOnboarding) {
     return (
       <div className="min-h-screen w-full flex flex-col items-center justify-center p-6 bg-white font-nunito relative overflow-hidden">
-        <div className="relative z-10 w-full max-w-md space-y-8 animate-in fade-in slide-in-from-bottom-10">
+        <div className="relative z-10 w-full max-w-md space-y-8 animate-in fade-in zoom-in-95 duration-700">
           <div className="text-center space-y-4">
             <div className="w-20 h-20 bg-orange-500 rounded-3xl flex items-center justify-center mx-auto shadow-xl rotate-3">
                <HomeIcon className="text-white" size={40} />
             </div>
-            <h2 className="text-4xl font-black text-gray-800 tracking-tight">Tu Nido</h2>
-            <p className="text-gray-500 font-medium text-sm px-8">¿Cómo quieres empezar tu organización?</p>
+            <h2 className="text-4xl font-black text-gray-800 tracking-tight">Tu Espacio</h2>
+            <p className="text-gray-500 font-medium text-sm px-8">La calma empieza con una buena organización.</p>
           </div>
           <div className="grid gap-4">
-            <button onClick={handleCreateNewNest} className="p-6 bg-blue-50 hover:bg-blue-100 rounded-[2.5rem] border-2 border-blue-100 text-left transition-all active:scale-95">
-              <h4 className="font-black text-blue-600 text-lg">Crear mi propio Nido</h4>
-              <p className="text-[10px] text-blue-400 font-bold uppercase mt-1 tracking-widest">Inicia un espacio nuevo</p>
+            <button onClick={handleCreateNewNest} className="p-6 bg-blue-50/50 hover:bg-blue-100 rounded-[2.5rem] border-2 border-blue-100/50 text-left transition-all active:scale-95 group">
+              <h4 className="font-black text-blue-600 text-lg group-hover:translate-x-1 transition-transform">Crear mi propio Nido</h4>
+              <p className="text-[10px] text-blue-400 font-bold uppercase mt-1 tracking-widest">Para nuevas familias</p>
             </button>
-            <div className="p-6 bg-indigo-50 rounded-[2.5rem] border-2 border-indigo-100 space-y-4">
+            <div className="p-6 bg-indigo-50/50 rounded-[2.5rem] border-2 border-indigo-100/50 space-y-4">
               <div>
-                <h4 className="font-black text-indigo-600 text-lg">Unirme a mi pareja</h4>
+                <h4 className="font-black text-indigo-600 text-lg">Unirme a mi equipo</h4>
                 <p className="text-[10px] text-indigo-400 font-bold uppercase mt-1 tracking-widest">Introduce el código KID-</p>
               </div>
               <div className="flex gap-2">
-                <input value={inviteCode} onChange={(e) => setInviteCode(e.target.value.toUpperCase())} placeholder="KID-XXXXXX" className="flex-1 h-12 rounded-xl border-none px-4 font-black tracking-widest text-sm shadow-inner" />
-                <Button onClick={handleLinkNest} className="h-12 px-4 rounded-xl bg-indigo-600 text-white font-black">UNIRME</Button>
+                <input 
+                  value={inviteCode} 
+                  onChange={(e) => setInviteCode(e.target.value.toUpperCase())} 
+                  placeholder="KID-XXXXXX" 
+                  className="flex-1 h-12 rounded-xl border-none px-4 font-black tracking-widest text-sm shadow-inner bg-white/80 focus:ring-2 focus:ring-indigo-200 transition-all outline-none" 
+                />
+                <Button onClick={handleLinkNest} className="h-12 px-6 rounded-xl bg-indigo-600 text-white font-black hover:bg-indigo-700 transition-colors">UNIRME</Button>
               </div>
             </div>
           </div>
@@ -210,22 +229,24 @@ const Index = () => {
       <Header />
       <main className="container mx-auto px-6 pt-4 max-w-md relative z-10 pb-32">
         {activeTab === "home" && (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <div className="px-2">
               <h1 className="text-4xl font-black text-gray-800 leading-tight">Tu Nido está <br/> <span className="text-blue-500">en calma.</span></h1>
             </div>
-            <div className="relative glass-card p-8 rounded-[3rem] bg-white border border-white/50 shadow-sm">
-                <div className="px-4 py-1.5 bg-orange-100 rounded-full w-fit mb-4"><span className="text-[10px] font-black text-orange-600 uppercase tracking-widest">Agenda</span></div>
-                <h3 className="text-2xl font-black text-gray-800 mb-2">Todo bajo control</h3>
-                <p className="text-gray-500 font-medium">No hay eventos próximos para hoy.</p>
+            <div className="relative glass-card p-8 rounded-[3rem] bg-white border border-white/50 shadow-sm transition-all hover:shadow-md">
+                <div className="px-4 py-1.5 bg-orange-100 rounded-full w-fit mb-4">
+                  <span className="text-[10px] font-black text-orange-600 uppercase tracking-widest">Próxima Meta</span>
+                </div>
+                <h3 className="text-2xl font-black text-gray-800 mb-2">Flujo constante</h3>
+                <p className="text-gray-500 font-medium">Sincroniza tus primeras actividades hoy.</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <button onClick={() => setActiveTab("agenda")} className="glass-card p-6 rounded-[2.5rem] flex flex-col items-center gap-3 bg-blue-50/50 active:scale-95 transition-all border-none">
-                <div className="w-12 h-12 rounded-2xl bg-blue-500 flex items-center justify-center text-white"><Calendar size={20} /></div>
+                <div className="w-12 h-12 rounded-2xl bg-blue-500 flex items-center justify-center text-white shadow-lg shadow-blue-100"><Calendar size={20} /></div>
                 <span className="text-[11px] font-black text-blue-600 uppercase tracking-widest">Agenda</span>
               </button>
               <button onClick={() => setActiveTab("family")} className="glass-card p-6 rounded-[2.5rem] flex flex-col items-center gap-3 bg-orange-50/50 active:scale-95 transition-all border-none">
-                <div className="w-12 h-12 rounded-2xl bg-orange-500 flex items-center justify-center text-white"><Users size={20} /></div>
+                <div className="w-12 h-12 rounded-2xl bg-orange-500 flex items-center justify-center text-white shadow-lg shadow-orange-100"><Users size={20} /></div>
                 <span className="text-[11px] font-black text-orange-600 uppercase tracking-widest">Equipo</span>
               </button>
             </div>
@@ -233,12 +254,13 @@ const Index = () => {
         )}
 
         {activeTab === "agenda" && <AgendaView />}
+        
         {activeTab === "family" && (
-          <div className="space-y-6">
+          <div className="space-y-6 animate-in slide-in-from-right-4 duration-500">
             <div className="flex justify-between items-center px-2">
               <h2 className="text-3xl font-black text-gray-800">Mi Equipo</h2>
               <AddMemberDialog onMemberAdded={fetchAllData}>
-                <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-100 rounded-2xl shadow-sm">
+                <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-all">
                   <Plus size={18} className="text-blue-500" />
                   <span className="text-[10px] font-black text-blue-600 uppercase">Nuevo</span>
                 </button>
@@ -246,8 +268,10 @@ const Index = () => {
             </div>
             <div className="grid grid-cols-2 gap-4">
               {familyMembers.map((member) => (
-                <div key={member.id} className="glass-card p-6 flex flex-col items-center bg-white shadow-sm border-none">
-                  <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mb-3 text-2xl font-black text-blue-500">{member.display_name?.charAt(0).toUpperCase()}</div>
+                <div key={member.id} className="glass-card p-6 flex flex-col items-center bg-white shadow-sm border-none transition-all hover:translate-y-[-2px]">
+                  <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mb-3 text-2xl font-black text-blue-500 shadow-inner">
+                    {member.display_name?.charAt(0).toUpperCase()}
+                  </div>
                   <span className="font-black text-gray-700">{member.display_name}</span>
                 </div>
               ))}
@@ -256,38 +280,67 @@ const Index = () => {
         )}
 
         {activeTab === "settings" && (
-          <div className="space-y-6">
+          <div className="space-y-6 animate-in slide-in-from-right-4 duration-500">
             <h2 className="text-3xl font-black px-2 text-gray-800">Ajustes</h2>
             <div className="glass-card p-8 space-y-6 bg-indigo-50/30 border-none rounded-[3rem]">
-              <div className="p-4 bg-white rounded-2xl border-2 border-dashed border-indigo-200 text-center">
-                <p className="text-[9px] font-black text-indigo-400 uppercase mb-2">Tu código de nido</p>
-                <p className="text-2xl font-black tracking-[0.3em] text-indigo-600">{myNestId}</p>
+              <div className="p-6 bg-white rounded-2xl border-2 border-dashed border-indigo-200 text-center shadow-sm">
+                <p className="text-[9px] font-black text-indigo-400 uppercase mb-2 tracking-[0.2em]">Identificador del Nido</p>
+                <p className="text-2xl font-black tracking-[0.3em] text-indigo-600">{myNestId || "---"}</p>
               </div>
-              <Button onClick={() => supabase.auth.signOut()} variant="destructive" className="w-full h-14 rounded-2xl font-black">Cerrar Sesión</Button>
+              <Button 
+                onClick={() => supabase.auth.signOut()} 
+                variant="destructive" 
+                className="w-full h-14 rounded-2xl font-black shadow-lg shadow-red-50 hover:scale-[1.02] transition-transform"
+              >
+                CERRAR SESIÓN
+              </Button>
             </div>
           </div>
         )}
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 h-24 bg-white/80 backdrop-blur-2xl border-t border-white/30 flex justify-around items-center px-8 z-40 rounded-t-[3rem]">
-        <button onClick={() => setActiveTab("home")} className={activeTab === "home" ? "text-blue-500" : "text-gray-300"}><HomeIcon size={24} /></button>
-        <button onClick={() => setActiveTab("agenda")} className={activeTab === "agenda" ? "text-blue-500" : "text-gray-300"}><Calendar size={24} /></button>
-        <button onClick={() => setActiveTab("family")} className={activeTab === "family" ? "text-blue-500" : "text-gray-300"}><Users size={24} /></button>
-        <button onClick={() => setActiveTab("settings")} className={activeTab === "settings" ? "text-blue-500" : "text-gray-300"}><Settings size={24} /></button>
+      <nav className="fixed bottom-0 left-0 right-0 h-24 bg-white/80 backdrop-blur-2xl border-t border-white/20 flex justify-around items-center px-8 z-40 rounded-t-[3rem] shadow-[0_-10px_40px_rgba(0,0,0,0,02)]">
+        {[
+          { id: "home", icon: HomeIcon },
+          { id: "agenda", icon: Calendar },
+          { id: "family", icon: Users },
+          { id: "settings", icon: Settings }
+        ].map((tab) => (
+          <button 
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)} 
+            className={`p-4 transition-all duration-300 ${activeTab === tab.id ? "text-blue-500 scale-125" : "text-gray-300 hover:text-gray-400"}`}
+          >
+            <tab.icon size={24} strokeWidth={activeTab === tab.id ? 3 : 2} />
+          </button>
+        ))}
       </nav>
 
       <div className="fixed bottom-32 right-8 z-50">
-          <button onClick={() => setIsFabOpen(!isFabOpen)} className={`w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center text-white shadow-xl transition-all ${isFabOpen ? 'rotate-45 bg-gray-800' : ''}`}><Plus size={32} /></button>
+          <button 
+            onClick={() => setIsFabOpen(!isFabOpen)} 
+            className={`w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center text-white shadow-2xl transition-all duration-500 hover:scale-110 active:scale-95 ${isFabOpen ? 'rotate-45 bg-gray-800' : ''}`}
+          >
+            <Plus size={32} />
+          </button>
           {isFabOpen && (
-            <div className="absolute bottom-20 right-0 animate-in slide-in-from-bottom-4">
-              <button onClick={() => { setIsDrawerOpen(true); setIsFabOpen(false); }} className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg"><Edit size={20} className="text-blue-500" /></button>
+            <div className="absolute bottom-20 right-0 flex flex-col gap-4 animate-in slide-in-from-bottom-6 duration-300">
+              <button 
+                onClick={() => { setIsDrawerOpen(true); setIsFabOpen(false); }} 
+                className="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-xl hover:bg-gray-50 transition-colors group"
+              >
+                <Edit size={22} className="text-blue-500 group-hover:scale-110 transition-transform" />
+              </button>
             </div>
           )}
       </div>
 
-      {isDrawerOpen && (
-        <ManualEventDrawer isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} members={familyMembers} onEventAdded={fetchAllData} />
-      )}
+      <ManualEventDrawer 
+        isOpen={isDrawerOpen} 
+        onClose={() => setIsDrawerOpen(false)} 
+        members={familyMembers} 
+        onEventAdded={fetchAllData} 
+      />
     </div>
   );
 };
