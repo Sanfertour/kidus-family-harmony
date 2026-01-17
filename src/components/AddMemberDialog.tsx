@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Sparkles, ShieldCheck, HeartHandshake, UserCircle2 } from "lucide-react";
 
-// Colores Vivos pero Elegantes (Corregidos para que tengan la propiedad hex y bg)
+// Colores con su HEX para la base de datos y clases Tailwind para la UI
 const TEAM_COLORS = [
   { name: 'Vital', hex: '#00B4D8', bg: 'bg-[#00B4D8]', shadow: 'shadow-blue-200' },
   { name: 'Natura', hex: '#52B788', bg: 'bg-[#52B788]', shadow: 'shadow-green-200' },
@@ -44,12 +44,11 @@ export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.R
         .eq('id', user.id)
         .single();
 
-      // AQUÍ ES DONDE SE GUARDA TODO CORRECTAMENTE
       const { error } = await supabase.from('profiles').insert({
         display_name: name,
         nest_id: myProfile?.nest_id,
         role: role,
-        avatar_url: selectedColor.hex, // Guardamos el HEX elegido
+        avatar_url: selectedColor.hex, // Aquí guardamos el color para que no salga gris
         updated_at: new Date().toISOString()
       });
 
@@ -69,7 +68,8 @@ export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.R
   return (
     <Dialog>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-md border-none bg-white/90 backdrop-blur-2xl shadow-[0_40px_80px_-15px_rgba(0,0,0,0.15)] rounded-[4rem] p-10 overflow-hidden">
+      {/* Ajustado: rounded-[4rem] y overflow-hidden para eliminar esquinas cuadradas */}
+      <DialogContent className="sm:max-w-md border-none bg-white/90 backdrop-blur-2xl shadow-[0_40px_80px_-15px_rgba(0,0,0,0.15)] rounded-[4rem] p-10 overflow-hidden outline-none">
         
         {/* Decoración superior sutil */}
         <div className={`absolute top-0 left-0 w-full h-3 ${selectedColor.bg} opacity-50`} />
@@ -119,7 +119,7 @@ export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.R
             </button>
           </div>
 
-          {/* Selector de Color Vibrante */}
+          {/* Selector de Color */}
           <div className="flex justify-center gap-4">
             {TEAM_COLORS.map((color) => (
               <button
