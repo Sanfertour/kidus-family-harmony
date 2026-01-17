@@ -1,106 +1,157 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Clock, User, ShieldCheck, Calendar as CalendarIcon } from 'lucide-react';
+import { Clock, User, Bell, Lock, AlertTriangle, ShieldCheck, Share2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 export const AgendaView = () => {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [conflicts, setConflicts] = useState<string[]>([]); // IDs de eventos con colisión
 
   const fetchEvents = async () => {
-    const { data, error } = await supabase
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // 1. Traer perfil para saber el nest_id
+    const { data: profile } = await supabase.from('profiles').select('nest_id').eq('id', user.id).single();
+
+    // 2. Traer eventos (mapeo real de tu DB)
+    const { data: eventsData, error } = await supabase
       .from('events')
       .select(`
         *,
-        profiles!events_member_id_fkey (display_name, avatar_url),
-        responsible:profiles!events_responsible_id_fkey (display_name)
+        profiles!events_assigned_to_fkey (display_name, avatar_url, id)
       `)
-      .order('start_time', { ascending: true });
+      .eq('nest_id', profile?.nest_id)
+      .order('event_date', { ascending: true });
 
-    if (!error) setEvents(data || []);
+    if (!error && eventsData) {
+      detectCollisions(eventsData);
+      setEvents(eventsData);
+    }
     setLoading(false);
   };
 
-  useEffect(() => {
-    fetchEvents();
-  }, []);
+  // --- SILENT COLLISION DETECTION ---
+  // Audita si un mismo miembro tiene dos cosas a la vez
+  const detectCollisions = (allEvents: any[]) => {
+    const conflictIds: string[] = [];
+    allEvents.forEach((e1, idx) => {
+      allEvents.forEach((e2, idx2) => {
+        if (idx !== idx2 && e1.assigned_to === e2.assigned_to) {
+          const d1 = new Date(e1.event_date).getTime();
+          const d2 = new Date(e2.event_date).getTime();
+          // Margen de 1 hora para considerar colisión
+          if (Math.abs(d1 - d2) < 3600000) {
+            conflictIds.push(e1.id);
+          }
+        }
+      });
+    });
+    setConflicts(conflictIds);
+  };
 
-  if (loading) return (
-    <div className="flex flex-col items-center justify-center py-20 space-y-4">
-      <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Sincronizando nido...</p>
-    </div>
-  );
+  useEffect(() => { fetchEvents(); }, []);
 
   return (
-    <div className="space-y-6 pb-20">
-      <div className="px-2 mb-8">
-        <h2 className="text-3xl font-black text-gray-800 tracking-tight">Agenda Compartida</h2>
-        <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] mt-2">Logística y coordinación</p>
+    <div className="space-y-8 pb-32 animate-in fade-in duration-700">
+      {/* HEADER DE AGENDA */}
+      <div className="flex justify-between items-start px-2">
+        <div className="space-y-1">
+          <h2 className="text-4xl font-black text-slate-800 tracking-tight">Agenda</h2>
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Logística Zen</p>
+        </div>
+        {/* CAMPANA DE NOTIFICACIONES (ALERTA NARANJA) */}
+        <div className="relative">
+          <button className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${conflicts.length > 0 ? 'bg-orange-50 text-orange-500 animate-pulse' : 'bg-white text-slate-300'}`}>
+            <Bell size={24} strokeWidth={conflicts.length > 0 ? 3 : 2} />
+            {conflicts.length > 0 && (
+              <span className="absolute top-2 right-2 w-4 h-4 bg-orange-600 rounded-full border-2 border-white" />
+            )}
+          </button>
+        </div>
       </div>
 
-      {events.length === 0 ? (
-        <div className="glass-card p-10 text-center space-y-4">
-          <div className="w-16 h-16 bg-gray-50 rounded-3xl flex items-center justify-center mx-auto text-gray-300">
-            <CalendarIcon size={32} />
-          </div>
-          <p className="text-gray-500 font-bold">No hay eventos próximos.<br/>¡Disfruta de la calma!</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {events.map((event) => (
+      <div className="space-y-6">
+        {events.map((event) => {
+          const isConflict = conflicts.includes(event.id);
+          const isPrivate = event.is_private; // Asumimos esta columna en tu DB
+          const isMyEvent = true; // Aquí iría lógica de si el user actual es el dueño
+
+          return (
             <div key={event.id} className="relative group">
-              {/* Indicador lateral del color del miembro (Sujeto) */}
-              <div 
-                className="absolute left-0 top-4 bottom-4 w-1.5 rounded-r-full shadow-sm z-10" 
-                style={{ backgroundColor: event.profiles?.avatar_url || '#3B82F6' }}
-              />
-              
-              <div className="glass-card p-6 pl-8 bg-white/70 backdrop-blur-md border border-white/50 hover:bg-white/90 transition-all duration-300">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h4 className="text-lg font-black text-gray-800 leading-tight">{event.title}</h4>
-                    <div className="flex items-center gap-2 mt-1 text-gray-500">
-                      <Clock size={14} className="text-blue-500" />
-                      <span className="text-xs font-bold uppercase tracking-wider">
-                        {format(new Date(event.start_time), "EEEE d 'de' MMMM", { locale: es })}
-                      </span>
+              <div className={`
+                p-8 rounded-[3.5rem] backdrop-blur-md border transition-all duration-500
+                ${isPrivate ? 'bg-slate-900/5 border-slate-200' : 'bg-white/70 border-white/50 shadow-xl shadow-slate-200/40'}
+                ${isConflict ? 'ring-2 ring-orange-400 ring-offset-4 ring-offset-[#F8FAFC]' : ''}
+              `}>
+                
+                <div className="flex justify-between items-start mb-6">
+                  <div className="space-y-2">
+                    {/* INDICADORES DE ESTADO */}
+                    <div className="flex gap-2">
+                      {isPrivate && (
+                        <div className="px-3 py-1 bg-slate-800 rounded-full flex items-center gap-2">
+                          <Lock size={10} className="text-white" />
+                          <span className="text-[8px] font-black text-white uppercase tracking-widest">Privado</span>
+                        </div>
+                      )}
+                      {isConflict && (
+                        <div className="px-3 py-1 bg-orange-600 rounded-full flex items-center gap-2">
+                          <AlertTriangle size={10} className="text-white" />
+                          <span className="text-[8px] font-black text-white uppercase tracking-widest">Alerta Naranja</span>
+                        </div>
+                      )}
                     </div>
+
+                    {/* TÍTULO CON PRIVACIDAD INTELIGENTE */}
+                    <h4 className={`text-2xl font-black leading-tight ${isPrivate ? 'text-slate-400 blur-[2px] select-none' : 'text-slate-800'}`}>
+                      {isPrivate ? 'Ocupado (Evento Privado)' : event.description}
+                    </h4>
                   </div>
-                  <div className="text-right">
-                    <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-3 py-1 rounded-full uppercase">
-                      {format(new Date(event.start_time), "HH:mm")}
-                    </span>
+
+                  <div className="bg-white px-4 py-3 rounded-[1.5rem] shadow-sm text-center min-w-[70px]">
+                    <span className="block text-sm font-black text-[#0EA5E9]">{format(new Date(event.event_date), "HH:mm")}</span>
+                    <span className="block text-[8px] font-black text-slate-300 uppercase">{format(new Date(event.event_date), "EEE", { locale: es })}</span>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 pt-4 border-t border-gray-100/50">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center">
-                      <User size={12} className="text-gray-400" />
+                {/* FILA DE GESTIÓN Y RELEVO */}
+                <div className="flex items-center justify-between pt-6 border-t border-slate-100/50">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-[#0EA5E9] flex items-center justify-center text-white font-black text-xs shadow-lg">
+                      {event.profiles?.display_name?.charAt(0)}
                     </div>
-                    <div className="overflow-hidden">
-                      <p className="text-[8px] font-black text-gray-400 uppercase">Para</p>
-                      <p className="text-[11px] font-bold text-gray-700 truncate">{event.profiles?.display_name}</p>
+                    <div>
+                      <p className="text-[8px] font-black text-slate-300 uppercase">Para</p>
+                      <p className="text-xs font-black text-slate-700">{event.profiles?.display_name}</p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-lg bg-orange-50 flex items-center justify-center">
-                      <ShieldCheck size={12} className="text-orange-400" />
-                    </div>
-                    <div className="overflow-hidden">
-                      <p className="text-[8px] font-black text-gray-400 uppercase">Responsable</p>
-                      <p className="text-[11px] font-bold text-gray-700 truncate">{event.responsible?.display_name || 'Sin asignar'}</p>
-                    </div>
-                  </div>
+                  {/* ACCIÓN DE DELEGAR (EL SALVADOR) */}
+                  <button className="flex items-center gap-2 px-5 py-3 bg-white rounded-2xl border border-slate-100 shadow-sm text-slate-500 hover:text-[#0EA5E9] hover:border-[#0EA5E9] transition-all active:scale-95">
+                    <Share2 size={16} />
+                    <span className="text-[10px] font-black uppercase tracking-wider">Delegar</span>
+                  </button>
                 </div>
+
+                {/* MENSAJE DE COLISIÓN */}
+                {isConflict && (
+                  <div className="mt-4 p-4 bg-orange-50 rounded-2xl border border-orange-100 flex items-center gap-3">
+                    <div className="p-2 bg-orange-600 rounded-xl text-white">
+                      <AlertTriangle size={14} />
+                    </div>
+                    <p className="text-[10px] font-black text-orange-800 uppercase leading-relaxed tracking-tight">
+                      Conflicto: {event.profiles?.display_name} ya tiene un compromiso en esta franja.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
-          ))}
-        </div>
-      )}
+          );
+        })}
+      </div>
     </div>
   );
 };
