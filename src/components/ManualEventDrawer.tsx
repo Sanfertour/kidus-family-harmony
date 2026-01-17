@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { X, Calendar, Clock, User, ShieldCheck, AlertCircle } from 'lucide-react';
@@ -13,24 +13,47 @@ export const ManualEventDrawer = ({ isOpen, onClose, onEventAdded, members }: {
   members: any[];
 }) => {
   const [title, setTitle] = useState('');
-  const [subjectId, setSubjectId] = useState(''); // El niño / El interesado
-  const [responsibleId, setResponsibleId] = useState(''); // El padre que ejecuta
+  const [subjectId, setSubjectId] = useState('');
+  const [responsibleId, setResponsibleId] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [loading, setLoading] = useState(false);
+  const [currentNestId, setCurrentNestId] = useState<string | null>(null);
   const { toast } = useToast();
+
+  // Obtenemos el nest_id del usuario actual al abrir el drawer
+  useEffect(() => {
+    const getNestId = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('nest_id')
+          .eq('id', user.id)
+          .single();
+        if (profile) setCurrentNestId(profile.nest_id);
+      }
+    };
+    if (isOpen) getNestId();
+  }, [isOpen]);
 
   const handleSave = async () => {
     if (!title || !subjectId || !responsibleId || !date || !time) {
       toast({ title: "Faltan piezas", description: "En el nido todos debemos saber quién hace qué.", variant: "destructive" });
       return;
     }
+
+    if (!currentNestId) {
+      toast({ title: "Error de Nido", description: "No se encontró tu ID de nido. Intenta reingresar.", variant: "destructive" });
+      return;
+    }
+
     setLoading(true);
 
     const fullStartTime = `${date}T${time}:00`;
     const endTime = new Date(new Date(fullStartTime).getTime() + 60 * 60 * 1000).toISOString(); 
 
-    // Verificamos conflictos para el responsable (el que tiene que ir)
+    // Verificamos conflictos
     const conflicts = await checkConflicts(responsibleId, fullStartTime, endTime);
 
     if (conflicts.length > 0) {
@@ -43,21 +66,28 @@ export const ManualEventDrawer = ({ isOpen, onClose, onEventAdded, members }: {
       return;
     }
     
+    // INSERT CON NEST_ID (Clave para que el RLS te deje guardar)
     const { error } = await supabase
       .from('events')
       .insert([{ 
         title, 
-        member_id: subjectId, // Sujeto del color
-        responsible_id: responsibleId, // El que delega/asume
+        member_id: subjectId, 
+        responsible_id: responsibleId, 
         start_time: fullStartTime,
         end_time: endTime,
-        category: 'logistics' 
+        category: 'logistics',
+        nest_id: currentNestId // <--- EL ADAPTADOR QUE FALTABA
       }]);
 
     if (error) {
+      console.error("Error insertando:", error);
       toast({ title: "Error", description: "No se pudo sincronizar el nido.", variant: "destructive" });
     } else {
       toast({ title: "Paz Mental Activada", description: "Evento coordinado y notificado." });
+      // Limpiar campos para la próxima
+      setTitle('');
+      setSubjectId('');
+      setResponsibleId('');
       onClose();
       onEventAdded();
     }
@@ -73,17 +103,20 @@ export const ManualEventDrawer = ({ isOpen, onClose, onEventAdded, members }: {
       <div className="relative w-full max-w-md bg-white/95 backdrop-blur-2xl rounded-t-[3rem] p-8 shadow-2xl animate-in slide-in-from-bottom duration-500 max-h-[90vh] overflow-y-auto border-t border-white/50">
         <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6" />
         
-        <h2 className="text-2xl font-black font-nunito mb-6 text-gray-800">Coordinar Actividad</h2>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-black font-nunito text-gray-800">Coordinar Actividad</h2>
+          <div className="bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100">
+            <span className="text-[9px] font-black text-indigo-500 uppercase tracking-tighter">Nido: {currentNestId?.split('-')[1]}</span>
+          </div>
+        </div>
         
         <div className="space-y-5">
-          {/* Título */}
           <div className="space-y-1">
             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">¿Qué ocurre?</label>
             <Input placeholder="Ej: Recoger del fútbol" value={title} onChange={(e) => setTitle(e.target.value)} className="rounded-2xl h-12 bg-gray-50/50 border-none font-bold" />
           </div>
           
           <div className="grid grid-cols-2 gap-4">
-            {/* Sujeto (Para quién es) */}
             <div className="space-y-1">
               <label className="text-[10px] font-black text-blue-400 uppercase tracking-widest ml-1 flex items-center gap-1">
                 <User size={10} /> ¿Para quién?
@@ -94,7 +127,6 @@ export const ManualEventDrawer = ({ isOpen, onClose, onEventAdded, members }: {
               </select>
             </div>
 
-            {/* Responsable (Quién lo hace) */}
             <div className="space-y-1">
               <label className="text-[10px] font-black text-orange-400 uppercase tracking-widest ml-1 flex items-center gap-1">
                 <ShieldCheck size={10} /> ¿Quién va?
@@ -106,7 +138,6 @@ export const ManualEventDrawer = ({ isOpen, onClose, onEventAdded, members }: {
             </div>
           </div>
 
-          {/* Fecha y Hora */}
           <div className="flex gap-4">
             <div className="flex-1 space-y-1">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Fecha</label>
