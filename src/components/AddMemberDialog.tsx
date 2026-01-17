@@ -11,14 +11,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Sparkles, ShieldCheck, HeartHandshake, Fingerprint } from "lucide-react";
+import { Sparkles, ShieldCheck, HeartHandshake, UserCircle2 } from "lucide-react";
 
+// Colores Vivos pero Elegantes (Basados en tu estética MTB-Zen)
 const TEAM_COLORS = [
-  { name: 'Zen Blue', bg: 'bg-[#8ECAE6]', text: 'text-[#219EBC]' },
-  { name: 'Soft Mint', bg: 'bg-[#B7E4C7]', text: 'text-[#2D6A4F]' },
-  { name: 'Warm Sand', bg: 'bg-[#FFB703]', text: 'text-[#FB8500]' },
-  { name: 'Petal', bg: 'bg-[#FFC8DD]', text: 'text-[#FF006E]' },
-  { name: 'Cloud', bg: 'bg-[#E2E2E2]', text: 'text-[#4A4A4A]' },
+  { name: 'Vital', bg: 'bg-[#00B4D8]', shadow: 'shadow-blue-200' },
+  { name: 'Natura', bg: 'bg-[#52B788]', shadow: 'shadow-emerald-200' },
+  { name: 'Energía', bg: 'bg-[#F9C74F]', shadow: 'shadow-yellow-200' },
+  { name: 'Calma', bg: 'bg-[#9B5DE5]', shadow: 'shadow-purple-200' },
+  { name: 'Fuego', bg: 'bg-[#F94144]', shadow: 'shadow-red-200' },
 ];
 
 export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.ReactNode, onMemberAdded: () => void }) => {
@@ -41,18 +42,20 @@ export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.R
         display_name: name,
         nest_id: myProfile?.nest_id,
         role: role,
-        avatar_url: selectedColor.bg,
+        // Guardamos el color en una columna de metadatos o usamos avatar_url 
+        // pero solo si el componente de imagen sabe manejarlo. 
+        // Por ahora, lo guardamos limpio.
         updated_at: new Date().toISOString()
       });
 
       if (error) throw error;
 
-      toast({ title: "Armonía actualizada", description: `${name} se ha unido al nido.` });
+      toast({ title: "Miembro integrado", description: "El equipo está creciendo." });
       setName("");
       onMemberAdded();
     } catch (error: any) {
       console.error("Error:", error);
-      toast({ title: "Ajuste necesario", description: "No pudimos integrar al miembro. Revisa la conexión.", variant: "destructive" });
+      toast({ title: "Aviso", description: "No se pudo guardar. Revisa el SQL.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -61,62 +64,66 @@ export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.R
   return (
     <Dialog>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-md border-none bg-white/70 backdrop-blur-3xl shadow-[0_32px_64px_-12px_rgba(0,0,0,0.1)] rounded-[3.5rem] p-8 transition-all duration-700">
-        <DialogHeader className="space-y-4">
+      {/* Esquinas rounded-[4rem] para ese efecto orgánico zen */}
+      <DialogContent className="sm:max-w-md border-none bg-white/90 backdrop-blur-2xl shadow-[0_40px_80px_-15px_rgba(0,0,0,0.15)] rounded-[4rem] p-10 overflow-hidden">
+        
+        {/* Decoración superior sutil */}
+        <div className={`absolute top-0 left-0 w-full h-3 ${selectedColor.bg} opacity-50`} />
+
+        <DialogHeader className="space-y-6">
           <div className="flex justify-center">
-            <div className={`w-20 h-20 rounded-[2.2rem] ${selectedColor.bg} shadow-2xl flex items-center justify-center text-white text-3xl font-black transition-all duration-500 hover:rotate-6`}>
-              {name ? name.charAt(0).toUpperCase() : <Fingerprint size={32} />}
+            <div className={`w-24 h-24 rounded-[3rem] ${selectedColor.bg} ${selectedColor.shadow} shadow-2xl flex items-center justify-center text-white text-4xl font-black transition-all duration-700 hover:scale-110 hover:rotate-3`}>
+              {name ? name.charAt(0).toUpperCase() : <UserCircle2 size={40} strokeWidth={1.5} />}
             </div>
           </div>
           <div className="text-center">
-            <DialogTitle className="text-2xl font-black text-slate-800 tracking-tight">Nuevo Vínculo</DialogTitle>
-            <DialogDescription className="text-slate-400 text-xs font-medium uppercase tracking-[0.3em] mt-1">
-              Flujo y Autonomía
+            <DialogTitle className="text-3xl font-black text-slate-800 tracking-tight">Nuevo Miembro</DialogTitle>
+            <DialogDescription className="text-slate-400 text-[10px] font-black uppercase tracking-[0.4em] mt-2">
+              Sincronía Familiar
             </DialogDescription>
           </div>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-8 mt-6">
-          <div className="space-y-1">
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Nombre o Alias..."
-              className="h-14 rounded-3xl border-none bg-white/50 backdrop-blur-md shadow-inner px-6 font-bold text-slate-700 placeholder:text-slate-300 focus:ring-2 focus:ring-slate-100 transition-all text-center"
-            />
-          </div>
+        <form onSubmit={handleSubmit} className="space-y-10 mt-8">
+          <Input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Nombre del integrante"
+            className="h-16 rounded-[2rem] border-none bg-slate-100/50 px-8 font-bold text-slate-700 placeholder:text-slate-300 focus:ring-4 focus:ring-slate-100 transition-all text-center text-lg shadow-inner"
+          />
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-6">
             <button
               type="button"
               onClick={() => setRole('autonomous')}
-              className={`group flex flex-col items-center p-5 rounded-[2.5rem] transition-all duration-500 ${
-                role === 'autonomous' ? "bg-white shadow-xl scale-105" : "bg-transparent opacity-40 hover:opacity-60"
+              className={`group flex flex-col items-center p-6 rounded-[3rem] transition-all duration-500 ${
+                role === 'autonomous' ? "bg-white shadow-2xl scale-105" : "bg-transparent opacity-30 hover:opacity-50"
               }`}
             >
-              <ShieldCheck className={role === 'autonomous' ? "text-blue-400" : "text-slate-400"} size={24} />
-              <span className="text-[9px] font-black mt-2 uppercase tracking-tighter">Autónomo</span>
+              <ShieldCheck className={role === 'autonomous' ? "text-blue-500" : "text-slate-500"} size={28} />
+              <span className="text-[10px] font-black mt-3 uppercase tracking-widest">Autónomo</span>
             </button>
             <button
               type="button"
               onClick={() => setRole('dependent')}
-              className={`group flex flex-col items-center p-5 rounded-[2.5rem] transition-all duration-500 ${
-                role === 'dependent' ? "bg-white shadow-xl scale-105" : "bg-transparent opacity-40 hover:opacity-60"
+              className={`group flex flex-col items-center p-6 rounded-[3rem] transition-all duration-500 ${
+                role === 'dependent' ? "bg-white shadow-2xl scale-105" : "bg-transparent opacity-30 hover:opacity-50"
               }`}
             >
-              <HeartHandshake className={role === 'dependent' ? "text-orange-300" : "text-slate-400"} size={24} />
-              <span className="text-[9px] font-black mt-2 uppercase tracking-tighter">Dependiente</span>
+              <HeartHandshake className={role === 'dependent' ? "text-orange-400" : "text-slate-500"} size={28} />
+              <span className="text-[10px] font-black mt-3 uppercase tracking-widest">Dependiente</span>
             </button>
           </div>
 
-          <div className="flex justify-center gap-3">
+          {/* Selector de Color Vibrante */}
+          <div className="flex justify-center gap-4">
             {TEAM_COLORS.map((color) => (
               <button
                 key={color.name}
                 type="button"
                 onClick={() => setSelectedColor(color)}
-                className={`w-8 h-8 rounded-full ${color.bg} transition-all duration-300 ${
-                  selectedColor.name === color.name ? "scale-125 ring-[6px] ring-white shadow-lg" : "scale-100 opacity-30 hover:opacity-100"
+                className={`w-10 h-10 rounded-full ${color.bg} transition-all duration-500 ${
+                  selectedColor.name === color.name ? "scale-125 ring-[6px] ring-white shadow-xl" : "scale-90 opacity-40 hover:opacity-100"
                 }`}
               />
             ))}
@@ -125,9 +132,9 @@ export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.R
           <Button 
             type="submit" 
             disabled={loading} 
-            className={`w-full h-16 rounded-[2.2rem] ${selectedColor.bg} text-white font-black text-sm tracking-[0.2em] shadow-[0_20px_40px_-10px_rgba(0,0,0,0.2)] hover:scale-[1.02] transition-all active:scale-95`}
+            className={`w-full h-20 rounded-[2.5rem] ${selectedColor.bg} text-white font-black text-base tracking-[0.2em] shadow-xl hover:brightness-110 transition-all active:scale-95`}
           >
-            {loading ? <Sparkles className="animate-spin" /> : "INTEGRAR AL EQUIPO"}
+            {loading ? <Sparkles className="animate-spin" /> : "AÑADIR AL EQUIPO"}
           </Button>
         </form>
       </DialogContent>
