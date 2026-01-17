@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { X, Calendar, Clock, User, ShieldCheck, AlertCircle } from 'lucide-react';
+import { X, Calendar, Clock, User, ShieldCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { checkConflicts } from '@/lib/nest-logic';
 
 export const ManualEventDrawer = ({ 
   isOpen, 
@@ -26,8 +25,6 @@ export const ManualEventDrawer = ({
   const [currentNestId, setCurrentNestId] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Obtenemos el nest_id solo si es necesario, 
-  // aunque lo ideal será pasarlo por props en la siguiente iteración
   useEffect(() => {
     const getNestId = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -44,51 +41,49 @@ export const ManualEventDrawer = ({
   }, [isOpen]);
 
   const handleSave = async () => {
-    if (!title || !subjectId || !responsibleId || !date || !time) {
-      toast({ title: "Faltan piezas", description: "En el nido todos debemos saber quién hace qué.", variant: "destructive" });
+    // Validación de seguridad antes de la carrera
+    if (!title || !subjectId || !date || !time) {
+      toast({ 
+        title: "Faltan piezas", 
+        description: "Asegúrate de rellenar todos los campos para una coordinación perfecta.", 
+        variant: "destructive" 
+      });
       return;
     }
 
     if (!currentNestId) {
-      toast({ title: "Nido no identificado", description: "Espera un segundo a que sincronicemos tu código.", variant: "destructive" });
+      toast({ title: "Sincronizando...", description: "Estamos localizando tu Nido." });
       return;
     }
 
     setLoading(true);
 
-    const fullStartTime = `${date}T${time}:00`;
-    const endTime = new Date(new Date(fullStartTime).getTime() + 60 * 60 * 1000).toISOString(); 
+    // Formateamos la fecha al estilo ISO que espera Supabase
+    const fullEventDate = new Date(`${date}T${time}:00`).toISOString();
 
-    // Verificamos conflictos de "tráfico"
-    const conflicts = await checkConflicts(responsibleId, fullStartTime, endTime);
-
-    if (conflicts.length > 0) {
-      toast({ 
-        title: "¡Conflicto de Agenda!", 
-        description: `Esta persona ya tiene una tarea asignada a esa hora.`, 
-        variant: "destructive" 
-      });
-      setLoading(false);
-      return;
-    }
-    
+    // MAPEO EXACTO PARA ELIMINAR EL ERROR 400
+    // Usamos las columnas que confirmaste en tu Table Editor de Supabase
     const { error } = await supabase
       .from('events')
       .insert([{ 
-        title, 
-        member_id: subjectId, 
-        responsible_id: responsibleId, 
-        start_time: fullStartTime,
-        end_time: endTime,
-        category: 'logistics',
-        nest_id: currentNestId 
+        description: title,           // Tu tabla usa 'description' para el texto
+        event_date: fullEventDate,    // Tu tabla usa 'event_date'
+        assigned_to: subjectId,       // Tu tabla usa 'assigned_to'
+        nest_id: currentNestId,       // Relación obligatoria
+        status: 'pending',            // Columna detectada en tu tabla
+        is_work_conflict: false       // Columna detectada en tu tabla
       }]);
 
     if (error) {
-      toast({ title: "Error de conexión", description: "No pudimos guardar el evento en la nube.", variant: "destructive" });
+      console.error("❌ Fallo en Supabase:", error);
+      toast({ 
+        title: "Error de conexión", 
+        description: "No pudimos guardar el evento. Revisa la red.", 
+        variant: "destructive" 
+      });
     } else {
-      toast({ title: "Paz Mental Activada", description: "Evento coordinado con éxito." });
-      // Reset de campos
+      toast({ title: "¡Paz Mental!", description: "Evento guardado en el Nido." });
+      // Reset de estados
       setTitle('');
       setSubjectId('');
       setResponsibleId('');
@@ -103,81 +98,81 @@ export const ManualEventDrawer = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end justify-center">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+    <div className="fixed inset-0 z-[100] flex items-end justify-center font-nunito">
+      {/* Overlay con desenfoque Apple Style */}
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-md transition-opacity" onClick={onClose} />
       
-      <div className="relative w-full max-w-md bg-white rounded-t-[3rem] p-8 shadow-2xl animate-in slide-in-from-bottom duration-500 max-h-[90vh] overflow-y-auto">
-        <div className="w-12 h-1.5 bg-gray-100 rounded-full mx-auto mb-8" />
+      <div className="relative w-full max-w-md bg-white rounded-t-[3.5rem] p-8 shadow-2xl animate-in slide-in-from-bottom duration-500 ease-out max-h-[92vh] overflow-y-auto border-t border-white/20">
+        {/* Handle de arrastre visual */}
+        <div className="w-16 h-1.5 bg-slate-100 rounded-full mx-auto mb-10" />
         
-        <div className="flex justify-between items-center mb-8">
-          <h2 className="text-3xl font-black text-gray-800 tracking-tight">Nuevo Evento</h2>
-          <button onClick={onClose} className="p-2 bg-gray-50 rounded-full text-gray-400 hover:text-gray-600 transition-colors">
+        <div className="flex justify-between items-center mb-10">
+          <div className="flex flex-col">
+            <h2 className="text-3xl font-black text-slate-800 tracking-tight">Nuevo Evento</h2>
+            <span className="text-[10px] font-bold text-[#0EA5E9] uppercase tracking-[0.2em] mt-1">Sincronización Manual</span>
+          </div>
+          <button onClick={onClose} className="w-10 h-10 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 hover:text-slate-600 transition-all active:scale-90">
             <X size={20} />
           </button>
         </div>
         
-        <div className="space-y-6">
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Título de la actividad</label>
+        <div className="space-y-8">
+          {/* Título de la actividad */}
+          <div className="space-y-3">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">¿Qué vamos a hacer?</label>
             <Input 
-              placeholder="Ej: Dentista, Extraescolar..." 
+              placeholder="Ej: Logística Cumpleaños..." 
               value={title} 
               onChange={(e) => setTitle(e.target.value)} 
-              className="rounded-2xl h-14 bg-gray-50 border-none font-bold text-gray-700 focus-visible:ring-blue-500 transition-all" 
+              className="rounded-3xl h-16 bg-slate-50 border-none font-bold text-slate-700 focus-visible:ring-[#0EA5E9] shadow-inner-soft" 
             />
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] ml-1 flex items-center gap-1">
-                <User size={12} /> ¿Para quién?
-              </label>
-              <select 
-                className="w-full h-14 rounded-2xl bg-blue-50/50 border-none px-4 text-sm font-bold text-blue-700 outline-none focus:ring-2 focus:ring-blue-200 transition-all" 
-                value={subjectId} 
-                onChange={(e) => setSubjectId(e.target.value)}
-              >
-                <option value="">Seleccionar...</option>
-                {members.map(m => <option key={m.id} value={m.id}>{m.display_name}</option>)}
-              </select>
-            </div>
+          {/* Selector de Miembro */}
+          <div className="space-y-3">
+            <label className="text-[10px] font-black text-[#0EA5E9] uppercase tracking-[0.2em] ml-1 flex items-center gap-2">
+              <User size={14} strokeWidth={3} /> ¿Para quién es?
+            </label>
+            <select 
+              className="w-full h-16 rounded-3xl bg-sky-50/50 border-none px-6 text-sm font-bold text-[#0EA5E9] outline-none focus:ring-2 focus:ring-sky-200 transition-all appearance-none shadow-inner-soft" 
+              value={subjectId} 
+              onChange={(e) => setSubjectId(e.target.value)}
+            >
+              <option value="">Selecciona un miembro...</option>
+              {members.map(m => <option key={m.id} value={m.id}>{m.display_name}</option>)}
+            </select>
+          </div>
 
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-orange-500 uppercase tracking-[0.2em] ml-1 flex items-center gap-1">
-                <ShieldCheck size={12} /> ¿Responsable?
-              </label>
-              <select 
-                className="w-full h-14 rounded-2xl bg-orange-50/50 border-none px-4 text-sm font-bold text-orange-700 outline-none focus:ring-2 focus:ring-orange-200 transition-all" 
-                value={responsibleId} 
-                onChange={(e) => setResponsibleId(e.target.value)}
-              >
-                <option value="">Seleccionar...</option>
-                {members.map(m => <option key={m.id} value={m.id}>{m.display_name}</option>)}
-              </select>
+          {/* Fecha y Hora */}
+          <div className="grid grid-cols-2 gap-5">
+            <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1 flex items-center gap-2">
+                  <Calendar size={14} /> Fecha
+                </label>
+                <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="rounded-3xl h-16 bg-slate-50 border-none font-bold text-slate-700 shadow-inner-soft appearance-none" />
+            </div>
+            <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1 flex items-center gap-2">
+                  <Clock size={14} /> Hora
+                </label>
+                <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="rounded-3xl h-16 bg-slate-50 border-none font-bold text-slate-700 shadow-inner-soft" />
             </div>
           </div>
 
-          <div className="flex gap-4">
-            <div className="flex-1 space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1 flex items-center gap-1">
-                  <Calendar size={12} /> Fecha
-                </label>
-                <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="rounded-2xl h-14 bg-gray-50 border-none font-bold text-gray-700" />
-            </div>
-            <div className="flex-1 space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1 flex items-center gap-1">
-                  <Clock size={12} /> Hora
-                </label>
-                <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="rounded-2xl h-14 bg-gray-50 border-none font-bold text-gray-700" />
-            </div>
-          </div>
-
+          {/* Botón de Acción Principal */}
           <Button 
             onClick={handleSave} 
             disabled={loading} 
-            className="w-full h-16 rounded-3xl bg-gray-900 hover:bg-black text-white font-black text-lg shadow-xl active:scale-95 transition-all mt-6"
+            className="w-full h-20 rounded-[2.5rem] bg-slate-900 hover:bg-[#0EA5E9] text-white font-black text-xl shadow-2xl shadow-slate-200/50 active:scale-[0.97] transition-all mt-8 group"
           >
-            {loading ? "Sincronizando..." : "Guardar en el Nido"}
+            {loading ? (
+              <span className="flex items-center gap-2">
+                <div className="w-5 h-5 border-4 border-white/20 border-t-white rounded-full animate-spin" />
+                Sincronizando...
+              </span>
+            ) : (
+              "Confirmar en el Nido"
+            )}
           </Button>
         </div>
       </div>
