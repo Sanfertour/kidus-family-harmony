@@ -15,12 +15,21 @@ import { Sparkles, ShieldCheck, HeartHandshake, UserCircle2 } from "lucide-react
 
 // Colores Vivos pero Elegantes (Basados en tu estética MTB-Zen)
 const TEAM_COLORS = [
-  { name: 'Vital', bg: 'bg-[#00B4D8]', shadow: 'shadow-blue-200' },
-  { name: 'Natura', bg: 'bg-[#52B788]', shadow: 'shadow-emerald-200' },
-  { name: 'Energía', bg: 'bg-[#F9C74F]', shadow: 'shadow-yellow-200' },
-  { name: 'Calma', bg: 'bg-[#9B5DE5]', shadow: 'shadow-purple-200' },
-  { name: 'Fuego', bg: 'bg-[#F94144]', shadow: 'shadow-red-200' },
+  { name: 'Vital', hex: '#00B4D8' }, // Azul
+  { name: 'Natura', hex: '#52B788' }, // Verde
+  { name: 'Energía', hex: '#F9C74F' }, // Amarillo
+  { name: 'Calma', hex: '#9B5DE5' }, // Púrpura
+  { name: 'Fuego', hex: '#F94144' }, // Rojo
 ];
+
+// Y en el handleSubmit asegúrate de guardar el hex:
+const { error } = await supabase.from('profiles').insert({
+  display_name: name,
+  nest_id: myProfile?.nest_id,
+  role: role,
+  avatar_url: selectedColor.hex, // <--- Guardamos el #HEX
+  updated_at: new Date().toISOString()
+});
 
 export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.ReactNode, onMemberAdded: () => void }) => {
   const [name, setName] = useState("");
