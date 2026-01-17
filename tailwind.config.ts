@@ -15,6 +15,7 @@ export default {
     extend: {
       fontFamily: {
         sans: ['Inter', 'Nunito', 'system-ui', 'sans-serif'],
+        nunito: ['Nunito', 'sans-serif'],
         display: ['Nunito', 'Inter', 'sans-serif'],
       },
       colors: {
@@ -24,60 +25,32 @@ export default {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         primary: {
-          DEFAULT: "hsl(var(--primary))",
+          DEFAULT: "#0EA5E9", // Azul KidUs Oficial
           foreground: "hsl(var(--primary-foreground))",
         },
         secondary: {
-          DEFAULT: "hsl(var(--secondary))",
+          DEFAULT: "#F97316", // Naranja KidUs Oficial
           foreground: "hsl(var(--secondary-foreground))",
         },
         destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
-        },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
-        },
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
-        },
-        success: {
-          DEFAULT: "hsl(var(--success))",
-          foreground: "hsl(var(--success-foreground))",
-        },
-        popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
-        },
-        card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
+          DEFAULT: "#F43F5E",
+          foreground: "white",
         },
         kidus: {
-          blue: "hsl(var(--kidus-blue))",
-          "blue-light": "hsl(var(--kidus-blue-light))",
-          orange: "hsl(var(--kidus-orange))",
-          cream: "hsl(var(--kidus-cream))",
-          teal: "hsl(var(--kidus-teal))",
+          blue: "#0EA5E9",
+          orange: "#F97316",
+          purple: "#8B5CF6",
+          teal: "#10B981",
+          slate: "#1E293B",
         },
+        // Colores para miembros del equipo (mismo que TEAM_COLORS)
         child: {
-          blue: "hsl(var(--child-blue))",
-          pink: "hsl(var(--child-pink))",
-          green: "hsl(var(--child-green))",
-          purple: "hsl(var(--child-purple))",
-          yellow: "hsl(var(--child-yellow))",
-        },
-        sidebar: {
-          DEFAULT: "hsl(var(--sidebar-background))",
-          foreground: "hsl(var(--sidebar-foreground))",
-          primary: "hsl(var(--sidebar-primary))",
-          "primary-foreground": "hsl(var(--sidebar-primary-foreground))",
-          accent: "hsl(var(--sidebar-accent))",
-          "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
-          border: "hsl(var(--sidebar-border))",
-          ring: "hsl(var(--sidebar-ring))",
+          blue: "#0EA5E9",
+          orange: "#F97316",
+          purple: "#8B5CF6",
+          green: "#10B981",
+          pink: "#EC4899",
+          yellow: "#F59E0B",
         },
       },
       borderRadius: {
@@ -86,58 +59,54 @@ export default {
         sm: "calc(var(--radius) - 4px)",
         "2xl": "1.5rem",
         "3xl": "2rem",
+        "4xl": "2.5rem",
+        "5xl": "3rem",
+        "6xl": "3.5rem",
+        "7xl": "4rem", // El radio orgánico de KidUs
       },
       boxShadow: {
-        'glass': '0 8px 32px hsl(var(--glass-shadow))',
-        'fab': '0 8px 24px hsl(var(--kidus-blue) / 0.4)',
-        'card-hover': '0 12px 40px hsl(var(--kidus-blue) / 0.15)',
+        'glass': '0 8px 32px rgba(15, 23, 42, 0.05)',
+        'fab': '0 20px 40px rgba(14, 165, 233, 0.3)',
+        'card-hover': '0 25px 50px -12px rgba(15, 23, 42, 0.08)',
+        'inner-soft': 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.02)',
       },
       keyframes: {
-        // --- NUEVAS KEYFRAMES PARA EL MODO ZEN ---
-        "wave-blob": {
-          "0%": { transform: "translate(0px, 0px) scale(1) rotate(0deg)" },
-          "33%": { transform: "translate(30px, -50px) scale(1.1) rotate(2deg)" },
-          "66%": { transform: "translate(-20px, 20px) scale(0.9) rotate(-2deg)" },
-          "100%": { transform: "translate(0px, 0px) scale(1) rotate(0deg)" },
+        // --- EFECTO ONDA APPLE FLUIDA ---
+        "wave-apple": {
+          "0%": { 
+            transform: "translate(0px, 0px) rotate(0deg) scale(1)",
+            borderRadius: "30% 70% 70% 30% / 30% 30% 70% 70%" 
+          },
+          "33%": { 
+            transform: "translate(2% , 5%) rotate(2deg) scale(1.05)",
+            borderRadius: "50% 50% 30% 70% / 50% 60% 40% 50%" 
+          },
+          "66%": { 
+            transform: "translate(-2%, 8%) rotate(-1deg) scale(0.95)",
+            borderRadius: "70% 30% 50% 50% / 30% 30% 70% 70%" 
+          },
+          "100%": { 
+            transform: "translate(0px, 0px) rotate(0deg) scale(1)",
+            borderRadius: "30% 70% 70% 30% / 30% 30% 70% 70%" 
+          },
         },
-        // --- TUS KEYFRAMES ORIGINALES ---
-        "accordion-down": {
-          from: { height: "0" },
-          to: { height: "var(--radix-accordion-content-height)" },
-        },
-        "accordion-up": {
-          from: { height: "var(--radix-accordion-content-height)" },
-          to: { height: "0" },
-        },
-        "fade-in": {
-          from: { opacity: "0", transform: "translateY(10px)" },
-          to: { opacity: "1", transform: "translateY(0)" },
-        },
-        "scale-in": {
-          from: { opacity: "0", transform: "scale(0.9)" },
-          to: { opacity: "1", transform: "scale(1)" },
-        },
-        "slide-up": {
-          from: { transform: "translateY(100%)" },
-          to: { transform: "translateY(0)" },
+        "spin-slow": {
+          from: { transform: "rotate(0deg)" },
+          to: { transform: "rotate(360deg)" },
         },
         "float": {
-          "0%, 100%": { transform: "translateY(0)" },
-          "50%": { transform: "translateY(-10px)" },
-        },
+          "0%, 100%": { transform: "translateY(0) scale(1)" },
+          "50%": { transform: "translateY(-10px) scale(1.02)" },
+        }
       },
       animation: {
-        // --- NUEVAS ANIMACIONES ZEN ---
-        "wave-slow": "wave-blob 25s infinite alternate ease-in-out",
-        "wave-medium": "wave-blob 18s infinite alternate-reverse ease-in-out",
-        "wave-fast": "wave-blob 12s infinite alternate ease-in-out",
-        // --- TUS ANIMACIONES ORIGINALES ---
+        "wave-slow": "wave-apple 25s ease-in-out infinite",
+        "wave-medium": "wave-apple 18s ease-in-out infinite reverse",
+        "wave-fast": "wave-apple 12s ease-in-out infinite",
+        "spin-slow": "spin-slow 8s linear infinite",
+        "float": "float 6s ease-in-out infinite",
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "fade-in": "fade-in 0.4s ease-out",
-        "scale-in": "scale-in 0.3s ease-out",
-        "slide-up": "slide-up 0.4s ease-out",
-        "float": "float 6s ease-in-out infinite",
       },
     },
   },
