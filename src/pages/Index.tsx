@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { 
-  Settings, Users, Calendar, Home as HomeIcon, Plus, Edit, Trash2, Check 
+  Settings, Users, Calendar, Home as HomeIcon, Plus, Edit, Trash2, Check, LogOut, ArrowRight
 } from "lucide-react";
 import Header from "@/components/Header";
 import { AgendaView } from "@/components/AgendaView";
@@ -13,7 +13,7 @@ import ZenBackground from "@/components/ZenBackground";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 
-// PALETA MAESTRO KIDUS UNIFICADA
+// --- CONFIGURACIÓN DE EQUIPO (MANUAL DE ESTILO) ---
 const KIDUS_COLORS = {
   primary: "#0EA5E9",
   secondary: "#F97316",
@@ -80,12 +80,12 @@ const Index = () => {
         setShowOnboarding(false);
         const { data: profiles } = await supabase.from('profiles').select('*').eq('nest_id', myProfile.nest_id);
         
-        const unifedMembers = profiles?.map(m => ({
+        const unifiedMembers = profiles?.map(m => ({
           ...m,
           avatar_url: m.avatar_url?.startsWith('#') ? m.avatar_url : TEAM_COLORS[Math.floor(Math.random() * TEAM_COLORS.length)]
         })) || [];
         
-        setFamilyMembers(unifedMembers);
+        setFamilyMembers(unifiedMembers);
       }
     } finally {
       setLoading(false);
@@ -106,31 +106,32 @@ const Index = () => {
     }
   };
 
+  // --- COMPONENTES DE INTERFAZ UNIFICADOS ---
+
   if (loading) return (
     <div className="min-h-screen w-full flex items-center justify-center bg-[#F8FAFC]">
       <ZenBackground />
-      <div className="animate-bounce w-12 h-12 bg-[#0EA5E9] rounded-[1.5rem] shadow-xl shadow-blue-200" />
+      <div className="animate-bounce w-16 h-16 bg-[#0EA5E9] rounded-[2rem] shadow-2xl flex items-center justify-center">
+        <div className="w-6 h-6 border-4 border-white border-t-transparent rounded-full animate-spin" />
+      </div>
     </div>
   );
 
-  // --- PANTALLA DE LOGOTIPO Y REGISTRO ---
   if (!session) {
     return (
       <div className="min-h-screen w-full flex flex-col items-center justify-center p-6 bg-[#F8FAFC] relative overflow-hidden font-nunito">
         <ZenBackground />
-        <div className="relative z-10 text-center space-y-12 w-full max-w-sm">
+        <div className="relative z-10 text-center space-y-12 w-full max-w-sm animate-in fade-in zoom-in duration-700">
           <div className="relative group">
             <div className="absolute -inset-6 bg-blue-100/40 rounded-[4rem] blur-2xl group-hover:bg-blue-200/50 transition-all duration-700" />
             <div className="relative w-36 h-36 bg-white/80 backdrop-blur-md rounded-[3.5rem] flex items-center justify-center mx-auto shadow-xl border border-white rotate-2 group-hover:rotate-0 transition-all duration-500">
               <img src="/kidus-logo-C1AuyFb2.png" alt="KidUs Logo" className="w-24 h-24 object-contain" />
             </div>
           </div>
-
           <div className="space-y-4">
             <h1 className="text-6xl font-black text-slate-800 tracking-tighter">KidUs</h1>
             <p className="text-slate-400 font-black uppercase tracking-[0.4em] text-[10px]">Harmony & Focus</p>
           </div>
-
           <Button 
             onClick={() => supabase.auth.signInWithOAuth({ provider: 'google' })} 
             className="w-full h-20 rounded-[2.5rem] bg-white border border-slate-100 text-slate-700 font-black flex gap-4 shadow-xl active:scale-95 transition-all hover:bg-slate-50 group"
@@ -145,9 +146,46 @@ const Index = () => {
     );
   }
 
+  if (showOnboarding) {
+    return (
+      <div className="min-h-screen w-full flex flex-col items-center justify-center p-6 bg-[#F8FAFC] relative overflow-hidden font-nunito">
+        <ZenBackground />
+        <div className="relative z-10 w-full max-w-md space-y-10 animate-in fade-in slide-in-from-bottom-10 duration-700">
+          <div className="text-center space-y-4">
+            <div className="w-24 h-24 bg-[#F97316] rounded-[2.5rem] flex items-center justify-center mx-auto shadow-2xl rotate-3">
+               <HomeIcon className="text-white" size={40} />
+            </div>
+            <h2 className="text-4xl font-black text-slate-800 tracking-tight">Crea tu Nido</h2>
+            <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">El comienzo de la calma</p>
+          </div>
+          <div className="grid gap-6">
+            <button onClick={() => {}} className="p-8 bg-white/70 backdrop-blur-md hover:bg-white rounded-[3.5rem] border border-white text-left transition-all active:scale-95 shadow-xl shadow-slate-200/50 group">
+              <div className="flex justify-between items-center mb-2">
+                <h4 className="font-black text-[#0EA5E9] text-xl">Iniciar Nido Nuevo</h4>
+                <ArrowRight size={20} className="text-[#0EA5E9] group-hover:translate-x-2 transition-transform" />
+              </div>
+              <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Para nuevas familias</p>
+            </button>
+            <div className="p-8 bg-white/70 backdrop-blur-md rounded-[3.5rem] border border-white space-y-6 shadow-xl shadow-slate-200/50">
+              <h4 className="font-black text-[#8B5CF6] text-xl">Unirme a un Nido</h4>
+              <div className="flex gap-3">
+                <input 
+                  value={inviteCode} 
+                  onChange={(e) => setInviteCode(e.target.value.toUpperCase())} 
+                  placeholder="KID-XXXXXX" 
+                  className="flex-1 h-14 rounded-2xl border-none px-6 font-black tracking-[0.2em] text-sm bg-slate-100 focus:ring-2 focus:ring-violet-200 transition-all outline-none" 
+                />
+                <Button className="h-14 px-6 rounded-2xl bg-[#8B5CF6] text-white font-black hover:bg-violet-600 transition-all">UNIRSE</Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative min-h-screen w-full overflow-hidden pb-32 font-nunito bg-[#F8FAFC]">
-      {/* Las ondas ahora son más estrechas y visibles gracias a los ajustes de color en ZenBackground */}
       <ZenBackground />
       <Header />
       
@@ -160,20 +198,20 @@ const Index = () => {
             
             <div className="relative p-8 rounded-[3.5rem] bg-white/70 backdrop-blur-md shadow-xl shadow-slate-200/50 border border-white">
                 <div className="px-4 py-1.5 bg-sky-100 rounded-full w-fit mb-4">
-                  <span className="text-[10px] font-black text-sky-600 uppercase tracking-widest">Resumen</span>
+                  <span className="text-[10px] font-black text-sky-600 uppercase tracking-widest tracking-[0.2em]">Resumen</span>
                 </div>
                 <h3 className="text-2xl font-black text-slate-800 mb-2">Estado del equipo</h3>
-                <p className="text-slate-500 font-medium">{familyMembers.length} integrantes activos.</p>
+                <p className="text-slate-500 font-medium">{familyMembers.length} integrantes sincronizados.</p>
             </div>
             
             <div className="grid grid-cols-2 gap-4">
-              <button onClick={() => setActiveTab("agenda")} className="p-6 rounded-[3rem] flex flex-col items-center gap-3 bg-[#0EA5E9] text-white shadow-xl shadow-blue-100 active:scale-95 transition-all">
-                <Calendar size={24} />
-                <span className="text-[11px] font-black uppercase tracking-widest">Agenda</span>
+              <button onClick={() => setActiveTab("agenda")} className="p-8 rounded-[3rem] flex flex-col items-center gap-3 bg-[#0EA5E9] text-white shadow-xl shadow-blue-100 active:scale-95 transition-all">
+                <Calendar size={24} strokeWidth={3} />
+                <span className="text-[11px] font-black uppercase tracking-[0.2em]">Agenda</span>
               </button>
-              <button onClick={() => setActiveTab("family")} className="p-6 rounded-[3rem] flex flex-col items-center gap-3 bg-white/80 text-[#F97316] border border-orange-50 active:scale-95 transition-all shadow-lg">
-                <Users size={24} />
-                <span className="text-[11px] font-black uppercase tracking-widest">Equipo</span>
+              <button onClick={() => setActiveTab("family")} className="p-8 rounded-[3rem] flex flex-col items-center gap-3 bg-white/80 text-[#F97316] border border-white shadow-xl shadow-slate-200/40 active:scale-95 transition-all">
+                <Users size={24} strokeWidth={3} />
+                <span className="text-[11px] font-black uppercase tracking-[0.2em]">Equipo</span>
               </button>
             </div>
           </div>
@@ -183,11 +221,11 @@ const Index = () => {
 
         {activeTab === "family" && (
           <div className="space-y-6 animate-in slide-in-from-right-4 duration-500">
-            <div className="flex justify-between items-center px-2">
+            <div className="flex justify-between items-center px-4">
               <h2 className="text-3xl font-black text-slate-800">Mi Equipo</h2>
               <AddMemberDialog onMemberAdded={fetchAllData}>
-                <button className="w-12 h-12 bg-[#0EA5E9] rounded-2xl flex items-center justify-center text-white shadow-lg active:scale-90 transition-all">
-                  <Plus size={24} />
+                <button className="w-14 h-14 bg-[#0EA5E9] rounded-2xl flex items-center justify-center text-white shadow-xl active:scale-90 transition-all hover:rotate-90">
+                  <Plus size={28} strokeWidth={3} />
                 </button>
               </AddMemberDialog>
             </div>
@@ -197,22 +235,22 @@ const Index = () => {
                 <div 
                   key={member.id} 
                   onClick={() => setEditingMember(member)}
-                  className="p-6 rounded-[3rem] flex flex-col items-center bg-white/70 backdrop-blur-md border border-white relative group transition-all cursor-pointer hover:shadow-xl active:scale-95"
+                  className="p-8 rounded-[3.5rem] flex flex-col items-center bg-white/70 backdrop-blur-md border border-white relative group transition-all cursor-pointer hover:shadow-2xl hover:scale-[1.02] active:scale-95"
                 >
                   <button 
-                    onClick={(e) => { e.stopPropagation(); /* lógica borrar */ }}
+                    onClick={(e) => { e.stopPropagation(); }}
                     className="absolute top-6 left-6 opacity-0 group-hover:opacity-100 transition-all text-slate-300 hover:text-red-500"
                   >
-                    <Trash2 size={14} />
+                    <Trash2 size={16} />
                   </button>
                   <div 
-                    className="w-20 h-20 rounded-[2.5rem] flex items-center justify-center text-2xl font-black text-white shadow-inner mb-4 transition-transform group-hover:scale-110"
+                    className="w-20 h-20 rounded-[2.5rem] flex items-center justify-center text-2xl font-black text-white shadow-xl mb-4 transition-transform group-hover:scale-110"
                     style={{ backgroundColor: member.avatar_url }}
                   >
                     {member.display_name?.charAt(0).toUpperCase()}
                   </div>
                   <span className="font-black text-slate-800 text-sm">{member.display_name}</span>
-                  <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest mt-1">
+                  <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest mt-2">
                     {member.role === 'admin' ? 'Líder' : 'Miembro'}
                   </span>
                 </div>
@@ -220,44 +258,28 @@ const Index = () => {
             </div>
           </div>
         )}
+
+        {activeTab === "settings" && (
+          <div className="space-y-8 animate-in slide-in-from-right-4 duration-500">
+            <div className="px-4">
+              <h2 className="text-3xl font-black text-slate-800">Ajustes</h2>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Configuración del nido</p>
+            </div>
+            <div className="p-8 space-y-10 bg-white/70 backdrop-blur-md rounded-[4rem] shadow-xl border border-white">
+              <div className="p-8 bg-slate-50/80 rounded-[2.5rem] border-2 border-dashed border-slate-100 text-center group transition-all hover:border-sky-200">
+                <p className="text-[10px] font-black text-slate-400 uppercase mb-3 tracking-widest">Código de Invitación</p>
+                <p className="text-3xl font-black tracking-[0.3em] text-slate-800 group-hover:text-[#0EA5E9] transition-colors">{myNestId}</p>
+              </div>
+              <Button onClick={() => supabase.auth.signOut()} className="w-full h-16 rounded-[2rem] bg-red-50 text-red-500 hover:bg-red-500 hover:text-white font-black transition-all border-none shadow-sm flex gap-3">
+                <LogOut size={18} />
+                <span className="tracking-widest text-xs uppercase">Cerrar Sesión</span>
+              </Button>
+            </div>
+          </div>
+        )}
       </main>
 
-      {/* MODAL EDICIÓN UNIFICADO */}
-      <Dialog open={!!editingMember} onOpenChange={() => setEditingMember(null)}>
-        <DialogContent className="max-w-[340px] rounded-[3.5rem] border-none bg-white/95 backdrop-blur-2xl p-8 shadow-2xl">
-          <DialogHeader><DialogTitle className="text-2xl font-black text-center text-slate-800">Perfil</DialogTitle></DialogHeader>
-          <div className="space-y-8 py-4 flex flex-col items-center text-center">
-            <div className="w-24 h-24 rounded-[3rem] flex items-center justify-center text-4xl font-black text-white shadow-2xl"
-              style={{ backgroundColor: editingMember?.avatar_url }}
-            >
-              {editingMember?.display_name?.charAt(0).toUpperCase()}
-            </div>
-            <Input 
-              value={editingMember?.display_name || ""}
-              onChange={(e) => setEditingMember({...editingMember, display_name: e.target.value})}
-              className="h-14 rounded-2xl border-none bg-slate-100 font-bold text-center text-lg focus-visible:ring-[#0EA5E9]"
-            />
-            <div className="flex flex-wrap justify-center gap-3">
-              {TEAM_COLORS.map(color => (
-                <button
-                  key={color}
-                  onClick={() => setEditingMember({...editingMember, avatar_url: color})}
-                  className={`w-10 h-10 rounded-xl transition-all ${editingMember?.avatar_url === color ? 'scale-125 ring-4 ring-white shadow-md' : 'opacity-40 hover:opacity-100'}`}
-                  style={{ backgroundColor: color }}
-                >
-                  {editingMember?.avatar_url === color && <Check className="text-white mx-auto" size={18} />}
-                </button>
-              ))}
-            </div>
-            <Button onClick={handleUpdateMember} className="w-full h-14 rounded-2xl bg-[#0EA5E9] hover:bg-sky-600 text-white font-black tracking-widest shadow-lg">
-              ACTUALIZAR
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Navegación Zen KidUs */}
-      <nav className="fixed bottom-0 left-0 right-0 h-28 bg-white/80 backdrop-blur-xl border-t border-slate-100 flex justify-around items-center px-10 z-40 rounded-t-[4rem] shadow-[0_-10px_40px_rgba(0,0,0,0.02)]">
+      <nav className="fixed bottom-0 left-0 right-0 h-28 bg-white/80 backdrop-blur-xl border-t border-slate-50 flex justify-around items-center px-10 z-40 rounded-t-[4rem] shadow-[0_-10px_40px_rgba(0,0,0,0.03)]">
         {[
           { id: "home", icon: HomeIcon },
           { id: "agenda", icon: Calendar },
@@ -277,9 +299,9 @@ const Index = () => {
       <div className="fixed bottom-32 right-8 z-50">
         <button 
           onClick={() => setIsFabOpen(!isFabOpen)} 
-          className={`w-16 h-16 bg-[#0EA5E9] rounded-3xl flex items-center justify-center text-white shadow-2xl transition-all duration-500 ${isFabOpen ? 'rotate-45 bg-slate-800' : 'hover:scale-110'}`}
+          className={`w-16 h-16 bg-[#0EA5E9] rounded-3xl flex items-center justify-center text-white shadow-2xl transition-all duration-500 ${isFabOpen ? 'rotate-45 bg-slate-800' : 'hover:scale-110 active:scale-90'}`}
         >
-          <Plus size={32} />
+          <Plus size={32} strokeWidth={3} />
         </button>
       </div>
 
@@ -287,7 +309,5 @@ const Index = () => {
     </div>
   );
 };
-
-export default Index;
 
 export default Index;
