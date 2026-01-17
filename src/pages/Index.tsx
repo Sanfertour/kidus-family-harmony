@@ -296,17 +296,72 @@ const Index = () => {
         ))}
       </nav>
 
-      <div className="fixed bottom-32 right-8 z-50">
+{/* --- INFRAESTRUCTURA DE ENTRADA (MANUAL DE ESTILO KIDUS) --- */}
+      
+      {/* INPUT OCULTO: El motor de captura de imágenes */}
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        className="hidden" 
+        accept="image/*" 
+        capture="environment" 
+        onChange={handleFileChange} 
+      />
+
+      {/* FAB RADIAL: Sistema de abanico en cascada */}
+      <div className="fixed bottom-32 right-8 z-50 flex flex-col items-center">
+        
+        {/* BOTONES SECUNDARIOS (Abanico) */}
+        <div className={`flex flex-col gap-5 mb-5 transition-all duration-500 ease-[cubic-bezier(0.175,0.885,0.32,1.275)] ${
+          isFabOpen ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-20 scale-50 pointer-events-none'
+        }`}>
+          
+          {/* Acción: Cámara / Escaneo */}
+          <button 
+            onClick={() => {
+              setIsFabOpen(false);
+              fileInputRef.current?.click();
+            }}
+            className="w-14 h-14 bg-[#8B5CF6] rounded-3xl flex items-center justify-center text-white shadow-fab hover:scale-110 active:scale-95 transition-all border-4 border-white group"
+          >
+            <Camera size={26} strokeWidth={2.5} className="group-hover:rotate-12 transition-transform" />
+          </button>
+
+          {/* Acción: Entrada Manual */}
+          <button 
+            onClick={() => {
+              setIsFabOpen(false);
+              setIsDrawerOpen(true);
+            }}
+            className="w-14 h-14 bg-[#F97316] rounded-3xl flex items-center justify-center text-white shadow-fab hover:scale-110 active:scale-95 transition-all border-4 border-white group"
+          >
+            <Edit size={26} strokeWidth={2.5} className="group-hover:-rotate-12 transition-transform" />
+          </button>
+        </div>
+
+        {/* BOTÓN MAESTRO (TRIGGER) */}
         <button 
           onClick={() => setIsFabOpen(!isFabOpen)} 
-          className={`w-16 h-16 bg-[#0EA5E9] rounded-3xl flex items-center justify-center text-white shadow-2xl transition-all duration-500 ${isFabOpen ? 'rotate-45 bg-slate-800' : 'hover:scale-110 active:scale-90'}`}
+          className={`w-18 h-18 rounded-[2.2rem] flex items-center justify-center text-white shadow-2xl transition-all duration-500 z-50 ${
+            isFabOpen 
+              ? 'rotate-45 bg-slate-800 scale-90' 
+              : 'bg-[#0EA5E9] hover:scale-110 active:scale-95 shadow-sky-200/50'
+          }`}
+          style={{ width: '72px', height: '72px' }}
         >
-          <Plus size={32} strokeWidth={3} />
+          <Plus size={36} strokeWidth={3} />
         </button>
       </div>
 
-      <ManualEventDrawer isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} members={familyMembers} onEventAdded={fetchAllData} />
-    </div>
+      {/* COMPONENTES EMERGENTES */}
+      <ManualEventDrawer 
+        isOpen={isDrawerOpen} 
+        onClose={() => setIsDrawerOpen(false)} 
+        members={familyMembers} 
+        onEventAdded={fetchAllData} 
+      />
+      
+    </div> // Cierre del contenedor principal (relative min-h-screen)
   );
 };
 
