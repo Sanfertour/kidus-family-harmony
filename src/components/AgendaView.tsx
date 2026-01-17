@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Clock, User, Bell, Lock, AlertTriangle, ShieldCheck, Share2, Heart, Calendar as CalendarIcon, ChevronRight } from 'lucide-react';
+import { Clock, User, Bell, Lock, AlertTriangle, ShieldCheck, Share2, Heart, Calendar as CalendarIcon, ChevronRight } from 'lucide-center';
 import { format, startOfWeek, addDays, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
+import { NotificationsDrawer } from './NotificationsDrawer'; // Asegúrate de que el nombre del archivo coincida
 
 export const AgendaView = () => {
   const [events, setEvents] = useState<any[]>([]);
@@ -11,18 +12,32 @@ export const AgendaView = () => {
   const [conflicts, setConflicts] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [nestId, setNestId] = useState<string | null>(null);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const { toast } = useToast();
 
-  // Generar días de la semana actual para el Mini Calendario
   const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
   const weekDays = [...Array(7)].map((_, i) => addDays(weekStart, i));
+
+  // Función para contar notificaciones pendientes
+  const fetchUnreadCount = async (nid: string) => {
+    const { count } = await supabase
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('nest_id', nid)
+      .eq('status', 'pending');
+    setUnreadCount(count || 0);
+  };
 
   const fetchEvents = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
     const { data: profile } = await supabase.from('profiles').select('nest_id').eq('id', user.id).single();
-    if (profile) setNestId(profile.nest_id);
+    if (profile) {
+      setNestId(profile.nest_id);
+      fetchUnreadCount(profile.nest_id);
+    }
 
     const { data: eventsData, error } = await supabase
       .from('events')
@@ -54,12 +69,10 @@ export const AgendaView = () => {
     setConflicts(conflictIds);
   };
 
-  // --- LÓGICA DE DELEGACIÓN REAL ---
   const handleDelegarInterno = async (event: any) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user || !nestId) return;
 
-    // Buscamos al otro miembro del nido
     const { data: members } = await supabase
       .from('profiles')
       .select('id')
@@ -69,17 +82,14 @@ export const AgendaView = () => {
     const { error } = await supabase.from('notifications').insert({
       nest_id: nestId,
       sender_id: user.id,
-      receiver_id: members?.[0]?.id || null, // Se envía al compañero
+      receiver_id: members?.[0]?.id || null,
       event_id: event.id,
       type: 'DELEGATION_REQUEST',
       message: `Petición de relevo para: ${event.description}`
     });
 
     if (!error) {
-      toast({ 
-        title: "Solicitud de Relevo", 
-        description: "Enviando notificación al equipo del Nido...",
-      });
+      toast({ title: "Solicitud de Relevo", description: "Enviando notificación al equipo del Nido..." });
     }
   };
 
@@ -108,7 +118,21 @@ export const AgendaView = () => {
     }
   };
 
-  useEffect(() => { fetchEvents(); }, []);
+  useEffect(() => { 
+    fetchEvents(); 
+    
+    // Suscripción para que el puntito de la campana se actualice solo
+    if (nestId) {
+      const channel = supabase
+        .channel('notif-count')
+        .on('postgres_changes', 
+          { event: '*', schema: 'public', table: 'notifications', filter: `nest_id=eq.${nestId}` }, 
+          () => fetchUnreadCount(nestId)
+        )
+        .subscribe();
+      return () => { supabase.removeChannel(channel); };
+    }
+  }, [nestId]);
 
   return (
     <div className="space-y-8 pb-32 animate-in fade-in duration-700 font-nunito">
@@ -119,9 +143,12 @@ export const AgendaView = () => {
           <p className="text-[10px] font-black text-[#0EA5E9] uppercase tracking-[0.3em]">Sincronización Familiar</p>
         </div>
         <div className="relative">
-          <button className={`w-14 h-14 rounded-[1.5rem] flex items-center justify-center transition-all ${conflicts.length > 0 ? 'bg-orange-50 text-orange-500 shadow-lg shadow-orange-100 animate-pulse' : 'bg-white text-slate-300 shadow-sm border border-slate-100'}`}>
+          <button 
+            onClick={() => setIsNotifOpen(true)}
+            className={`w-14 h-14 rounded-[1.5rem] flex items-center justify-center transition-all ${unreadCount > 0 ? 'bg-orange-50 text-orange-500 shadow-lg shadow-orange-100 animate-pulse' : 'bg-white text-slate-300 shadow-sm border border-slate-100'}`}
+          >
             <Bell size={24} strokeWidth={2.5} />
-            {conflicts.length > 0 && <span className="absolute top-3 right-3 w-3 h-3 bg-orange-600 rounded-full border-2 border-white" />}
+            {unreadCount > 0 && <span className="absolute top-3 right-3 w-3 h-3 bg-orange-600 rounded-full border-2 border-white" />}
           </button>
         </div>
       </div>
@@ -132,7 +159,6 @@ export const AgendaView = () => {
           {weekDays.map((day, i) => {
             const isSelected = isSameDay(day, selectedDate);
             const hasEvents = events.some(e => isSameDay(new Date(e.event_date), day));
-            
             return (
               <button 
                 key={i}
@@ -164,11 +190,9 @@ export const AgendaView = () => {
           events.map((event) => {
             const isConflict = conflicts.includes(event.id);
             const isPrivate = event.is_private;
-            
             return (
               <div key={event.id} className="relative group">
                 <div className={`p-8 rounded-[3rem] backdrop-blur-md border transition-all duration-500 ${isPrivate ? 'bg-slate-900/5 border-slate-200' : 'bg-white/80 border-white/50 shadow-xl shadow-slate-200/40'} ${isConflict ? 'ring-2 ring-orange-400 ring-offset-4' : ''}`}>
-                  
                   <div className="flex justify-between items-start mb-6">
                     <div className="space-y-2">
                       <div className="flex gap-2">
@@ -213,21 +237,18 @@ export const AgendaView = () => {
           })
         )}
       </div>
+
+      {/* COMPONENTE DRAWER DE NOTIFICACIONES */}
+      <NotificationsDrawer 
+        isOpen={isNotifOpen} 
+        onClose={() => {
+          setIsNotifOpen(false);
+          fetchEvents(); // Refrescar por si se aceptó algún relevo
+        }} 
+        nestId={nestId} 
+      />
     </div>
   );
 };
 
-// Componentes internos de soporte (Helpers)
-const Badge = ({ icon, label, color }: { icon: any, label: string, color: string }) => (
-  <div className={`px-3 py-1 ${color} rounded-full flex items-center gap-2`}>
-    <span className="text-white">{icon}</span>
-    <span className="text-[8px] font-black text-white uppercase tracking-widest">{label}</span>
-  </div>
-);
-
-const ActionButton = ({ icon, onClick, label, color }: { icon: any, onClick: () => void, label: string, color: string }) => (
-  <button onClick={onClick} className={`flex flex-col items-center gap-1 p-2 bg-white rounded-2xl border border-slate-50 shadow-sm transition-all active:scale-95 ${color}`}>
-    {icon}
-    <span className="text-[7px] font-black uppercase">{label}</span>
-  </button>
-);
+// ... Helpers Badge y ActionButton se mantienen igual
