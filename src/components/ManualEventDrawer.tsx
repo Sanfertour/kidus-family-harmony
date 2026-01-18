@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
-  X, Calendar, Clock, CheckCircle2, Shield, EyeOff, 
-  MapPin, Sparkles, Loader2, Users, UserCheck 
+  X, Sparkles, Loader2, Users, UserCheck, 
+  Shield, EyeOff, MapPin, Calendar, Clock 
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -22,8 +22,8 @@ export const ManualEventDrawer = ({
   members: any[]; initialData?: any;
 }) => {
   const [title, setTitle] = useState('');
-  const [subjectId, setSubjectId] = useState(''); // Quién realiza la actividad (Peques/Todos)
-  const [assignedTo, setAssignedTo] = useState(''); // Quién es el responsable (Guía/Pareja)
+  const [subjectId, setSubjectId] = useState(''); // Protagonista (Peques/Tribu)
+  const [assignedTo, setAssignedTo] = useState(''); // Guía Responsable
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [location, setLocation] = useState('');
@@ -35,7 +35,7 @@ export const ManualEventDrawer = ({
   useEffect(() => {
     const prepareDrawer = async () => {
       if (initialData) {
-        setTitle(initialData.description || '');
+        setTitle(initialData.description || initialData.title || '');
         setDate(initialData.date || '');
         setTime(initialData.time || '');
         if (initialData.location) setLocation(initialData.location);
@@ -43,7 +43,11 @@ export const ManualEventDrawer = ({
 
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data: profile } = await supabase.from('profiles').select('nest_id').eq('id', user.id).maybeSingle();
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('nest_id')
+          .eq('id', user.id)
+          .maybeSingle();
         if (profile) setCurrentNestId(profile.nest_id);
       }
     };
@@ -53,30 +57,39 @@ export const ManualEventDrawer = ({
   const handleSave = async () => {
     if (!title || !date || !time) {
       triggerHaptic('soft');
-      toast({ title: "Faltan piezas", description: "El título, la fecha y la hora son vitales.", variant: "destructive" });
+      toast({ 
+        title: "Faltan piezas", 
+        description: "El título, la fecha y la hora son vitales.", 
+        variant: "destructive" 
+      });
       return;
     }
+
+    if (!currentNestId) {
+      toast({ title: "Error de Nido", description: "No se encontró tu identificador de tribu.", variant: "destructive" });
+      return;
+    }
+
     setLoading(true);
-    triggerHaptic('success');
     
-    // El evento se guarda con:
-    // 1. Quién lo hace (assigned_to -> Peque/Tribu)
-    // 2. Quién lo gestiona (responsable_id -> El Guía que se encarga)
+    // Sincronía con la DB: Enviamos title y description para evitar el 400
     const { error } = await supabase.from('events').insert([{ 
-      description: title,
+      title: title,
+      description: title, 
       event_date: new Date(`${date}T${time}:00`).toISOString(),
       assigned_to: subjectId || null, 
       nest_id: currentNestId,
       status: 'pending',
       is_private: isPrivate,
       location: location,
-      // Suponiendo que hemos añadido esta columna responsable_id en la tabla events
       created_by: assignedTo || null 
     }]);
 
     if (error) {
-      toast({ title: "Error de sincronía", variant: "destructive" });
+      console.error("Error en el Nido:", error);
+      toast({ title: "Error de sincronía", description: "La base de datos rechazó el pulso.", variant: "destructive" });
     } else {
+      triggerHaptic('success');
       toast({ title: isPrivate ? "Privacidad activada" : "¡Tribu sincronizada!" });
       onClose();
       onEventAdded();
@@ -118,7 +131,7 @@ export const ManualEventDrawer = ({
               </div>
               <div>
                 <p className="text-[11px] font-black uppercase tracking-wider">Solo para mis ojos</p>
-                <p className="text-[9px] font-bold opacity-50">No aparecerá en el nido compartido</p>
+                <p className="text-[9px] font-bold opacity-50">Privado en el nido</p>
               </div>
             </div>
             <Switch 
@@ -128,33 +141,34 @@ export const ManualEventDrawer = ({
             />
           </div>
 
-          {/* ACTIVIDAD */}
+          {/* TÍTULO */}
           <div className="space-y-3">
-            <label className="text-[10px] font-black uppercase tracking-widest ml-4 opacity-50">Título de la actividad</label>
+            <label className="text-[10px] font-black uppercase tracking-widest ml-4 opacity-50 text-sky-500">¿Qué vamos a hacer?</label>
             <Input 
+              placeholder="Ej: Natación, Cumpleaños..."
               value={title} 
               onChange={(e) => setTitle(e.target.value)} 
               className={`rounded-[2rem] h-16 border-2 font-black text-lg px-8 transition-all ${isPrivate ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 focus:border-[#0EA5E9]'}`} 
             />
           </div>
 
-          {/* ASIGNACIÓN (A QUIÉN AFECTA) */}
+          {/* PROTAGONISTA (IGUAL QUE ANTES) */}
           <div className="space-y-3">
             <label className="text-[10px] font-black uppercase tracking-widest ml-4 flex items-center gap-2 opacity-50">
-              <Users size={12} /> Protagonista (Peques/Tribu)
+              <Users size={12} /> Protagonista
             </label>
             <div className="flex flex-wrap gap-2">
               <button 
-                onClick={() => setSubjectId('')}
-                className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase transition-all ${!subjectId ? 'bg-slate-800 text-white shadow-lg' : 'bg-white border border-slate-200 text-slate-400'}`}
+                onClick={() => { triggerHaptic('soft'); setSubjectId(''); }}
+                className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase transition-all ${!subjectId ? 'bg-slate-800 text-white' : 'bg-white border border-slate-200 text-slate-400'}`}
               >
                 Toda la tribu
               </button>
               {members.map(m => (
                 <button 
                   key={m.id}
-                  onClick={() => setSubjectId(m.id)}
-                  className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase transition-all ${subjectId === m.id ? 'bg-[#0EA5E9] text-white shadow-lg' : 'bg-white border border-slate-200 text-slate-400'}`}
+                  onClick={() => { triggerHaptic('soft'); setSubjectId(m.id); }}
+                  className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase transition-all ${subjectId === m.id ? 'bg-[#0EA5E9] text-white' : 'bg-white border border-slate-200 text-slate-400'}`}
                 >
                   {m.display_name}
                 </button>
@@ -162,22 +176,30 @@ export const ManualEventDrawer = ({
             </div>
           </div>
 
-          {/* RESPONSABLE (QUIÉN LO GESTIONA - DELEGACIÓN) */}
+          {/* GUÍA RESPONSABLE (ESTÉTICA IGUAL A PROTAGONISTA) */}
           {!isPrivate && (
             <div className="space-y-3">
               <label className="text-[10px] font-black uppercase tracking-widest ml-4 flex items-center gap-2 opacity-50">
-                <UserCheck size={12} /> Guía Responsable (Delegar)
+                <UserCheck size={12} /> Guía Responsable
               </label>
-              <select 
-                className={`w-full h-16 rounded-[2rem] border-2 px-8 text-sm font-black outline-none appearance-none transition-all ${isPrivate ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 focus:border-[#0EA5E9]'}`} 
-                value={assignedTo} 
-                onChange={(e) => setAssignedTo(e.target.value)}
-              >
-                <option value="">Cualquier Guía</option>
-                {members.filter(m => m.role === 'autonomous').map(m => (
-                  <option key={m.id} value={m.id}>{m.display_name} (Guía)</option>
+              <div className="flex flex-wrap gap-2">
+                <button 
+                  onClick={() => { triggerHaptic('soft'); setAssignedTo(''); }}
+                  className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase transition-all ${!assignedTo ? 'bg-slate-800 text-white' : 'bg-white border border-slate-200 text-slate-400'}`}
+                >
+                  Cualquiera
+                </button>
+                {/* Filtrar solo por adultos/guías si es necesario */}
+                {members.filter(m => m.role === 'guía' || m.role === 'autonomous').map(m => (
+                  <button 
+                    key={m.id}
+                    onClick={() => { triggerHaptic('soft'); setAssignedTo(m.id); }}
+                    className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase transition-all ${assignedTo === m.id ? 'bg-vital-orange bg-[#F97316] text-white' : 'bg-white border border-slate-200 text-slate-400'}`}
+                  >
+                    {m.display_name}
+                  </button>
                 ))}
-              </select>
+              </div>
             </div>
           )}
 
@@ -193,7 +215,6 @@ export const ManualEventDrawer = ({
             </div>
           </div>
 
-          {/* BOTÓN SUBIR */}
           <Button 
             onClick={handleSave} 
             disabled={loading} 
