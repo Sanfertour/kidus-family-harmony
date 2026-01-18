@@ -88,8 +88,8 @@ export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.R
       
       <DialogContent className="max-w-[90vw] sm:max-w-[440px] border-none bg-slate-50/95 backdrop-blur-3xl shadow-[0_32px_64px_-15px_rgba(0,0,0,0.1)] rounded-[4rem] p-10 outline-none overflow-hidden font-sans ring-1 ring-white/50">
         
-        {/* BOTÓN DE CIERRE ZEN */}
-        <DialogClose className="absolute right-10 top-10 p-3 rounded-[1.5rem] bg-white text-slate-300 hover:text-slate-800 transition-all active:scale-90 z-50 shadow-sm">
+        {/* BOTÓN DE CIERRE ZEN (MODIFICADO) */}
+        <DialogClose className="absolute right-10 top-10 p-3 rounded-[1.5rem] bg-white/80 text-slate-400 hover:text-slate-800 transition-all active:scale-90 z-50 shadow-sm border border-slate-100">
           <X size={18} strokeWidth={3} />
         </DialogClose>
 
@@ -98,12 +98,10 @@ export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.R
 
         <DialogHeader className="space-y-8 pt-6">
           <div className="flex justify-center">
-            <motion.div 
-              layoutId="avatar"
-              className={`w-28 h-28 rounded-[3.2rem] ${selectedColor.bg} ${selectedColor.shadow} shadow-2xl flex items-center justify-center text-white text-5xl font-black transition-all duration-700`}
-            >
+            {/* Cambiado de motion.div a div estándar para evitar errores de pantalla blanca */}
+            <div className={`w-28 h-28 rounded-[3.2rem] ${selectedColor.bg} ${selectedColor.shadow} shadow-2xl flex items-center justify-center text-white text-5xl font-black transition-all duration-700`}>
               {name ? name.charAt(0).toUpperCase() : <UserPlus size={44} strokeWidth={2.5} className="opacity-80" />}
-            </motion.div>
+            </div>
           </div>
           <div className="text-center space-y-2">
             <DialogTitle className="text-5xl font-black text-slate-800 tracking-tighter font-nunito leading-tight">Sumar Integrante</DialogTitle>
@@ -149,7 +147,6 @@ export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.R
             </button>
           </div>
 
-          {/* Selector de Color */}
           <div className="flex justify-center gap-4 bg-white/50 p-4 rounded-[2rem]">
             {TRIBU_COLORS.map((color) => (
               <button
