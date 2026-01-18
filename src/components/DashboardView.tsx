@@ -28,7 +28,7 @@ export const DashboardView = ({ membersCount, onNavigate }: DashboardProps) => {
         <h1 className="text-5xl font-black text-slate-800 leading-[1.1] tracking-tighter font-nunito">
           {greeting}, <br/> <span className="text-[#0EA5E9]">Guía.</span>
         </h1>
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mt-3">Rendimiento de la Tribu</p>
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mt-3">Estado del Nido</p>
       </div>
 
       {/* CARD DE ESTADO (GLASS) */}
@@ -39,7 +39,7 @@ export const DashboardView = ({ membersCount, onNavigate }: DashboardProps) => {
             <h3 className="text-5xl font-black text-slate-800">{membersCount}</h3>
             <span className="text-xl font-bold text-slate-400">integrantes</span>
           </div>
-          <p className="text-slate-500 font-bold text-sm tracking-tight mt-2">El equipo está fluyendo en armonía.</p>
+          <p className="text-slate-500 font-bold text-sm tracking-tight mt-2">La tribu fluye en total armonía.</p>
         </div>
         <Zap className="absolute -right-4 -bottom-4 text-[#0EA5E9]/5 w-32 h-32 rotate-12 group-hover:rotate-0 transition-transform duration-700" />
       </div>
@@ -63,14 +63,14 @@ export const DashboardView = ({ membersCount, onNavigate }: DashboardProps) => {
         </button>
       </div>
 
-      {/* SECCIÓN DE NOTIFICACIONES O PRÓXIMO HIT */}
+      {/* PRÓXIMO HIT DE LA TRIBU */}
       <div className="mx-2 p-6 rounded-[2.5rem] bg-slate-800 text-white/90 flex items-center gap-4 shadow-lg">
         <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center">
           <Bell size={20} className="text-[#0EA5E9]" />
         </div>
         <div>
           <p className="text-[9px] font-black uppercase tracking-widest opacity-50">Próximo objetivo</p>
-          <p className="text-sm font-bold">Revisar logística del equipo</p>
+          <p className="text-sm font-bold">Logística de la tribu sincronizada</p>
         </div>
       </div>
     </motion.div>
