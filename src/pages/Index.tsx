@@ -1,20 +1,19 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { 
-  Settings, Users, Calendar, Home as HomeIcon, Plus, Edit, Trash2, Camera, Loader2 
+  Settings, Users, Calendar, Home as HomeIcon, Plus, Camera, Loader2 
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Header from "@/components/Header";
 import { AgendaView } from "@/components/AgendaView";
 import { AddMemberDialog } from "@/components/AddMemberDialog";
+import { SettingsView } from "@/components/SettingsView"; // Componente extraído
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { ManualEventDrawer } from "@/components/ManualEventDrawer";
 
-// Ruta del logo desde GitHub (versión raw para renderizado directo)
 const LOGO_URL = "https://raw.githubusercontent.com/Sanfertour/kidus-family-harmony/main/src/assets/kidus-logo-C1AuyFb2.png";
 
-// Función de vibración para feedback táctil (Mobile First)
 const triggerHaptic = (type: 'soft' | 'success') => {
   if (typeof navigator !== "undefined" && navigator.vibrate) {
     if (type === 'soft') navigator.vibrate(15);
@@ -36,7 +35,6 @@ const Index = () => {
   const [familyMembers, setFamilyMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [myNestId, setMyNestId] = useState("");
-  const [showOnboarding, setShowOnboarding] = useState(false);
   const [isFabOpen, setIsFabOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   
@@ -46,8 +44,6 @@ const Index = () => {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
-
-  const TEAM_COLORS = ["#0EA5E9", "#F97316", "#8B5CF6", "#10B981", "#EC4899", "#F59E0B"];
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -69,21 +65,15 @@ const Index = () => {
   }, []);
 
   const fetchAllData = async () => {
-    setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const { data: myProfile } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
-      if (!myProfile || !myProfile.nest_id) {
-        setShowOnboarding(true);
-      } else {
+      
+      if (myProfile?.nest_id) {
         setMyNestId(myProfile.nest_id);
         const { data: profiles } = await supabase.from('profiles').select('*').eq('nest_id', myProfile.nest_id);
-        const unifiedMembers = profiles?.map(m => ({
-          ...m,
-          avatar_url: m.avatar_url?.startsWith('#') ? m.avatar_url : TEAM_COLORS[Math.floor(Math.random() * TEAM_COLORS.length)]
-        })) || [];
-        setFamilyMembers(unifiedMembers);
+        setFamilyMembers(profiles || []);
       }
     } finally {
       setLoading(false);
@@ -95,6 +85,8 @@ const Index = () => {
     if (!file) return;
     triggerHaptic('success');
     setIsAiProcessing(true);
+    
+    // Simulación de pasos de IA para el usuario
     const messages = ["Analizando imagen...", "Escaneando con IA...", "Sincronizando equipo..."];
     let msgIndex = 0;
     const interval = setInterval(() => {
@@ -128,7 +120,7 @@ const Index = () => {
   if (loading) return (
     <div className="min-h-screen w-full flex items-center justify-center bg-[#F8FAFC]">
       <KidUsDynamicBackground />
-      <div className="animate-float w-20 h-20 bg-[#0EA5E9] rounded-[2.5rem] shadow-haptic flex items-center justify-center border-4 border-white z-10">
+      <div className="animate-float w-20 h-20 bg-primary rounded-[2.5rem] shadow-haptic flex items-center justify-center border-4 border-white z-10">
         <Loader2 className="text-white animate-spin" size={32} />
       </div>
     </div>
@@ -146,7 +138,7 @@ const Index = () => {
           </motion.div>
           <div className="space-y-2">
             <h1 className="text-6xl font-black text-slate-800 tracking-tighter">KidUs</h1>
-            <p className="text-slate-400 font-black uppercase tracking-[0.4em] text-[10px]">Armonía para tu equipo</p>
+            <p className="text-slate-400 font-black uppercase tracking-[0.4em] text-[10px]">Armonía para tu Tribu</p>
           </div>
           <Button 
             onClick={() => { triggerHaptic('soft'); supabase.auth.signInWithOAuth({ provider: 'google' }); }} 
@@ -173,9 +165,9 @@ const Index = () => {
               </h1>
               
               <div className="p-10 rounded-7xl bg-white/70 backdrop-blur-2xl shadow-tribu-card border border-white/50">
-                <label className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4 block">Estado del equipo</label>
+                <label className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4 block">Estado de la Tribu</label>
                 <h3 className="text-2xl font-black text-slate-800 mb-2">{familyMembers.length} integrantes</h3>
-                <p className="text-slate-500 font-medium">Toda tu tribu está sincronizada.</p>
+                <p className="text-slate-500 font-medium">Todo tu equipo está sincronizado.</p>
               </div>
               
               <div className="grid grid-cols-2 gap-5">
@@ -205,20 +197,28 @@ const Index = () => {
               </div>
               <div className="grid grid-cols-2 gap-5">
                 {familyMembers.map((member) => (
-                  <div key={member.id} className="p-8 rounded-7xl flex flex-col items-center bg-white/70 backdrop-blur-2xl border border-white/50 shadow-brisa transition-all active:scale-95">
-                    <div className="w-20 h-20 rounded-5xl flex items-center justify-center text-2xl font-black text-white shadow-haptic mb-4" style={{ backgroundColor: member.avatar_url }}>
+                  <div key={member.id} className="p-8 rounded-7xl flex flex-col items-center bg-white/70 backdrop-blur-2xl border border-white/50 shadow-brisa transition-all">
+                    <div className="w-20 h-20 rounded-5xl flex items-center justify-center text-2xl font-black text-white shadow-haptic mb-4" style={{ backgroundColor: member.avatar_url || '#0EA5E9' }}>
                       {member.display_name?.charAt(0).toUpperCase()}
                     </div>
-                    <span className="font-black text-slate-800 text-sm">{member.display_name}</span>
-                    <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest mt-2">{member.role === 'admin' ? 'Guía' : 'Peque'}</span>
+                    <span className="font-black text-slate-800 text-sm text-center line-clamp-1">{member.display_name}</span>
+                    <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest mt-2">{member.role === 'autonomous' ? 'Guía' : 'Peque'}</span>
                   </div>
                 ))}
               </div>
             </div>
           )}
+
+          {/* LA NUEVA VISTA DE AJUSTES CONECTADA */}
+          {activeTab === "settings" && (
+            <div className="animate-in fade-in duration-500">
+              <SettingsView nestId={myNestId} members={familyMembers} />
+            </div>
+          )}
         </AnimatePresence>
       </main>
 
+      {/* NAVEGACIÓN PRINCIPAL */}
       <nav className="fixed bottom-0 left-0 right-0 h-28 bg-white/70 backdrop-blur-2xl border-t border-white/20 flex justify-around items-center px-10 z-40 rounded-t-7xl shadow-brisa">
         {[
           { id: "home", icon: HomeIcon }, { id: "agenda", icon: Calendar }, { id: "family", icon: Users }, { id: "settings", icon: Settings }
@@ -229,13 +229,14 @@ const Index = () => {
         ))}
       </nav>
 
+      {/* FAB - BOTÓN DE ACCIÓN FLOTANTE */}
       <div className="fixed bottom-36 right-8 z-50 flex flex-col items-center">
         <div className={`flex flex-col gap-6 mb-6 transition-all duration-500 ${isFabOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-20 pointer-events-none'}`}>
           <button onClick={() => { triggerHaptic('soft'); setIsFabOpen(false); fileInputRef.current?.click(); }} className="w-16 h-16 bg-accent rounded-5xl flex items-center justify-center text-white shadow-haptic border-4 border-white active:scale-90">
             <Camera size={28} strokeWidth={2.5} />
           </button>
           <button onClick={() => { triggerHaptic('soft'); setIsFabOpen(false); setIsDrawerOpen(true); }} className="w-16 h-16 bg-secondary rounded-5xl flex items-center justify-center text-white shadow-haptic border-4 border-white active:scale-90">
-            <Edit size={28} strokeWidth={2.5} />
+            <Plus size={28} strokeWidth={2.5} />
           </button>
         </div>
         <button onClick={() => { triggerHaptic('soft'); setIsFabOpen(!isFabOpen); }} className={`w-[76px] h-[76px] rounded-6xl flex items-center justify-center text-white shadow-tribu-card transition-all ${isFabOpen ? 'rotate-45 bg-slate-800' : 'bg-primary'}`}>
@@ -245,6 +246,7 @@ const Index = () => {
 
       <input type="file" ref={fileInputRef} className="hidden" accept="image/*" capture="environment" onChange={handleFileChange} />
 
+      {/* OVERLAY DE PROCESAMIENTO IA */}
       {isAiProcessing && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-white/90 backdrop-blur-3xl">
           <div className="flex flex-col items-center gap-8 text-center p-12">
