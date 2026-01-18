@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { 
-  Clock, Bell, Lock, AlertTriangle, ShieldCheck, 
-  Share2, Heart, Calendar as CalendarIcon, ChevronRight, 
-  Users, ChevronLeft, MapPin, Sparkles
+  Bell, AlertTriangle, Share2, Calendar as CalendarIcon, 
+  ChevronRight, ChevronLeft, MapPin, Sparkles, Clock, Star
 } from 'lucide-react';
 import { 
   format, startOfWeek, addDays, isSameDay, 
-  addWeeks, subWeeks, isToday
+  addWeeks, subWeeks, isToday 
 } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -21,13 +20,17 @@ const triggerHaptic = (type: 'soft' | 'success' | 'warning') => {
   }
 };
 
-// Mapeo de colores KidUs por tipo de evento
-const getEventColor = (type: string) => {
+// Sistema de Estilos Dinámicos KidUs
+const getEventStyles = (type: string) => {
   switch (type?.toLowerCase()) {
-    case 'escolar': case 'menú': return 'border-l-[#0EA5E9] text-[#0EA5E9] bg-sky-50/30';
-    case 'deporte': case 'extraescolar': return 'border-l-[#F97316] text-[#F97316] bg-orange-50/30';
-    case 'salud': return 'border-l-slate-800 text-slate-800 bg-slate-50';
-    default: return 'border-l-slate-200 text-slate-400 bg-white';
+    case 'escolar': case 'menú': 
+      return "bg-gradient-to-br from-sky-400 to-sky-600 text-white border-sky-300 shadow-sky-200/50";
+    case 'deporte': case 'extraescolar': 
+      return "bg-gradient-to-br from-orange-400 to-orange-600 text-white border-orange-300 shadow-orange-200/50";
+    case 'salud': 
+      return "bg-slate-800 text-white border-slate-700 shadow-slate-300/50";
+    default: 
+      return "bg-white text-slate-800 border-slate-100 shadow-slate-200/40";
   }
 };
 
@@ -36,14 +39,12 @@ export const AgendaView = () => {
   const [loading, setLoading] = useState(true);
   const [conflicts, setConflicts] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
-  // Forzamos que la semana empiece el Lunes (weekStartsOn: 1)
   const [currentWeekStart, setCurrentWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [nestId, setNestId] = useState<string | null>(null);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const { toast } = useToast();
 
-  // Generamos siempre 7 días (La semana completa)
   const weekDays = [...Array(7)].map((_, i) => addDays(currentWeekStart, i));
 
   const changeWeek = (direction: 'next' | 'prev') => {
@@ -54,17 +55,14 @@ export const AgendaView = () => {
   const fetchEvents = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-
     const { data: profile } = await supabase.from('profiles').select('nest_id').eq('id', user.id).maybeSingle();
     if (profile?.nest_id) {
       setNestId(profile.nest_id);
-      
       const { data: eventsData, error } = await supabase
         .from('events')
         .select(`*, profiles!events_assigned_to_fkey (display_name, avatar_url, id)`)
         .eq('nest_id', profile.nest_id)
         .order('event_date', { ascending: true });
-
       if (!error && eventsData) {
         detectCollisions(eventsData);
         setEvents(eventsData);
@@ -88,117 +86,147 @@ export const AgendaView = () => {
     if (conflictIds.length > 0) triggerHaptic('warning');
   };
 
+  const handleDelegarInterno = async (event: any) => {
+    triggerHaptic('soft');
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || !nestId) return;
+    const { data: members } = await supabase.from('profiles').select('id').eq('nest_id', nestId).neq('id', user.id);
+    const { error } = await supabase.from('notifications').insert({
+      nest_id: nestId, sender_id: user.id, receiver_id: members?.[0]?.id || null,
+      event_id: event.id, type: 'DELEGATION_REQUEST',
+      message: `Relevo: ${event.description}`
+    });
+    if (!error) {
+      toast({ title: "Petición enviada", description: "El otro Guía ha sido notificado." });
+      triggerHaptic('success');
+    }
+  };
+
   useEffect(() => { fetchEvents(); }, [nestId]);
 
   return (
-    <div className="space-y-8 pb-32 animate-in fade-in duration-700 font-sans bg-slate-50/50 min-h-screen">
+    <div className="min-h-screen bg-[#F8FAFC] pb-32 font-sans overflow-x-hidden">
       
-      {/* HEADER DINÁMICO */}
-      <div className="flex justify-between items-end px-8 pt-8">
-        <div>
-          <h2 className="text-6xl font-black text-slate-800 tracking-tighter font-nunito leading-none">Agenda</h2>
-          <p className="text-[11px] font-black text-[#0EA5E9] uppercase tracking-[0.4em] mt-3 ml-1 flex items-center gap-2">
-            <Sparkles size={12} /> Sincro de la Tribu
-          </p>
+      {/* HEADER DINÁMICO CON GRADIENTE */}
+      <div className="relative pt-12 pb-8 px-8 overflow-hidden bg-white">
+        <div className="absolute top-0 right-0 -translate-y-12 translate-x-12 w-64 h-64 bg-sky-100/50 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 translate-y-12 -translate-x-12 w-64 h-64 bg-orange-100/50 rounded-full blur-3xl" />
+        
+        <div className="relative flex justify-between items-center">
+          <div className="space-y-1">
+            <h2 className="text-6xl font-black text-slate-800 tracking-tighter font-nunito leading-tight">Agenda</h2>
+            <div className="flex items-center gap-2">
+              <span className="h-1 w-8 bg-orange-500 rounded-full" />
+              <p className="text-[11px] font-black text-sky-500 uppercase tracking-[0.3em]">Nido Sincronizado</p>
+            </div>
+          </div>
+          <button 
+            onClick={() => { triggerHaptic('soft'); setIsNotifOpen(true); }}
+            className={`w-16 h-16 rounded-[2.5rem] flex items-center justify-center transition-all duration-500 shadow-2xl active:scale-90 ${unreadCount > 0 ? 'bg-orange-500 text-white animate-pulse' : 'bg-slate-800 text-white'}`}
+          >
+            <Bell size={24} strokeWidth={2.5} />
+            {unreadCount > 0 && <span className="absolute top-0 right-0 w-6 h-6 bg-white text-orange-600 rounded-full border-4 border-orange-500 flex items-center justify-center text-[10px] font-black">{unreadCount}</span>}
+          </button>
         </div>
-        <button 
-          onClick={() => { triggerHaptic('soft'); setIsNotifOpen(true); }}
-          className={`w-16 h-16 rounded-[2.2rem] flex items-center justify-center transition-all duration-500 relative shadow-2xl active:scale-90 ${unreadCount > 0 ? 'bg-[#F97316] text-white animate-bounce' : 'bg-white text-slate-400'}`}
-        >
-          <Bell size={24} strokeWidth={2.5} />
-          {unreadCount > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 bg-white text-[#F97316] text-[10px] font-black rounded-full flex items-center justify-center shadow-md">{unreadCount}</span>}
-        </button>
       </div>
 
-      {/* CALENDARIO DE 7 DÍAS */}
-      <div className="bg-white/40 backdrop-blur-md py-6 border-y border-white">
-        <div className="flex justify-between items-center px-8 mb-6">
-          <span className="text-xs font-black uppercase tracking-widest text-slate-800">
-            {format(currentWeekStart, 'MMMM yyyy', { locale: es })}
-          </span>
-          <div className="flex gap-3">
-            <button onClick={() => changeWeek('prev')} className="p-3 bg-white rounded-2xl shadow-sm hover:shadow-md transition-all active:scale-95"><ChevronLeft size={20}/></button>
-            <button onClick={() => changeWeek('next')} className="p-3 bg-white rounded-2xl shadow-sm hover:shadow-md transition-all active:scale-95"><ChevronRight size={20}/></button>
+      {/* CALENDARIO SEMANAL 7 DÍAS - ESTILO CAPSULA */}
+      <div className="px-6 -mt-4 mb-8">
+        <div className="bg-white/80 backdrop-blur-xl p-4 rounded-[3.5rem] shadow-xl border border-white/50">
+          <div className="flex justify-between items-center px-6 mb-4">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{format(currentWeekStart, 'MMMM yyyy', { locale: es })}</p>
+            <div className="flex gap-2">
+              <button onClick={() => changeWeek('prev')} className="p-2 hover:bg-slate-50 rounded-xl transition-colors"><ChevronLeft size={18} className="text-slate-400"/></button>
+              <button onClick={() => changeWeek('next')} className="p-2 hover:bg-slate-50 rounded-xl transition-colors"><ChevronRight size={18} className="text-slate-400"/></button>
+            </div>
+          </div>
+          
+          <div className="flex justify-between gap-1">
+            {weekDays.map((day, i) => {
+              const isSelected = isSameDay(day, selectedDate);
+              const isTodayDay = isToday(day);
+              return (
+                <button 
+                  key={i}
+                  onClick={() => { triggerHaptic('soft'); setSelectedDate(day); }}
+                  className={`w-[13.5%] py-5 rounded-[2.5rem] flex flex-col items-center transition-all duration-500 ${isSelected ? 'bg-slate-800 text-white shadow-xl -translate-y-2' : isTodayDay ? 'bg-orange-500/10 text-orange-600 border border-orange-200' : 'text-slate-400 hover:bg-slate-50'}`}
+                >
+                  <span className="text-[9px] font-black uppercase mb-1">{format(day, 'EEE', { locale: es })}</span>
+                  <span className="text-lg font-black">{format(day, 'd')}</span>
+                  {isSelected && <div className="w-1 h-1 bg-sky-400 rounded-full mt-1 animate-pulse" />}
+                </button>
+              );
+            })}
           </div>
         </div>
-
-        <div className="px-6 flex justify-between gap-1">
-          {weekDays.map((day, i) => {
-            const isSelected = isSameDay(day, selectedDate);
-            const isTodayDay = isToday(day);
-            const hasEvents = events.some(e => isSameDay(new Date(e.event_date), day));
-            
-            return (
-              <button 
-                key={i}
-                onClick={() => { triggerHaptic('soft'); setSelectedDate(day); }}
-                className={`relative flex flex-col items-center justify-center w-[13%] py-6 rounded-[2.2rem] transition-all duration-500 ${isSelected ? 'bg-slate-800 text-white shadow-2xl -translate-y-2' : isTodayDay ? 'bg-[#F97316]/10 text-[#F97316] border-2 border-[#F97316]/20' : 'bg-white/50 text-slate-400'}`}
-              >
-                <span className="text-[9px] font-black uppercase mb-2">{format(day, 'EEE', { locale: es })}</span>
-                <span className="text-xl font-black leading-none">{format(day, 'd')}</span>
-                {hasEvents && <div className={`absolute bottom-3 w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-[#0EA5E9]' : 'bg-[#F97316]'}`} />}
-              </button>
-            );
-          })}
-        </div>
       </div>
 
-      {/* LISTADO DE ACTIVIDADES */}
-      <div className="px-6 space-y-6">
-        <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] ml-4">
-          {isToday(selectedDate) ? 'Misiones de hoy' : format(selectedDate, "eeee d 'de' MMMM", { locale: es })}
-        </h3>
+      {/* LISTADO DE EVENTOS */}
+      <div className="px-8 space-y-6">
+        <div className="flex items-center gap-3 ml-2">
+          <Star size={16} className="text-orange-500 fill-orange-500" />
+          <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">
+            {isToday(selectedDate) ? 'Hoy en el Nido' : format(selectedDate, "eeee d 'de' MMMM", { locale: es })}
+          </h3>
+        </div>
 
         {events.filter(e => isSameDay(new Date(e.event_date), selectedDate)).length === 0 ? (
-          <div className="py-20 text-center bg-white rounded-[3.5rem] border-4 border-dashed border-slate-100">
-            <div className="bg-slate-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-              <CalendarIcon size={32} className="text-slate-200" />
+          <div className="py-24 text-center">
+            <div className="w-24 h-24 bg-white rounded-[3rem] shadow-inner flex items-center justify-center mx-auto mb-6">
+              <Sparkles size={32} className="text-slate-100" />
             </div>
-            <p className="text-slate-400 font-black text-[10px] uppercase tracking-widest">Nido en calma total</p>
+            <p className="text-slate-300 font-black text-[10px] uppercase tracking-[0.4em]">Paz en la Tribu</p>
           </div>
         ) : (
           events.filter(e => isSameDay(new Date(e.event_date), selectedDate)).map((event) => {
             const isConflict = conflicts.includes(event.id);
-            const colorClass = getEventColor(event.event_type || 'tribu');
+            const style = getEventStyles(event.event_type || 'tribu');
 
             return (
-              <div key={event.id} className={`p-8 rounded-[3rem] bg-white border-l-[12px] shadow-xl shadow-slate-200/30 transition-all active:scale-[0.98] ${colorClass} ${isConflict ? 'animate-pulse border-red-500' : ''}`}>
+              <div key={event.id} className={`group relative p-8 rounded-[3.5rem] border transition-all duration-500 active:scale-95 ${style}`}>
+                {isConflict && (
+                  <div className="absolute -top-3 left-10 bg-red-600 text-white text-[8px] font-black px-4 py-1.5 rounded-full shadow-lg flex items-center gap-2 animate-bounce">
+                    <AlertTriangle size={10} /> SOLAPE DE ACTIVIDAD
+                  </div>
+                )}
+                
                 <div className="flex justify-between items-start mb-6">
                   <div className="space-y-2">
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs font-black uppercase tracking-tighter opacity-60 flex items-center gap-1">
-                        <Clock size={12} /> {format(new Date(event.event_date), "HH:mm")}
-                      </span>
-                      {isConflict && <span className="bg-red-500 text-white text-[8px] px-2 py-1 rounded-full font-black animate-pulse">¡SOLAPE!</span>}
+                    <div className="flex items-center gap-2 opacity-80">
+                      <Clock size={14} strokeWidth={3} />
+                      <span className="text-xs font-black tracking-widest uppercase">{format(new Date(event.event_date), "HH:mm")}</span>
                     </div>
-                    <h4 className="text-2xl font-black text-slate-800 tracking-tight">{event.description}</h4>
+                    <h4 className="text-3xl font-black tracking-tight leading-none mb-1">{event.description}</h4>
                     {event.location && (
-                      <div className="flex items-center gap-1 text-slate-400">
-                        <MapPin size={10} />
-                        <span className="text-[10px] font-bold">{event.location}</span>
+                      <div className="flex items-center gap-1.5 opacity-70">
+                        <MapPin size={12} strokeWidth={3} />
+                        <span className="text-[10px] font-black uppercase tracking-wider">{event.location}</span>
                       </div>
                     )}
                   </div>
+                  
+                  <div className="bg-white/20 backdrop-blur-md p-4 rounded-[2rem] border border-white/30">
+                    <Share2 size={20} className="text-white" onClick={() => handleDelegarInterno(event)} />
+                  </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-6 border-t border-slate-100">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white font-black text-xs shadow-lg overflow-hidden bg-slate-200">
-                      {event.profiles?.avatar_url ? (
-                        <img src={event.profiles.avatar_url} alt="avatar" className="w-full h-full object-cover" />
-                      ) : (
-                        event.profiles?.display_name?.charAt(0)
-                      )}
+                <div className="flex items-center justify-between pt-6 border-t border-white/20">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-[1.2rem] bg-white p-0.5 shadow-lg">
+                      <div className="w-full h-full rounded-[1.1rem] bg-slate-100 flex items-center justify-center overflow-hidden">
+                        {event.profiles?.avatar_url ? (
+                          <img src={event.profiles.avatar_url} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-slate-800 font-black text-xs">{event.profiles?.display_name?.charAt(0)}</span>
+                        )}
+                      </div>
                     </div>
                     <div>
-                      <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest leading-none mb-1">Protagonista</p>
-                      <p className="text-xs font-black text-slate-700">{event.profiles?.display_name || 'Tribu'}</p>
+                      <p className="text-[9px] font-black uppercase tracking-widest opacity-60">Asignado a</p>
+                      <p className="text-sm font-black">{event.profiles?.display_name || 'Tribu'}</p>
                     </div>
                   </div>
-
-                  <button onClick={() => handleDelegarInterno(event)} className="w-12 h-12 bg-slate-50 text-slate-400 rounded-2xl flex items-center justify-center active:bg-sky-50 active:text-sky-500 transition-all shadow-sm">
-                    <Share2 size={18} strokeWidth={2.5} />
-                  </button>
+                  <ChevronRight size={24} className="opacity-40 group-hover:translate-x-2 transition-transform" />
                 </div>
               </div>
             );
