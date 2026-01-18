@@ -11,9 +11,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Sparkles, ShieldCheck, HeartHandshake, UserCircle2 } from "lucide-react";
+import { Sparkles, ShieldCheck, HeartHandshake, UserCircle2, Loader2 } from "lucide-react";
 
-// Función de vibración para feedback táctil
+// Función de vibración para feedback táctil (Sincronía de la tribu)
 const triggerHaptic = (type: 'soft' | 'success') => {
   if (typeof navigator !== "undefined" && navigator.vibrate) {
     if (type === 'soft') navigator.vibrate(10);
@@ -21,13 +21,12 @@ const triggerHaptic = (type: 'soft' | 'success') => {
   }
 };
 
-// Colores oficiales KidUs para la Tribu
 const TRIBU_COLORS = [
-  { name: 'Sky', hex: '#0EA5E9', bg: 'bg-[#0EA5E9]', shadow: 'shadow-sky-200' },
-  { name: 'Vital', hex: '#F97316', bg: 'bg-[#F97316]', shadow: 'shadow-orange-200' },
-  { name: 'Menta', hex: '#10B981', bg: 'bg-[#10B981]', shadow: 'shadow-emerald-200' },
-  { name: 'Zen', hex: '#8B5CF6', bg: 'bg-[#8B5CF6]', shadow: 'shadow-purple-200' },
-  { name: 'Fuego', hex: '#F43F5E', bg: 'bg-[#F43F5E]', shadow: 'shadow-rose-200' },
+  { name: 'Sky', hex: '#0EA5E9', bg: 'bg-[#0EA5E9]', hover: 'hover:bg-[#0EA5E9]/90', shadow: 'shadow-sky-200' },
+  { name: 'Vital', hex: '#F97316', bg: 'bg-[#F97316]', hover: 'hover:bg-[#F97316]/90', shadow: 'shadow-orange-200' },
+  { name: 'Menta', hex: '#10B981', bg: 'bg-[#10B981]', hover: 'hover:bg-[#10B981]/90', shadow: 'shadow-emerald-200' },
+  { name: 'Zen', hex: '#8B5CF6', bg: 'bg-[#8B5CF6]', hover: 'hover:bg-[#8B5CF6]/90', shadow: 'shadow-purple-200' },
+  { name: 'Fuego', hex: '#F43F5E', bg: 'bg-[#F43F5E]', hover: 'hover:bg-[#F43F5E]/90', shadow: 'shadow-rose-200' },
 ];
 
 export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.ReactNode, onMemberAdded: () => void }) => {
@@ -41,7 +40,7 @@ export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.R
     e.preventDefault();
     if (!name.trim()) return;
     setLoading(true);
-    triggerHaptic('success');
+    triggerHaptic('success'); // Feedback de éxito al procesar
     
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -76,10 +75,11 @@ export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.R
   return (
     <Dialog>
       <DialogTrigger asChild onClick={() => triggerHaptic('soft')}>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-md border-none bg-white/95 backdrop-blur-2xl shadow-tribu-card rounded-[3.5rem] p-10 outline-none font-sans overflow-hidden">
+      
+      <DialogContent className="sm:max-w-md border-none bg-white/95 backdrop-blur-2xl shadow-2xl rounded-[3.5rem] p-10 outline-none overflow-hidden">
         
-        {/* Brisa Visual Superior */}
-        <div className={`absolute top-0 left-0 w-full h-2 ${selectedColor.bg} opacity-40`} />
+        {/* Brisa Visual Superior Dinámica */}
+        <div className={`absolute top-0 left-0 w-full h-2 ${selectedColor.bg} opacity-40 transition-colors duration-500`} />
 
         <DialogHeader className="space-y-6">
           <div className="flex justify-center">
@@ -111,7 +111,7 @@ export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.R
                 role === 'autonomous' ? "bg-white shadow-xl scale-105" : "bg-transparent opacity-30 grayscale"
               }`}
             >
-              <ShieldCheck className={role === 'autonomous' ? "text-primary" : "text-slate-500"} size={32} />
+              <ShieldCheck className={role === 'autonomous' ? "text-sky-500" : "text-slate-500"} size={32} />
               <span className="text-[10px] font-black mt-3 uppercase tracking-widest text-slate-800">Guía</span>
             </button>
             <button
@@ -121,7 +121,7 @@ export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.R
                 role === 'dependent' ? "bg-white shadow-xl scale-105" : "bg-transparent opacity-30 grayscale"
               }`}
             >
-              <HeartHandshake className={role === 'dependent' ? "text-secondary" : "text-slate-500"} size={32} />
+              <HeartHandshake className={role === 'dependent' ? "text-orange-500" : "text-slate-500"} size={32} />
               <span className="text-[10px] font-black mt-3 uppercase tracking-widest text-slate-800">Peque</span>
             </button>
           </div>
@@ -140,12 +140,13 @@ export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.R
             ))}
           </div>
 
+          {/* BOTÓN FINAL CORREGIDO: IMPACTO Y FEEDBACK */}
           <Button 
             type="submit" 
             disabled={loading} 
-            className={`w-full h-20 rounded-5xl ${selectedColor.bg} text-white font-black text-base tracking-[0.2em] shadow-haptic hover:scale-[1.02] active:scale-95 transition-all`}
+            className={`w-full h-20 rounded-[2.5rem] ${selectedColor.bg} ${selectedColor.hover} text-white font-black text-base tracking-[0.2em] shadow-lg active:scale-95 transition-all duration-400 uppercase`}
           >
-            {loading ? <Sparkles className="animate-spin" /> : "UNIR A LA TRIBU"}
+            {loading ? <Loader2 className="animate-spin" /> : "UNIR A LA TRIBU"}
           </Button>
         </form>
       </DialogContent>
