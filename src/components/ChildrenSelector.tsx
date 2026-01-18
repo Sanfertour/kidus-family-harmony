@@ -1,77 +1,115 @@
 import { motion } from "framer-motion";
-import ChildBadge, { Child } from "./ChildBadge";
-import { ChevronRight, Plus } from "lucide-react";
+import { Plus, ChevronRight } from "lucide-react";
+import { MemberAvatar } from "./MemberAvatar";
+
+// Feedback háptico profesional para el Nido
+const triggerHaptic = (type: 'soft' | 'success' = 'soft') => {
+  if (typeof navigator !== "undefined" && navigator.vibrate) {
+    navigator.vibrate(type === 'soft' ? 10 : [20, 30, 20]);
+  }
+};
 
 interface ChildrenSelectorProps {
-  children: Child[];
+  children: any[];
   selectedChildId?: string;
   onChildSelect: (childId: string) => void;
   onAddChild?: () => void;
 }
 
-const ChildrenSelector = ({
+export const ChildrenSelector = ({
   children,
   selectedChildId,
   onChildSelect,
   onAddChild,
 }: ChildrenSelectorProps) => {
   return (
-    <motion.section
-      className="px-4 py-4"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ delay: 0.2 }}
+    <motion.section 
+      className="py-6"
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
     >
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-base font-semibold text-foreground">Tus hijos</h2>
-        <button className="flex items-center gap-1 text-sm text-primary font-medium hover:underline">
-          Ver todos <ChevronRight size={16} />
+      {/* Encabezado con lenguaje de Tribu */}
+      <div className="px-8 mb-6 flex justify-between items-end">
+        <div>
+          <h2 className="text-2xl font-black text-slate-800 tracking-tight uppercase leading-none">
+            Tu <span className="text-[#0EA5E9]">Tribu</span>
+          </h2>
+          <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.3em] mt-2">
+            Gestión de los peques
+          </p>
+        </div>
+        <button 
+          onClick={() => triggerHaptic('soft')}
+          className="flex items-center gap-1 text-[10px] font-black text-[#0EA5E9] uppercase tracking-widest hover:opacity-70 transition-opacity"
+        >
+          Ver todos <ChevronRight size={14} />
         </button>
       </div>
 
-      <div className="flex items-center gap-4 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
-        {/* All option */}
-        <motion.button
-          className={`flex flex-col items-center gap-1 min-w-fit`}
-          onClick={() => onChildSelect("all")}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
+      {/* Contenedor horizontal con 'Brisa' visual */}
+      <div className="flex gap-6 overflow-x-auto px-8 pb-4 no-scrollbar items-start">
+        
+        {/* Opción Global: La Tribu Completa */}
+        <motion.div 
+          className="flex flex-col items-center gap-3"
+          whileTap={{ scale: 0.9 }}
         >
-          <div
-            className={`w-14 h-14 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-200 ${
-              !selectedChildId || selectedChildId === "all"
-                ? "bg-primary text-primary-foreground shadow-fab"
-                : "bg-secondary text-secondary-foreground"
+          <button
+            onClick={() => { 
+              triggerHaptic('soft'); 
+              onChildSelect("all"); 
+            }}
+            className={`w-16 h-16 rounded-[1.8rem] flex items-center justify-center text-2xl shadow-lg transition-all duration-500 ${
+              !selectedChildId || selectedChildId === "all" 
+                ? "bg-[#0EA5E9] text-white scale-110 rotate-3 shadow-[#0EA5E9]/20" 
+                : "bg-white text-slate-300 border border-slate-100"
             }`}
           >
-            👨‍👩‍👧‍👦
-          </div>
-          <span className="text-xs font-medium text-foreground">Todos</span>
-        </motion.button>
+            🏠
+          </button>
+          <span className={`text-[10px] font-black uppercase tracking-widest ${
+            !selectedChildId || selectedChildId === "all" ? "text-[#0EA5E9]" : "text-slate-400"
+          }`}>
+            Todos
+          </span>
+        </motion.div>
 
-        {/* Children */}
+        {/* Mapeo de Peques usando MemberAvatar sincronizado */}
         {children.map((child) => (
-          <ChildBadge
-            key={child.id}
-            child={child}
-            isSelected={selectedChildId === child.id}
-            onClick={() => onChildSelect(child.id)}
-          />
+          <div key={child.id} className="flex flex-col items-center gap-3">
+            <MemberAvatar 
+              member={child} 
+              size="lg" 
+              isSelected={selectedChildId === child.id}
+              onClick={() => {
+                triggerHaptic('soft');
+                onChildSelect(child.id);
+              }}
+              showName={true}
+            />
+          </div>
         ))}
 
-        {/* Add child button */}
+        {/* Botón Añadir Miembro - Estilo Nido */}
         {onAddChild && (
-          <motion.button
-            className="flex flex-col items-center gap-1 min-w-fit"
-            onClick={onAddChild}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+          <motion.div 
+            className="flex flex-col items-center gap-3"
+            whileTap={{ scale: 0.9 }}
           >
-            <div className="w-14 h-14 rounded-full border-2 border-dashed border-muted-foreground/50 flex items-center justify-center text-muted-foreground hover:border-primary hover:text-primary transition-colors">
-              <Plus size={24} />
-            </div>
-            <span className="text-xs font-medium text-muted-foreground">Añadir</span>
-          </motion.button>
+            <button
+              onClick={() => { 
+                triggerHaptic('success'); 
+                onAddChild(); 
+              }}
+              className="w-16 h-16 rounded-[1.8rem] border-2 border-dashed border-slate-200 flex items-center justify-center text-slate-300 hover:border-[#F97316] hover:text-[#F97316] transition-all bg-white/50"
+            >
+              <Plus size={28} strokeWidth={3} />
+            </button>
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">
+              Añadir
+            </span>
+          </motion.div>
         )}
       </div>
     </motion.section>
