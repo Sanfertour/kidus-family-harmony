@@ -16,28 +16,30 @@ const App = () => {
         <Toaster />
         <Sonner position="top-right" />
         
-        {/* CONTENEDOR RAÍZ DEL NIDO */}
-        <div className="relative min-h-screen w-full overflow-hidden bg-slate-50">
+        {/* CONTENEDOR RAÍZ: El lienzo del Nido */}
+        <div className="relative min-h-screen w-full bg-slate-50 selection:bg-[#0EA5E9]/20">
           
-          {/* CAPA DE FONDO: LA BRISA ANIMADA */}
-          <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-            {/* Onda Sky Blue */}
-            <div className="absolute -top-[10%] -left-[10%] w-[700px] h-[700px] bg-sky-400/20 blur-[100px] animate-wave-slow" />
-            {/* Onda Vital Orange */}
-            <div className="absolute -bottom-[10%] -right-[10%] w-[600px] h-[600px] bg-orange-400/20 blur-[100px] animate-wave-medium" />
-            {/* Punto de luz violeta para profundidad de la tribu */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-violet-300/10 blur-[120px] animate-float" />
+          {/* CAPA DE FONDO: Brisa Visual Inmersiva (Fija) */}
+          <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+            {/* Onda Sky Blue - Calma para la Tribu */}
+            <div className="absolute -top-[15%] -left-[10%] w-[800px] h-[800px] bg-[#0EA5E9]/15 blur-[120px] animate-wave-slow" />
+            
+            {/* Onda Vital Orange - Energía para el Nido */}
+            <div className="absolute -bottom-[15%] -right-[10%] w-[700px] h-[700px] bg-[#F97316]/15 blur-[120px] animate-wave-medium" />
+            
+            {/* Punto de luz para profundidad */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-200/10 blur-[150px] animate-float" />
           </div>
 
-          {/* CONTENIDO DE LA APP (Z-INDEX SUPERIOR) */}
-          <div className="relative z-10 h-full">
+          {/* CONTENIDO DE LA APP: Flujo natural sobre la Brisa */}
+          <main className="relative z-10 w-full min-h-screen">
             <BrowserRouter>
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
-          </div>
+          </main>
         </div>
 
       </TooltipProvider>
