@@ -2,16 +2,23 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
-    <title>KidUs - Santuario Digital de Conciliación Familiar</title>
-    <meta name="description" content="KidUs transforma el caos familiar en calma. Gestiona horarios, eventos y turnos de tus hijos con paz mental. Perfecto para padres separados o con turnos complejos." />
+    <meta 
+      name="viewport" 
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1, user-scalable=no" 
+    />
+    
+    <title>KidUs - Tu Guía de Paz Familiar</title>
+    <meta name="description" content="Sincroniza tu Nido y transforma el caos en calma. Gestión inteligente para la Tribu." />
     <meta name="author" content="KidUs" />
-    <meta name="theme-color" content="#007AFF" />
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 
-    <meta property="og:title" content="KidUs - Tu árbitro de paz familiar" />
-    <meta property="og:description" content="Gestiona el tiempo de padres para que los niños siempre estén cubiertos. Perfecto para padres separados o con turnos complejos." />
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    
+    <meta name="theme-color" content="#F97316" />
+
+    <meta property="og:title" content="KidUs - Equipo en Calma" />
+    <meta property="og:description" content="La herramienta definitiva para la sincronización de Guías y la protección de los Peques." />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
 
@@ -19,7 +26,23 @@
     <meta name="twitter:site" content="@KidUsApp" />
     <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
     
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    
     <link rel="icon" type="image/png" href="/favicon.ico" />
+
+    <style>
+      /* Prevención de comportamientos extraños en scroll de Nido */
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden; /* El scroll se gestionará dentro de los componentes del Nido */
+        background-color: #F8FAFC; /* Slate 50 */
+        -webkit-tap-highlight-color: transparent; /* Elimina el recuadro gris al tocar en iOS */
+      }
+    </style>
   </head>
 
   <body>
