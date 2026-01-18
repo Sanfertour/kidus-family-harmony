@@ -1,42 +1,30 @@
+/* Eliminamos las restricciones de Vite para que KidUs respire */
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  width: 100%;
+  max-width: 100% !important;
+  margin: 0;
+  padding: 0;
+  text-align: left;
 }
 
+/* Clases de utilidad para logos si los necesitas en el Header */
 .logo {
-  height: 6em;
-  padding: 1.5em;
+  height: 3.5rem;
   will-change: filter;
   transition: filter 300ms;
 }
+
 .logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+  filter: drop-shadow(0 0 2em rgba(14, 165, 233, 0.3));
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+/* Transiciones suaves para cambios de ruta */
+.page-transition-enter {
+  opacity: 0;
+  transform: scale(1.02);
 }
-
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
-}
-
-.card {
-  padding: 2em;
-}
-
-.read-the-docs {
-  color: #888;
+.page-transition-enter-active {
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity 400ms, transform 400ms;
 }
