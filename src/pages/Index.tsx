@@ -12,8 +12,10 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { ManualEventDrawer } from "@/components/ManualEventDrawer";
 
+// URL del logo optimizada
 const LOGO_URL = "https://raw.githubusercontent.com/Sanfertour/kidus-family-harmony/main/src/assets/kidus-logo-C1AuyFb2.png";
 
+// Sistema de Feedback Háptico KidUs
 const triggerHaptic = (type: 'soft' | 'success') => {
   if (typeof navigator !== "undefined" && navigator.vibrate) {
     if (type === 'soft') navigator.vibrate(10);
@@ -76,7 +78,7 @@ const Index = () => {
         setFamilyMembers(profiles || []);
       }
     } catch (error) {
-      console.error("Error cargando la tribu:", error);
+      console.error("Error cargando equipo:", error);
     } finally {
       setLoading(false);
     }
@@ -88,7 +90,7 @@ const Index = () => {
     triggerHaptic('success');
     setIsAiProcessing(true);
     
-    const messages = ["Escaneando Nido...", "IA Analizando...", "Sincronizando..."];
+    const messages = ["Escaneando...", "IA trabajando...", "Sincronizando..."];
     let msgIndex = 0;
     const interval = setInterval(() => {
       setAiMessage(messages[msgIndex % messages.length]);
@@ -102,7 +104,7 @@ const Index = () => {
       const { data: aiResult } = await supabase.functions.invoke('process-image-ai', { body: { imageUrl: publicUrl } });
 
       setScannedData({
-        description: aiResult.description || "Nueva actividad de la Tribu",
+        description: aiResult.description || "Nueva actividad",
         date: aiResult.date || new Date().toISOString().split('T')[0],
         time: aiResult.time || "12:00"
       });
@@ -112,40 +114,43 @@ const Index = () => {
     } catch (error) {
       clearInterval(interval);
       setIsAiProcessing(false);
-      toast({ title: "Aviso del Guía", description: "Reintenta el escaneo para sincronizar.", variant: "destructive" });
+      toast({ title: "Aviso", description: "Reintenta el escaneo.", variant: "destructive" });
     }
   };
 
   if (loading) return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-slate-50">
-      <div className="w-24 h-24 bg-white rounded-[2.5rem] shadow-xl flex items-center justify-center border border-white animate-float">
-        <Loader2 className="text-[#0EA5E9] animate-spin" size={40} strokeWidth={3} />
+    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#F8FAFC]">
+      <div className="relative">
+        <div className="absolute inset-0 animate-ping bg-primary/20 rounded-[3rem] -z-10" />
+        <div className="w-24 h-24 bg-white rounded-[2.5rem] shadow-tribu-card flex items-center justify-center border border-white/50 z-10 animate-float">
+          <Loader2 className="text-primary animate-spin" size={40} strokeWidth={3} />
+        </div>
       </div>
       <div className="mt-12 text-center space-y-2">
-        <h3 className="text-3xl font-black text-slate-800 tracking-tighter">Sincronizando...</h3>
-        <p className="text-[#0EA5E9] font-black text-[10px] uppercase tracking-[0.4em]">Preparando tu Nido</p>
+        <h3 className="text-3xl font-black text-slate-800 tracking-tight">Sincronizando Nido</h3>
+        <p className="text-primary font-black text-[10px] uppercase tracking-[0.4em] opacity-60">Preparando la Tribu...</p>
       </div>
     </div>
   );
 
   if (!session) {
     return (
-      <div className="min-h-screen w-full flex flex-col items-center justify-center p-8 bg-slate-50">
+      <div className="min-h-screen w-full flex flex-col items-center justify-center p-8 bg-[#F8FAFC] relative overflow-hidden font-sans">
         <div className="relative z-10 text-center space-y-12 w-full max-w-sm">
-          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
+          <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
             <div className="w-36 h-36 glass-card flex items-center justify-center mx-auto">
               <img src={LOGO_URL} alt="KidUs" className="w-24 h-24 object-contain" />
             </div>
           </motion.div>
           <div className="space-y-2">
-            <h1 className="text-6xl font-black text-slate-800 tracking-tighter">Kid<span className="text-[#0EA5E9]">Us</span></h1>
-            <p className="text-slate-400 font-black uppercase tracking-[0.4em] text-[10px]">Gestión de la Tribu</p>
+            <h1 className="text-6xl font-black text-slate-800 tracking-tighter">KidUs</h1>
+            <p className="text-slate-400 font-black uppercase tracking-[0.4em] text-[10px]">Armonía para tu Tribu</p>
           </div>
           <Button 
-            onClick={() => { triggerHaptic('success'); supabase.auth.signInWithOAuth({ provider: 'google' }); }} 
-            className="w-full h-20 rounded-[2.5rem] bg-white border-2 border-slate-100 text-slate-800 font-black shadow-xl active:scale-95 transition-all hover:bg-slate-50"
+            onClick={() => { triggerHaptic('soft'); supabase.auth.signInWithOAuth({ provider: 'google' }); }} 
+            className="w-full h-20 rounded-5xl bg-white border border-slate-100 text-slate-800 font-black shadow-brisa active:scale-95 transition-all"
           >
-            ENTRAR AL NIDO
+            SINCRO CON GOOGLE
           </Button>
         </div>
       </div>
@@ -153,15 +158,17 @@ const Index = () => {
   }
 
   return (
-    <div className="relative min-h-screen w-full">
+    <div className="relative min-h-screen w-full overflow-hidden font-sans bg-transparent">
       <Header />
       
-      <main className="container mx-auto px-6 pt-6 max-w-md relative z-10 mb-36 no-scrollbar">
+      <main className="container mx-auto px-6 pt-6 max-w-md relative z-10 pb-44">
         <AnimatePresence mode="wait">
           {activeTab === "home" && (
             <motion.div 
               key="home"
-              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} 
+              initial={{ opacity: 0, y: 20 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              exit={{ opacity: 0, y: -20 }} 
               className="space-y-8"
             >
               <h1 className="text-5xl font-black text-slate-800 leading-[1.1] tracking-tighter px-2">
@@ -227,6 +234,7 @@ const Index = () => {
         </AnimatePresence>
       </main>
 
+      {/* Navegación Inferior con contraste mejorado */}
       <nav className="fixed bottom-0 left-0 right-0 h-28 bg-white/80 backdrop-blur-3xl border-t border-white/20 flex justify-around items-center px-10 z-[40] rounded-t-[3.5rem] shadow-2xl">
         {[
           { id: "home", icon: HomeIcon }, { id: "agenda", icon: Calendar }, { id: "family", icon: Users }, { id: "settings", icon: Settings }
@@ -234,13 +242,14 @@ const Index = () => {
           <button 
             key={tab.id} 
             onClick={() => { triggerHaptic('soft'); setActiveTab(tab.id); }} 
-            className={`p-4 transition-all duration-300 ${activeTab === tab.id ? "text-[#0EA5E9] scale-125 -translate-y-4" : "text-slate-300"}`}
+            className={`p-4 transition-all duration-300 ${activeTab === tab.id ? "text-[#0EA5E9] scale-125 -translate-y-4" : "text-slate-800 opacity-70"}`}
           >
             <tab.icon size={26} strokeWidth={activeTab === tab.id ? 3 : 2.5} />
           </button>
         ))}
       </nav>
 
+      {/* FAB Dinámico */}
       <div className="fixed bottom-36 right-8 z-50 flex flex-col items-center">
         <div className={`flex flex-col gap-6 mb-6 transition-all duration-500 ${isFabOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-20 pointer-events-none'}`}>
           <button onClick={() => { triggerHaptic('soft'); setIsFabOpen(false); fileInputRef.current?.click(); }} className="w-16 h-16 bg-[#0EA5E9] rounded-[2rem] flex items-center justify-center text-white shadow-xl border-4 border-white active:scale-90 transition-all">
