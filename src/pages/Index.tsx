@@ -12,10 +12,8 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { ManualEventDrawer } from "@/components/ManualEventDrawer";
 
-// URL del logo optimizada
 const LOGO_URL = "https://raw.githubusercontent.com/Sanfertour/kidus-family-harmony/main/src/assets/kidus-logo-C1AuyFb2.png";
 
-// Sistema de Feedback Háptico KidUs
 const triggerHaptic = (type: 'soft' | 'success') => {
   if (typeof navigator !== "undefined" && navigator.vibrate) {
     if (type === 'soft') navigator.vibrate(10);
@@ -63,18 +61,34 @@ const Index = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       
-      const { data: myProfile } = await supabase
+      // 1. Obtener o crear perfil (Lógica Pro: Auto-Guía por defecto)
+      let { data: myProfile } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
         .maybeSingle();
+      
+      if (!myProfile || !myProfile.role) {
+        const { data: newProfile } = await supabase
+          .from('profiles')
+          .upsert({ 
+            id: user.id, 
+            display_name: user.user_metadata.full_name || 'Nuevo Guía',
+            role: 'autonomous', // Siempre entra como Guía
+            nest_id: myProfile?.nest_id || crypto.randomUUID()
+          })
+          .select()
+          .single();
+        myProfile = newProfile;
+      }
       
       if (myProfile?.nest_id) {
         setMyNestId(myProfile.nest_id);
         const { data: profiles } = await supabase
           .from('profiles')
           .select('*')
-          .eq('nest_id', myProfile.nest_id);
+          .eq('nest_id', myProfile.nest_id)
+          .order('role', { ascending: true }); // Guías arriba
         setFamilyMembers(profiles || []);
       }
     } catch (error) {
@@ -101,54 +115,62 @@ const Index = () => {
       const fileName = `${Math.random()}.${file.name.split('.').pop()}`;
       await supabase.storage.from('event-attachments').upload(fileName, file);
       const { data: { publicUrl } } = supabase.storage.from('event-attachments').getPublicUrl(fileName);
-      const { data: aiResult } = await supabase.functions.invoke('process-image-ai', { body: { imageUrl: publicUrl } });
+      
+      // Sincronía con Edge Function de IA
+      const { data: aiResult, error: aiError } = await supabase.functions.invoke('process-image-ai', { 
+        body: { imageUrl: publicUrl } 
+      });
+
+      if (aiError) throw aiError;
 
       setScannedData({
         description: aiResult.description || "Nueva actividad",
         date: aiResult.date || new Date().toISOString().split('T')[0],
-        time: aiResult.time || "12:00"
+        time: aiResult.time || "12:00",
+        location: aiResult.location || ""
       });
+      
       setIsAiProcessing(false);
       setIsDrawerOpen(true);
       clearInterval(interval);
     } catch (error) {
       clearInterval(interval);
       setIsAiProcessing(false);
-      toast({ title: "Aviso", description: "Reintenta el escaneo.", variant: "destructive" });
+      toast({ title: "Error de lectura", description: "La IA no pudo procesar la imagen.", variant: "destructive" });
     }
   };
 
   if (loading) return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#F8FAFC]">
+    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-slate-50">
       <div className="relative">
-        <div className="absolute inset-0 animate-ping bg-primary/20 rounded-[3rem] -z-10" />
-        <div className="w-24 h-24 bg-white rounded-[2.5rem] shadow-tribu-card flex items-center justify-center border border-white/50 z-10 animate-float">
-          <Loader2 className="text-primary animate-spin" size={40} strokeWidth={3} />
+        <div className="absolute inset-0 animate-ping bg-[#0EA5E9]/20 rounded-[3rem]" />
+        <div className="w-24 h-24 bg-white rounded-[2.5rem] shadow-2xl flex items-center justify-center z-10 animate-pulse border border-white">
+          <Loader2 className="text-[#0EA5E9] animate-spin" size={40} strokeWidth={3} />
         </div>
       </div>
-      <div className="mt-12 text-center space-y-2">
-        <h3 className="text-3xl font-black text-slate-800 tracking-tight">Sincronizando Nido</h3>
-        <p className="text-primary font-black text-[10px] uppercase tracking-[0.4em] opacity-60">Preparando la Tribu...</p>
+      <div className="mt-12 text-center">
+        <h3 className="text-3xl font-black text-slate-800 tracking-tighter">Sincronizando...</h3>
+        <p className="text-[#0EA5E9] font-black text-[10px] uppercase tracking-[0.4em] mt-2">KidUs v1.0</p>
       </div>
     </div>
   );
 
   if (!session) {
     return (
-      <div className="min-h-screen w-full flex flex-col items-center justify-center p-8 bg-[#F8FAFC] relative overflow-hidden font-sans">
+      <div className="min-h-screen w-full flex flex-col items-center justify-center p-8 bg-slate-50 relative overflow-hidden">
         <div className="relative z-10 text-center space-y-12 w-full max-w-sm">
           <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
-            <div className="w-36 h-36 glass-card flex items-center justify-center mx-auto">
+            <div className="w-36 h-36 bg-white rounded-[3.5rem] shadow-xl flex items-center justify-center mx-auto border border-white/50">
               <img src={LOGO_URL} alt="KidUs" className="w-24 h-24 object-contain" />
             </div>
           </motion.div>
           <div className="space-y-2">
-            <h1 className="text-6xl font-black text-slate-800 tracking-tighter">KidUs</h1>
+            <h1 className="text-6xl font-black text-slate-800 tracking-tighter font-nunito">KidUs</h1>
             <p className="text-slate-400 font-black uppercase tracking-[0.4em] text-[10px]">Armonía para tu Tribu</p>
           </div>
           <Button 
             onClick={() => { triggerHaptic('soft'); supabase.auth.signInWithOAuth({ provider: 'google' }); }} 
-            className="w-full h-20 rounded-5xl bg-white border border-slate-100 text-slate-800 font-black shadow-brisa active:scale-95 transition-all"
+            className="w-full h-20 rounded-[2.5rem] bg-white border-2 border-slate-100 text-slate-800 font-black shadow-xl active:scale-95 transition-all text-lg tracking-tight"
           >
             SINCRO CON GOOGLE
           </Button>
@@ -158,35 +180,29 @@ const Index = () => {
   }
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden font-sans bg-transparent">
+    <div className="relative min-h-screen w-full overflow-hidden bg-slate-50 font-sans">
       <Header />
       
       <main className="container mx-auto px-6 pt-6 max-w-md relative z-10 pb-44">
         <AnimatePresence mode="wait">
           {activeTab === "home" && (
-            <motion.div 
-              key="home"
-              initial={{ opacity: 0, y: 20 }} 
-              animate={{ opacity: 1, y: 0 }} 
-              exit={{ opacity: 0, y: -20 }} 
-              className="space-y-8"
-            >
-              <h1 className="text-5xl font-black text-slate-800 leading-[1.1] tracking-tighter px-2">
+            <motion.div key="home" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-8">
+              <h1 className="text-5xl font-black text-slate-800 leading-[1.1] tracking-tighter px-2 font-nunito">
                 Nido en <br/> <span className="text-[#0EA5E9]">calma.</span>
               </h1>
               
-              <div className="p-10 glass-card">
+              <div className="p-10 rounded-[3.5rem] bg-white border border-white shadow-xl shadow-slate-200/50">
                 <label className="text-[10px] font-black text-[#0EA5E9] uppercase tracking-[0.2em] mb-4 block">Sincronía Actual</label>
-                <h3 className="text-2xl font-black text-slate-800 mb-2">{familyMembers.length} integrantes</h3>
-                <p className="text-slate-500 font-bold text-sm">La tribu está conectada y en orden.</p>
+                <h3 className="text-3xl font-black text-slate-800 mb-2">{familyMembers.length} integrantes</h3>
+                <p className="text-slate-400 font-bold text-sm tracking-tight">Tu equipo está conectado y fluyendo.</p>
               </div>
               
               <div className="grid grid-cols-2 gap-5">
-                <button onClick={() => { triggerHaptic('soft'); setActiveTab("agenda"); }} className="p-10 rounded-[3rem] flex flex-col items-center gap-4 bg-[#0EA5E9] text-white shadow-lg active:scale-95 transition-all">
+                <button onClick={() => { triggerHaptic('soft'); setActiveTab("agenda"); }} className="p-10 rounded-[3.5rem] flex flex-col items-center gap-4 bg-[#0EA5E9] text-white shadow-2xl active:scale-95 transition-all">
                   <Calendar size={28} strokeWidth={3} />
                   <span className="text-[11px] font-black uppercase tracking-widest">Agenda</span>
                 </button>
-                <button onClick={() => { triggerHaptic('soft'); setActiveTab("family"); }} className="p-10 rounded-[3rem] flex flex-col items-center gap-4 bg-white text-[#F97316] border-2 border-slate-50 shadow-md active:scale-95 transition-all">
+                <button onClick={() => { triggerHaptic('soft'); setActiveTab("family"); }} className="p-10 rounded-[3.5rem] flex flex-col items-center gap-4 bg-white text-[#F97316] border border-white shadow-xl active:scale-95 transition-all">
                   <Users size={28} strokeWidth={3} />
                   <span className="text-[11px] font-black uppercase tracking-widest">Tribu</span>
                 </button>
@@ -201,23 +217,26 @@ const Index = () => {
           )}
 
           {activeTab === "family" && (
-            <motion.div key="family" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
-              <div className="flex justify-between items-center px-4">
-                <h2 className="text-4xl font-black text-slate-800 tracking-tighter">Tribu</h2>
+            <motion.div key="family" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8 pb-10">
+              <div className="flex justify-between items-end px-4">
+                <div>
+                  <h2 className="text-5xl font-black text-slate-800 tracking-tighter">Tribu</h2>
+                  <p className="text-[10px] font-black text-[#F97316] uppercase tracking-widest mt-1">Gestión de Equipo</p>
+                </div>
                 <AddMemberDialog onMemberAdded={fetchAllData}>
-                  <button onClick={() => triggerHaptic('soft')} className="w-16 h-16 bg-[#0EA5E9] rounded-[2rem] flex items-center justify-center text-white shadow-lg active:scale-90 transition-all">
+                  <button onClick={() => triggerHaptic('soft')} className="w-16 h-16 bg-[#0EA5E9] rounded-2xl flex items-center justify-center text-white shadow-lg active:scale-90 transition-all">
                     <Plus size={32} strokeWidth={3} />
                   </button>
                 </AddMemberDialog>
               </div>
               <div className="grid grid-cols-2 gap-5">
                 {familyMembers.map((member) => (
-                  <div key={member.id} className="p-8 glass-card flex flex-col items-center">
-                    <div className="w-20 h-20 rounded-[2.5rem] flex items-center justify-center text-2xl font-black text-white shadow-lg mb-4" style={{ backgroundColor: member.avatar_url || '#0EA5E9' }}>
+                  <div key={member.id} className="p-8 rounded-[3rem] bg-white border border-white shadow-sm flex flex-col items-center hover:shadow-md transition-all">
+                    <div className="w-20 h-20 rounded-[2.2rem] flex items-center justify-center text-2xl font-black text-white shadow-lg mb-4" style={{ backgroundColor: member.avatar_url || '#0EA5E9' }}>
                       {member.display_name?.charAt(0).toUpperCase()}
                     </div>
                     <span className="font-black text-slate-800 text-sm text-center line-clamp-1">{member.display_name}</span>
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-2">
+                    <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest mt-2">
                       {member.role === 'autonomous' ? 'Guía' : 'Peque'}
                     </span>
                   </div>
@@ -228,39 +247,39 @@ const Index = () => {
 
           {activeTab === "settings" && (
             <motion.div key="settings" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.05 }}>
-              <SettingsView nestId={myNestId} members={familyMembers} />
+              <SettingsView nestId={myNestId} members={familyMembers} onRefresh={fetchAllData} />
             </motion.div>
           )}
         </AnimatePresence>
       </main>
 
-      {/* Navegación Inferior con contraste mejorado */}
-      <nav className="fixed bottom-0 left-0 right-0 h-28 bg-white/80 backdrop-blur-3xl border-t border-white/20 flex justify-around items-center px-10 z-[40] rounded-t-[3.5rem] shadow-2xl">
+      {/* NAVEGACIÓN INFERIOR */}
+      <nav className="fixed bottom-0 left-0 right-0 h-28 bg-white/90 backdrop-blur-2xl border-t border-slate-100 flex justify-around items-center px-10 z-[40] rounded-t-[3.5rem] shadow-2xl">
         {[
           { id: "home", icon: HomeIcon }, { id: "agenda", icon: Calendar }, { id: "family", icon: Users }, { id: "settings", icon: Settings }
         ].map((tab) => (
           <button 
             key={tab.id} 
             onClick={() => { triggerHaptic('soft'); setActiveTab(tab.id); }} 
-            className={`p-4 transition-all duration-300 ${activeTab === tab.id ? "text-[#0EA5E9] scale-125 -translate-y-4" : "text-slate-800 opacity-70"}`}
+            className={`p-4 transition-all duration-400 ${activeTab === tab.id ? "text-[#0EA5E9] scale-125 -translate-y-4" : "text-slate-400"}`}
           >
-            <tab.icon size={26} strokeWidth={activeTab === tab.id ? 3 : 2.5} />
+            <tab.icon size={26} strokeWidth={activeTab === tab.id ? 3 : 2} />
           </button>
         ))}
       </nav>
 
-      {/* FAB Dinámico */}
+      {/* FAB DINÁMICO */}
       <div className="fixed bottom-36 right-8 z-50 flex flex-col items-center">
-        <div className={`flex flex-col gap-6 mb-6 transition-all duration-500 ${isFabOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-20 pointer-events-none'}`}>
-          <button onClick={() => { triggerHaptic('soft'); setIsFabOpen(false); fileInputRef.current?.click(); }} className="w-16 h-16 bg-[#0EA5E9] rounded-[2rem] flex items-center justify-center text-white shadow-xl border-4 border-white active:scale-90 transition-all">
+        <div className={`flex flex-col gap-6 mb-6 transition-all duration-500 ${isFabOpen ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-20 scale-50 pointer-events-none'}`}>
+          <button onClick={() => { triggerHaptic('soft'); setIsFabOpen(false); fileInputRef.current?.click(); }} className="w-16 h-16 bg-[#0EA5E9] rounded-2xl flex items-center justify-center text-white shadow-xl border-4 border-white active:scale-90 transition-all">
             <Camera size={28} strokeWidth={3} />
           </button>
-          <button onClick={() => { triggerHaptic('soft'); setIsFabOpen(false); setIsDrawerOpen(true); }} className="w-16 h-16 bg-[#F97316] rounded-[2rem] flex items-center justify-center text-white shadow-xl border-4 border-white active:scale-90 transition-all">
+          <button onClick={() => { triggerHaptic('soft'); setIsFabOpen(false); setIsDrawerOpen(true); }} className="w-16 h-16 bg-[#F97316] rounded-2xl flex items-center justify-center text-white shadow-xl border-4 border-white active:scale-90 transition-all">
             <Plus size={28} strokeWidth={3} />
           </button>
         </div>
-        <button onClick={() => { triggerHaptic('soft'); setIsFabOpen(!isFabOpen); }} className={`w-[76px] h-[76px] rounded-[2.2rem] flex items-center justify-center text-white shadow-2xl transition-all duration-400 ${isFabOpen ? 'rotate-45 bg-slate-800' : 'bg-[#0EA5E9]'}`}>
-          <Plus size={40} strokeWidth={3} />
+        <button onClick={() => { triggerHaptic('soft'); setIsFabOpen(!isFabOpen); }} className={`w-20 h-20 rounded-[2.5rem] flex items-center justify-center text-white shadow-2xl transition-all duration-500 ${isFabOpen ? 'rotate-45 bg-slate-800' : 'bg-[#0EA5E9]'}`}>
+          <Plus size={36} strokeWidth={3} />
         </button>
       </div>
 
@@ -268,21 +287,28 @@ const Index = () => {
 
       <AnimatePresence>
         {isAiProcessing && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] flex items-center justify-center bg-white/90 backdrop-blur-3xl">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] flex items-center justify-center bg-white/95 backdrop-blur-2xl">
             <div className="flex flex-col items-center gap-8 text-center p-12">
-              <div className="w-24 h-24 bg-[#0EA5E9]/10 rounded-[3rem] flex items-center justify-center animate-wave-slow">
-                <Camera className="text-[#0EA5E9] animate-pulse" size={40} />
+              <div className="w-28 h-28 bg-[#0EA5E9]/10 rounded-[3rem] flex items-center justify-center relative">
+                <div className="absolute inset-0 bg-[#0EA5E9]/20 rounded-[3rem] animate-ping" />
+                <Camera className="text-[#0EA5E9] relative z-10" size={44} />
               </div>
-              <div className="space-y-2">
-                <h3 className="text-3xl font-black text-slate-800 tracking-tighter">Sincronizando...</h3>
-                <p className="text-[#0EA5E9] font-black text-[10px] uppercase tracking-[0.3em]">{aiMessage}</p>
+              <div className="space-y-3">
+                <h3 className="text-4xl font-black text-slate-800 tracking-tighter">IA KidUs</h3>
+                <p className="text-[#0EA5E9] font-black text-xs uppercase tracking-[0.4em]">{aiMessage}</p>
               </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <ManualEventDrawer isOpen={isDrawerOpen} onClose={() => { setIsDrawerOpen(false); setScannedData(null); }} members={familyMembers} onEventAdded={fetchAllData} initialData={scannedData} />
+      <ManualEventDrawer 
+        isOpen={isDrawerOpen} 
+        onClose={() => { setIsDrawerOpen(false); setScannedData(null); }} 
+        members={familyMembers} 
+        onEventAdded={() => { fetchAllData(); setActiveTab("agenda"); }} 
+        initialData={scannedData} 
+      />
     </div>
   );
 };
