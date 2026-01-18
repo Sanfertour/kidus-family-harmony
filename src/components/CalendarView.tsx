@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, Filter } from "lucide-react";
 import {
   format,
@@ -7,7 +7,6 @@ import {
   endOfMonth,
   eachDayOfInterval,
   isSameMonth,
-  isSameDay,
   addMonths,
   subMonths,
   startOfWeek,
@@ -15,30 +14,26 @@ import {
   isToday,
 } from "date-fns";
 import { es } from "date-fns/locale";
-import { NestMember, EventData, CustodyBlock } from "@/types/kidus";
-import MemberAvatar from "./MemberAvatar";
+import { MemberAvatar } from "./MemberAvatar";
 
-interface CalendarViewProps {
-  events: EventData[];
-  members: NestMember[];
-  custodyBlocks?: CustodyBlock[];
-  selectedMemberId?: string | null;
-  onMemberFilter: (memberId: string | null) => void;
-  onDateSelect: (date: Date) => void;
-  onEventClick?: (event: EventData) => void;
-}
+// Feedback háptico profesional
+const triggerHaptic = (type: 'soft' | 'success' = 'soft') => {
+  if (typeof navigator !== "undefined" && navigator.vibrate) {
+    navigator.vibrate(type === 'soft' ? 10 : [20, 30, 20]);
+  }
+};
 
-const CalendarView = ({
+export const CalendarView = ({
   events,
   members,
   custodyBlocks = [],
   selectedMemberId,
   onMemberFilter,
   onDateSelect,
-  onEventClick,
-}: CalendarViewProps) => {
+}: any) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
+  // Lógica de generación de días sincronizada
   const days = useMemo(() => {
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
@@ -49,37 +44,25 @@ const CalendarView = ({
 
   const getEventsForDay = (day: Date) => {
     const dateStr = format(day, "yyyy-MM-dd");
-    return events.filter((e) => e.date === dateStr);
+    return events.filter((e: any) => e.date === dateStr || e.event_date?.startsWith(dateStr));
   };
-
-  const getCustodyForDay = (day: Date) => {
-    const dateStr = format(day, "yyyy-MM-dd");
-    return custodyBlocks.find((c) => c.date === dateStr);
-  };
-
-  const filteredEvents = useMemo(() => {
-    if (!selectedMemberId) return events;
-    return events.filter((e) => e.memberId === selectedMemberId);
-  }, [events, selectedMemberId]);
 
   const weekDays = ["L", "M", "X", "J", "V", "S", "D"];
 
   return (
-    <div className="glass-card rounded-2xl p-4 mx-4 mb-4">
-      {/* Member filter bar */}
-      <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-2">
+    <div className="mx-6 p-8 rounded-[3.5rem] bg-white/50 backdrop-blur-2xl border border-white/70 shadow-sm mb-10">
+      
+      {/* Filtro de la Tribu (Guías) */}
+      <div className="flex items-center gap-3 mb-8 overflow-x-auto pb-2 no-scrollbar">
         <button
-          onClick={() => onMemberFilter(null)}
-          className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-            !selectedMemberId
-              ? "bg-primary text-white"
-              : "bg-muted text-muted-foreground hover:bg-muted/80"
+          onClick={() => { triggerHaptic('soft'); onMemberFilter(null); }}
+          className={`flex items-center justify-center min-w-[3.5rem] h-10 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
+            !selectedMemberId ? "bg-[#0EA5E9] text-white shadow-lg" : "bg-white text-slate-400 border border-slate-100"
           }`}
         >
-          <Filter size={12} />
           Todos
         </button>
-        {members.map((member) => (
+        {members.map((member: any) => (
           <MemberAvatar
             key={member.id}
             member={member}
@@ -90,103 +73,69 @@ const CalendarView = ({
         ))}
       </div>
 
-      {/* Month navigation */}
-      <div className="flex items-center justify-between mb-4">
-        <motion.button
-          onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-          className="p-2 rounded-full hover:bg-muted transition-colors"
-          whileTap={{ scale: 0.9 }}
-        >
-          <ChevronLeft size={20} />
-        </motion.button>
-        <h3 className="text-lg font-semibold capitalize">
-          {format(currentMonth, "MMMM yyyy", { locale: es })}
+      {/* Navegación del Mes con Nunito Black */}
+      <div className="flex items-center justify-between mb-8">
+        <h3 className="text-xl font-black text-slate-800 uppercase tracking-tighter font-nunito">
+          {format(currentMonth, "MMMM", { locale: es })}
         </h3>
-        <motion.button
-          onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-          className="p-2 rounded-full hover:bg-muted transition-colors"
-          whileTap={{ scale: 0.9 }}
-        >
-          <ChevronRight size={20} />
-        </motion.button>
+        <div className="flex gap-2">
+          <button 
+            onClick={() => { triggerHaptic('soft'); setCurrentMonth(subMonths(currentMonth, 1)); }}
+            className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 active:scale-90 transition-transform"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <button 
+            onClick={() => { triggerHaptic('soft'); setCurrentMonth(addMonths(currentMonth, 1)); }}
+            className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 active:scale-90 transition-transform"
+          >
+            <ChevronRight size={20} />
+          </button>
+        </div>
       </div>
 
-      {/* Week day headers */}
-      <div className="grid grid-cols-7 gap-1 mb-2">
-        {weekDays.map((day) => (
-          <div
-            key={day}
-            className="text-center text-xs font-medium text-muted-foreground py-1"
-          >
-            {day}
-          </div>
+      {/* Grid de días (Días de la semana) */}
+      <div className="grid grid-cols-7 gap-2 mb-4">
+        {weekDays.map(d => (
+          <div key={d} className="text-center text-[10px] font-black text-slate-300 pb-2 uppercase tracking-widest">{d}</div>
         ))}
       </div>
 
-      {/* Calendar grid */}
-      <div className="grid grid-cols-7 gap-1">
+      {/* Grid de días del Calendario */}
+      <div className="grid grid-cols-7 gap-2">
         {days.map((day, index) => {
           const dayEvents = getEventsForDay(day);
-          const filteredDayEvents = selectedMemberId
-            ? dayEvents.filter((e) => e.memberId === selectedMemberId)
-            : dayEvents;
-          const custody = getCustodyForDay(day);
-          const hasConflict = dayEvents.some((e) => e.hasConflict);
           const isCurrentMonth = isSameMonth(day, currentMonth);
+          const isTodayDay = isToday(day);
+          const hasConflict = dayEvents.some((e: any) => e.hasConflict);
 
           return (
             <motion.button
               key={index}
-              onClick={() => onDateSelect(day)}
-              className={`relative aspect-square p-1 rounded-xl flex flex-col items-center justify-start transition-all ${
-                isCurrentMonth
-                  ? "text-foreground"
-                  : "text-muted-foreground/40"
-              } ${
-                isToday(day)
-                  ? "bg-primary/10 border-2 border-primary"
-                  : "hover:bg-muted"
-              }`}
-              whileTap={{ scale: 0.95 }}
+              onClick={() => { triggerHaptic('soft'); onDateSelect(day); }}
+              whileTap={{ scale: 0.9 }}
+              className={`relative aspect-square rounded-2xl flex flex-col items-center justify-center transition-all ${
+                isCurrentMonth ? "text-slate-800" : "text-slate-200"
+              } ${isTodayDay ? "bg-[#0EA5E9]/10 border-2 border-[#0EA5E9]" : "hover:bg-slate-50"}`}
             >
-              {/* Custody strip at top */}
-              {custody && (
-                <div
-                  className="absolute top-0 left-0 right-0 h-1 rounded-t-xl"
-                  style={{ backgroundColor: custody.memberColor }}
-                />
-              )}
-
-              {/* Day number */}
-              <span className="text-sm font-medium mt-1">
+              <span className={`text-xs font-black ${isTodayDay ? "text-[#0EA5E9]" : ""}`}>
                 {format(day, "d")}
               </span>
 
-              {/* Event indicators */}
-              <div className="flex flex-wrap gap-0.5 mt-1 justify-center max-w-full">
-                {filteredDayEvents.slice(0, 3).map((event, i) => (
+              {/* Dots de Eventos sincronizados por Guía */}
+              <div className="flex gap-0.5 mt-1">
+                {dayEvents.slice(0, 3).map((event: any, i: number) => (
                   <div
                     key={i}
-                    className={`w-1.5 h-1.5 rounded-full ${
-                      event.hasConflict ? "animate-pulse" : ""
-                    }`}
-                    style={{
-                      backgroundColor: event.hasConflict
-                        ? "hsl(var(--accent))"
-                        : event.memberColor,
-                    }}
+                    className="w-1 h-1 rounded-full"
+                    style={{ backgroundColor: event.memberColor || '#F97316' }}
                   />
                 ))}
-                {filteredDayEvents.length > 3 && (
-                  <span className="text-[8px] text-muted-foreground">
-                    +{filteredDayEvents.length - 3}
-                  </span>
-                )}
               </div>
 
-              {/* Conflict warning */}
+              {/* Alerta de Conflicto - Vital Orange */}
               {hasConflict && (
-                <div className="absolute top-0 right-0 w-2 h-2 rounded-full bg-accent animate-pulse" />
+                <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-[#F97316] animate-pulse" />
               )}
             </motion.button>
           );
