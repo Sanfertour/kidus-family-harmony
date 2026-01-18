@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
   X, Sparkles, Loader2, Users, UserCheck, 
-  Shield, EyeOff, MapPin, Calendar, Clock 
+  Shield, EyeOff, MapPin, Calendar, Clock, BookOpen, Trophy, HeartPulse
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,6 +15,14 @@ const triggerHaptic = (type: 'soft' | 'success') => {
   }
 };
 
+// Categorías KidUs para la Sincronía
+const EVENT_CATEGORIES = [
+  { id: 'escolar', label: 'Cole / Menú', icon: BookOpen, color: 'text-sky-500', bg: 'bg-sky-50' },
+  { id: 'deporte', label: 'Deporte / Extra', icon: Trophy, color: 'text-orange-500', bg: 'bg-orange-50' },
+  { id: 'salud', label: 'Salud / Citas', icon: HeartPulse, color: 'text-slate-800', bg: 'bg-slate-100' },
+  { id: 'tribu', label: 'General / Tribu', icon: Sparkles, color: 'text-slate-400', bg: 'bg-slate-50' },
+];
+
 export const ManualEventDrawer = ({ 
   isOpen, onClose, onEventAdded, members, initialData 
 }: { 
@@ -22,8 +30,9 @@ export const ManualEventDrawer = ({
   members: any[]; initialData?: any;
 }) => {
   const [title, setTitle] = useState('');
-  const [subjectId, setSubjectId] = useState(''); // Protagonista (Peques/Tribu)
-  const [assignedTo, setAssignedTo] = useState(''); // Guía Responsable
+  const [eventType, setEventType] = useState('tribu'); // Categoría por defecto
+  const [subjectId, setSubjectId] = useState(''); 
+  const [assignedTo, setAssignedTo] = useState(''); 
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [location, setLocation] = useState('');
@@ -39,15 +48,12 @@ export const ManualEventDrawer = ({
         setDate(initialData.date || '');
         setTime(initialData.time || '');
         if (initialData.location) setLocation(initialData.location);
+        if (initialData.event_type) setEventType(initialData.event_type);
       }
 
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('nest_id')
-          .eq('id', user.id)
-          .maybeSingle();
+        const { data: profile } = await supabase.from('profiles').select('nest_id').eq('id', user.id).maybeSingle();
         if (profile) setCurrentNestId(profile.nest_id);
       }
     };
@@ -57,11 +63,7 @@ export const ManualEventDrawer = ({
   const handleSave = async () => {
     if (!title || !date || !time) {
       triggerHaptic('soft');
-      toast({ 
-        title: "Faltan piezas", 
-        description: "El título, la fecha y la hora son vitales.", 
-        variant: "destructive" 
-      });
+      toast({ title: "Faltan piezas", description: "El título, la fecha y la hora son vitales.", variant: "destructive" });
       return;
     }
 
@@ -72,21 +74,21 @@ export const ManualEventDrawer = ({
 
     setLoading(true);
     
-    // Sincronía con la DB: Enviamos title y description para evitar el 400
     const { error } = await supabase.from('events').insert([{ 
       title: title,
       description: title, 
       event_date: new Date(`${date}T${time}:00`).toISOString(),
+      event_type: eventType, // ¡Aquí se guarda el color!
       assigned_to: subjectId || null, 
       nest_id: currentNestId,
       status: 'pending',
       is_private: isPrivate,
       location: location,
-      created_by: assignedTo || null 
+      created_by: assignedTo || null,
+      reminder_sent: false // El robot lo pondrá a true cuando avise
     }]);
 
     if (error) {
-      console.error("Error en el Nido:", error);
       toast({ title: "Error de sincronía", description: "La base de datos rechazó el pulso.", variant: "destructive" });
     } else {
       triggerHaptic('success');
@@ -101,74 +103,71 @@ export const ManualEventDrawer = ({
 
   return (
     <div className="fixed inset-0 z-[100] flex items-end justify-center font-sans">
-      <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm animate-in fade-in duration-300" onClick={onClose} />
+      <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm" onClick={onClose} />
       
-      <div className={`relative w-full max-w-md transition-all duration-500 rounded-t-[3.5rem] p-10 shadow-2xl animate-in slide-in-from-bottom max-h-[95vh] overflow-y-auto border-t ${isPrivate ? 'bg-slate-950 text-white border-white/10' : 'bg-slate-50 text-slate-800 border-white'}`}>
+      <div className={`relative w-full max-w-md rounded-t-[3.5rem] p-10 shadow-2xl animate-in slide-in-from-bottom max-h-[95vh] overflow-y-auto border-t transition-colors duration-500 ${isPrivate ? 'bg-slate-950 text-white border-white/10' : 'bg-slate-50 text-slate-800 border-white'}`}>
         
-        <div className={`w-16 h-1.5 rounded-full mx-auto mb-8 ${isPrivate ? 'bg-slate-800' : 'bg-slate-200'}`} />
+        <div className="w-16 h-1.5 rounded-full mx-auto mb-8 bg-slate-200/20" />
         
         <div className="flex justify-between items-start mb-8">
           <div className="space-y-1">
-            <div className="flex items-center gap-3">
-              {initialData && <Sparkles size={24} className="text-[#0EA5E9] animate-pulse" />}
-              <h2 className="text-4xl font-black tracking-tighter">
-                {initialData ? 'Validar' : isPrivate ? 'Privado' : 'Actividad'}
-              </h2>
-            </div>
-            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#0EA5E9]">Gestión de la Tribu</p>
+            <h2 className="text-4xl font-black tracking-tighter">Nueva Misión</h2>
+            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#0EA5E9]">Agenda de la Tribu</p>
           </div>
-          <button onClick={() => { triggerHaptic('soft'); onClose(); }} className="p-3 bg-white/10 rounded-2xl active:scale-90 transition-all">
-            <X size={24} />
-          </button>
+          <button onClick={onClose} className="p-3 bg-white/5 rounded-2xl"><X size={24} /></button>
         </div>
-        
-        <div className="space-y-6">
-          {/* MODO PRIVADO */}
-          <div className={`flex items-center justify-between p-6 rounded-[2.5rem] border-2 transition-all ${isPrivate ? 'bg-slate-900 border-[#F97316]/40' : 'bg-white border-slate-100 shadow-sm'}`}>
-            <div className="flex items-center gap-4">
-              <div className={`p-3 rounded-2xl ${isPrivate ? 'bg-[#F97316] text-white' : 'bg-slate-100 text-slate-400'}`}>
-                {isPrivate ? <EyeOff size={22} /> : <Shield size={22} />}
-              </div>
-              <div>
-                <p className="text-[11px] font-black uppercase tracking-wider">Solo para mis ojos</p>
-                <p className="text-[9px] font-bold opacity-50">Privado en el nido</p>
-              </div>
+
+        <div className="space-y-8">
+          {/* CATEGORÍA (NUEVO) */}
+          <div className="space-y-3">
+            <label className="text-[10px] font-black uppercase tracking-widest ml-4 opacity-50 text-sky-500">Categoría</label>
+            <div className="grid grid-cols-2 gap-3">
+              {EVENT_CATEGORIES.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => { triggerHaptic('soft'); setEventType(cat.id); }}
+                  className={`flex items-center gap-3 p-4 rounded-3xl border-2 transition-all ${eventType === cat.id ? 'border-sky-500 bg-white shadow-lg scale-105' : 'border-transparent bg-white/50 opacity-60'}`}
+                >
+                  <div className={`p-2 rounded-xl ${cat.bg} ${cat.color}`}><cat.icon size={18} /></div>
+                  <span className="text-[10px] font-black uppercase tracking-tighter">{cat.label}</span>
+                </button>
+              ))}
             </div>
-            <Switch 
-              checked={isPrivate} 
-              onCheckedChange={(val) => { triggerHaptic('soft'); setIsPrivate(val); }} 
-              className="data-[state=checked]:bg-[#F97316]" 
-            />
           </div>
 
           {/* TÍTULO */}
           <div className="space-y-3">
             <label className="text-[10px] font-black uppercase tracking-widest ml-4 opacity-50 text-sky-500">¿Qué vamos a hacer?</label>
             <Input 
-              placeholder="Ej: Natación, Cumpleaños..."
+              placeholder="Ej: Natación de los peques..."
               value={title} 
               onChange={(e) => setTitle(e.target.value)} 
-              className={`rounded-[2rem] h-16 border-2 font-black text-lg px-8 transition-all ${isPrivate ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 focus:border-[#0EA5E9]'}`} 
+              className={`rounded-[2rem] h-16 border-2 font-black text-lg px-8 ${isPrivate ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-100'}`} 
             />
           </div>
 
-          {/* PROTAGONISTA (IGUAL QUE ANTES) */}
+          {/* PRIVACIDAD */}
+          <div className={`flex items-center justify-between p-6 rounded-[2.5rem] border-2 transition-all ${isPrivate ? 'bg-slate-900 border-[#F97316]/40' : 'bg-white border-slate-100'}`}>
+            <div className="flex items-center gap-4">
+              <div className={`p-3 rounded-2xl ${isPrivate ? 'bg-[#F97316] text-white' : 'bg-slate-100 text-slate-400'}`}>
+                {isPrivate ? <EyeOff size={22} /> : <Shield size={22} />}
+              </div>
+              <p className="text-[11px] font-black uppercase tracking-wider">Modo Privado</p>
+            </div>
+            <Switch checked={isPrivate} onCheckedChange={(val) => { triggerHaptic('soft'); setIsPrivate(val); }} />
+          </div>
+
+          {/* PROTAGONISTA */}
           <div className="space-y-3">
-            <label className="text-[10px] font-black uppercase tracking-widest ml-4 flex items-center gap-2 opacity-50">
-              <Users size={12} /> Protagonista
+            <label className="text-[10px] font-black uppercase tracking-widest ml-4 opacity-50 flex items-center gap-2">
+              <Users size={12} /> ¿Para quién es?
             </label>
             <div className="flex flex-wrap gap-2">
-              <button 
-                onClick={() => { triggerHaptic('soft'); setSubjectId(''); }}
-                className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase transition-all ${!subjectId ? 'bg-slate-800 text-white' : 'bg-white border border-slate-200 text-slate-400'}`}
-              >
-                Toda la tribu
-              </button>
               {members.map(m => (
                 <button 
                   key={m.id}
                   onClick={() => { triggerHaptic('soft'); setSubjectId(m.id); }}
-                  className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase transition-all ${subjectId === m.id ? 'bg-[#0EA5E9] text-white' : 'bg-white border border-slate-200 text-slate-400'}`}
+                  className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase transition-all ${subjectId === m.id ? 'bg-[#0EA5E9] text-white shadow-lg' : 'bg-white border border-slate-100 text-slate-400'}`}
                 >
                   {m.display_name}
                 </button>
@@ -176,51 +175,24 @@ export const ManualEventDrawer = ({
             </div>
           </div>
 
-          {/* GUÍA RESPONSABLE (ESTÉTICA IGUAL A PROTAGONISTA) */}
-          {!isPrivate && (
-            <div className="space-y-3">
-              <label className="text-[10px] font-black uppercase tracking-widest ml-4 flex items-center gap-2 opacity-50">
-                <UserCheck size={12} /> Guía Responsable
-              </label>
-              <div className="flex flex-wrap gap-2">
-                <button 
-                  onClick={() => { triggerHaptic('soft'); setAssignedTo(''); }}
-                  className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase transition-all ${!assignedTo ? 'bg-slate-800 text-white' : 'bg-white border border-slate-200 text-slate-400'}`}
-                >
-                  Cualquiera
-                </button>
-                {/* Filtrar solo por adultos/guías si es necesario */}
-                {members.filter(m => m.role === 'guía' || m.role === 'autonomous').map(m => (
-                  <button 
-                    key={m.id}
-                    onClick={() => { triggerHaptic('soft'); setAssignedTo(m.id); }}
-                    className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase transition-all ${assignedTo === m.id ? 'bg-vital-orange bg-[#F97316] text-white' : 'bg-white border border-slate-200 text-slate-400'}`}
-                  >
-                    {m.display_name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* FECHA Y HORA */}
           <div className="grid grid-cols-2 gap-5">
             <div className="space-y-3">
               <label className="text-[10px] font-black uppercase tracking-widest ml-4 opacity-50">Fecha</label>
-              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={`rounded-[1.5rem] h-14 border-2 font-black ${isPrivate ? 'bg-slate-900 border-slate-800' : 'bg-white'}`} />
+              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="rounded-[1.5rem] h-14 border-2 font-black" />
             </div>
             <div className="space-y-3">
               <label className="text-[10px] font-black uppercase tracking-widest ml-4 opacity-50">Hora</label>
-              <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} className={`rounded-[1.5rem] h-14 border-2 font-black ${isPrivate ? 'bg-slate-900 border-slate-800' : 'bg-white'}`} />
+              <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="rounded-[1.5rem] h-14 border-2 font-black" />
             </div>
           </div>
 
           <Button 
             onClick={handleSave} 
             disabled={loading} 
-            className={`w-full h-20 rounded-[2.5rem] font-black text-lg tracking-[0.2em] shadow-2xl active:scale-95 transition-all mt-4 ${isPrivate ? 'bg-[#F97316] text-white' : 'bg-slate-800 text-white'}`}
+            className={`w-full h-20 rounded-[2.5rem] font-black text-lg tracking-[0.2em] shadow-2xl active:scale-95 transition-all mt-4 ${isPrivate ? 'bg-[#F97316]' : 'bg-slate-800'}`}
           >
-            {loading ? <Loader2 className="animate-spin" /> : initialData ? "CONFIRMAR SINCRO" : "SUBIR AL NIDO"}
+            {loading ? <Loader2 className="animate-spin" /> : "SUBIR AL NIDO"}
           </Button>
         </div>
       </div>
