@@ -7,92 +7,91 @@ export default {
   theme: {
     container: {
       center: true,
-      padding: "1rem",
+      padding: "2rem", // Más 'brisa' en los laterales
       screens: {
         "2xl": "1400px",
       },
     },
     extend: {
       fontFamily: {
-        // Establecemos Nunito como la fuente principal del Sistema Zen
-        sans: ['Nunito', 'Inter', 'system-ui', 'sans-serif'],
+        // Nunito Black para titulares potentes según el nuevo manual
+        sans: ['Nunito', 'system-ui', 'sans-serif'],
         nunito: ['Nunito', 'sans-serif'],
-        display: ['Nunito', 'sans-serif'],
       },
       colors: {
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "#F8FAFC", // Slate 50 según manual
-        foreground: "#1E293B",
+        border: "rgba(255, 255, 255, 0.4)", // Bordes para Glassmorphism
+        input: "#E2E8F0",
+        ring: "#0EA5E9",
+        background: "#F8FAFC", // Slate 50: Limpio y Zen
+        foreground: "#1E293B", // Slate 800: Texto potente
         primary: {
-          DEFAULT: "#0EA5E9", // Azul Sky (Oficial)
+          DEFAULT: "#0EA5E9", // Sky Blue
           foreground: "#FFFFFF",
         },
         secondary: {
-          DEFAULT: "#F97316", // Naranja Vital (Oficial)
-          foreground: "#FFFFFF",
-        },
-        accent: {
-          DEFAULT: "#8B5CF6", // Violeta (Oficial)
+          DEFAULT: "#F97316", // Vital Orange
           foreground: "#FFFFFF",
         },
         kidus: {
           sky: "#0EA5E9",
           vital: "#F97316",
           violet: "#8B5CF6",
+          mint: "#10B981", // Verde para éxito de la tribu
           slate: "#F8FAFC",
-          card: "rgba(255, 255, 255, 0.7)",
         },
-        // Gama de colores para miembros/avatares según manual
-        team: {
-          blue: "#0EA5E9",
-          orange: "#F97316",
-          purple: "#8B5CF6",
-          green: "#10B981",
-          pink: "#EC4899",
-          yellow: "#F59E0B",
+        // Colores de la Tribu (Inclusivos y potentes)
+        tribu: {
+          1: "#0EA5E9",
+          2: "#F97316",
+          3: "#8B5CF6",
+          4: "#10B981",
+          5: "#EC4899",
+          6: "#F59E0B",
         },
       },
       borderRadius: {
-        // Geometría orgánica KidUs
-        "2xl": "1rem",
-        "3xl": "1.5rem",   // Inputs
+        "2xl": "1rem",     // Inputs
+        "3xl": "1.5rem",
         "4xl": "2rem",
-        "5xl": "2.5rem",   // Botones y Avatares
+        "5xl": "2.5rem",   // Botones y Avatares (Manual Zen)
         "6xl": "3rem",
-        "7xl": "3.5rem",   // Tarjetas Principales (Manual Zen)
+        "7xl": "3.5rem",   // Tarjetas Principales (Brisa orgánica)
       },
       boxShadow: {
-        'zen': '0 8px 32px rgba(15, 23, 42, 0.05)',
-        'kidus': '0 25px 50px -12px rgba(15, 23, 42, 0.08)',
-        'elevated': '0 20px 40px rgba(14, 165, 233, 0.15)',
+        'brisa': '0 8px 32px rgba(15, 23, 42, 0.05)',
+        'haptic': '0 20px 40px rgba(14, 165, 233, 0.15)',
+        'tribu-card': '0 25px 50px -12px rgba(15, 23, 42, 0.08)',
       },
       keyframes: {
         "wave-apple": {
           "0%, 100%": { 
             transform: "translate(0px, 0px) scale(1)",
-            borderRadius: "30% 70% 70% 30% / 30% 30% 70% 70%" 
+            borderRadius: "35% 65% 70% 30% / 30% 40% 60% 70%" 
           },
           "33%": { 
-            transform: "translate(3% , 5%) scale(1.05)",
-            borderRadius: "50% 50% 30% 70% / 50% 60% 40% 50%" 
+            transform: "translate(2% , 4%) scale(1.03)",
+            borderRadius: "50% 50% 35% 65% / 55% 55% 45% 45%" 
           },
           "66%": { 
-            transform: "translate(-2%, 8%) scale(0.95)",
-            borderRadius: "70% 30% 50% 50% / 30% 30% 70% 70%" 
+            transform: "translate(-1%, 6%) scale(0.97)",
+            borderRadius: "65% 35% 55% 45% / 40% 35% 65% 60%" 
           },
         },
         "float": {
-          "0%, 100%": { transform: "translateY(0) scale(1)" },
-          "50%": { transform: "translateY(-15px) scale(1.01)" },
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-12px)" },
         }
       },
       animation: {
-        "wave-slow": "wave-apple 25s ease-in-out infinite",
-        "wave-medium": "wave-apple 18s ease-in-out infinite reverse",
-        "float": "float 8s ease-in-out infinite",
+        "wave-slow": "wave-apple 22s ease-in-out infinite",
+        "wave-medium": "wave-apple 16s ease-in-out infinite reverse",
+        "float": "float 7s ease-in-out infinite",
+        "accordion-down": "accordion-down 0.2s ease-out",
+        "accordion-up": "accordion-up 0.2s ease-out",
       },
+      backdropBlur: {
+        '2xl': '40px',
+      }
     },
   },
   plugins: [require("tailwindcss-animate")],
