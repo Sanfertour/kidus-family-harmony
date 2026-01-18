@@ -43,6 +43,19 @@
         -webkit-tap-highlight-color: transparent; /* Elimina el recuadro gris al tocar en iOS */
       }
     </style>
+
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+    <script>
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      OneSignalDeferred.push(function(OneSignal) {
+        OneSignal.init({
+          appId: "810a2f7e-f786-42b0-af39-1cc848d55248", // <-- SUSTITUYE ESTO CON TU ID DE ONESIGNAL
+          allowLocalhostAsSecureOrigin: true,
+          serviceWorkerParam: { scope: "/" },
+          serviceWorkerPath: "OneSignalSDKWorker.js",
+        });
+      });
+    </script>
   </head>
 
   <body>
