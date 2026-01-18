@@ -89,7 +89,6 @@ const Index = () => {
           .eq('nest_id', myProfile.nest_id)
           .order('role', { ascending: true });
         
-        // Actualizamos el estado local para que el borrado/añadido sea reactivo
         setFamilyMembers(profiles || []);
       }
     } catch (error) {
@@ -141,36 +140,32 @@ const Index = () => {
   };
 
   if (loading) return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-slate-50">
+    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-transparent">
       <div className="relative">
         <div className="absolute inset-0 animate-ping bg-[#0EA5E9]/20 rounded-[3rem]" />
-        <div className="w-24 h-24 bg-white rounded-[2.5rem] shadow-2xl flex items-center justify-center z-10 animate-pulse border border-white">
+        <div className="w-24 h-24 bg-white/80 backdrop-blur-xl rounded-[2.5rem] shadow-2xl flex items-center justify-center z-10 animate-pulse border border-white/50">
           <Loader2 className="text-[#0EA5E9] animate-spin" size={40} strokeWidth={3} />
         </div>
-      </div>
-      <div className="mt-12 text-center">
-        <h3 className="text-3xl font-black text-slate-800 tracking-tighter">Sincronizando...</h3>
-        <p className="text-[#0EA5E9] font-black text-[10px] uppercase tracking-[0.4em] mt-2">KidUs v1.0</p>
       </div>
     </div>
   );
 
   if (!session) {
     return (
-      <div className="min-h-screen w-full flex flex-col items-center justify-center p-8 bg-slate-50 relative overflow-hidden">
+      <div className="min-h-screen w-full flex flex-col items-center justify-center p-8 bg-transparent relative overflow-hidden">
         <div className="relative z-10 text-center space-y-12 w-full max-w-sm">
           <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
-            <div className="w-36 h-36 bg-white rounded-[3.5rem] shadow-xl flex items-center justify-center mx-auto border border-white/50">
+            <div className="w-36 h-36 bg-white/70 backdrop-blur-2xl rounded-[3.5rem] shadow-xl flex items-center justify-center mx-auto border border-white/50">
               <img src={LOGO_URL} alt="KidUs" className="w-24 h-24 object-contain" />
             </div>
           </motion.div>
           <div className="space-y-2">
             <h1 className="text-6xl font-black text-slate-800 tracking-tighter font-nunito">KidUs</h1>
-            <p className="text-slate-400 font-black uppercase tracking-[0.4em] text-[10px]">Armonía para tu Tribu</p>
+            <p className="text-slate-500 font-black uppercase tracking-[0.4em] text-[10px]">Armonía para tu Tribu</p>
           </div>
           <Button 
             onClick={() => { triggerHaptic('soft'); supabase.auth.signInWithOAuth({ provider: 'google' }); }} 
-            className="w-full h-20 rounded-[2.5rem] bg-white border-2 border-slate-100 text-slate-800 font-black shadow-xl active:scale-95 transition-all text-lg tracking-tight"
+            className="w-full h-20 rounded-[2.5rem] bg-white/80 backdrop-blur-xl border-2 border-white text-slate-800 font-black shadow-xl active:scale-95 transition-all text-lg tracking-tight hover:bg-white"
           >
             SINCRO CON GOOGLE
           </Button>
@@ -180,9 +175,10 @@ const Index = () => {
   }
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden bg-slate-50 font-sans">
+    <div className="relative min-h-screen w-full overflow-hidden bg-transparent font-sans">
       <Header />
       
+      {/* ELIMINADO bg-slate-50 PARA QUE SE VEAN LAS OLAS */}
       <main className="container mx-auto px-6 pt-6 max-w-md relative z-10 pb-44">
         <AnimatePresence mode="wait">
           {activeTab === "home" && (
@@ -191,10 +187,11 @@ const Index = () => {
                 Nido en <br/> <span className="text-[#0EA5E9]">calma.</span>
               </h1>
               
-              <div className="p-10 rounded-[3.5rem] bg-white border border-white shadow-xl shadow-slate-200/50">
+              {/* GLASSMOPHISM CARD */}
+              <div className="p-10 rounded-[3.5rem] bg-white/60 backdrop-blur-2xl border border-white/40 shadow-xl shadow-slate-200/20">
                 <label className="text-[10px] font-black text-[#0EA5E9] uppercase tracking-[0.2em] mb-4 block">Sincronía del Nido</label>
                 <h3 className="text-3xl font-black text-slate-800 mb-2">{familyMembers.length} integrantes</h3>
-                <p className="text-slate-400 font-bold text-sm tracking-tight">Tu tribu está conectada y fluyendo.</p>
+                <p className="text-slate-500 font-bold text-sm tracking-tight">Tu tribu está conectada y fluyendo.</p>
               </div>
               
               <div className="grid grid-cols-2 gap-5">
@@ -202,7 +199,7 @@ const Index = () => {
                   <Calendar size={28} strokeWidth={3} />
                   <span className="text-[11px] font-black uppercase tracking-widest">Agenda</span>
                 </button>
-                <button onClick={() => { triggerHaptic('soft'); setActiveTab("family"); }} className="p-10 rounded-[3.5rem] flex flex-col items-center gap-4 bg-white text-[#F97316] border border-white shadow-xl active:scale-95 transition-all">
+                <button onClick={() => { triggerHaptic('soft'); setActiveTab("family"); }} className="p-10 rounded-[3.5rem] flex flex-col items-center gap-4 bg-white/60 backdrop-blur-xl text-[#F97316] border border-white/40 shadow-xl active:scale-95 transition-all">
                   <Users size={28} strokeWidth={3} />
                   <span className="text-[11px] font-black uppercase tracking-widest">Tribu</span>
                 </button>
@@ -231,12 +228,12 @@ const Index = () => {
               </div>
               <div className="grid grid-cols-2 gap-5">
                 {familyMembers.map((member) => (
-                  <div key={member.id} className="p-8 rounded-[3rem] bg-white border border-white shadow-sm flex flex-col items-center hover:shadow-md transition-all">
+                  <div key={member.id} className="p-8 rounded-[3rem] bg-white/60 backdrop-blur-xl border border-white/40 shadow-sm flex flex-col items-center hover:shadow-md transition-all">
                     <div className="w-20 h-20 rounded-[2.2rem] flex items-center justify-center text-2xl font-black text-white shadow-lg mb-4" style={{ backgroundColor: member.avatar_url || '#0EA5E9' }}>
                       {member.display_name?.charAt(0).toUpperCase()}
                     </div>
                     <span className="font-black text-slate-800 text-sm text-center line-clamp-1">{member.display_name}</span>
-                    <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest mt-2">
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-2">
                       {member.role === 'autonomous' ? 'Guía' : 'Tribu'}
                     </span>
                   </div>
@@ -253,8 +250,8 @@ const Index = () => {
         </AnimatePresence>
       </main>
 
-      {/* NAVEGACIÓN INFERIOR */}
-      <nav className="fixed bottom-0 left-0 right-0 h-28 bg-white/90 backdrop-blur-2xl border-t border-slate-100 flex justify-around items-center px-10 z-[40] rounded-t-[3.5rem] shadow-2xl">
+      {/* NAVEGACIÓN INFERIOR GLASS */}
+      <nav className="fixed bottom-0 left-0 right-0 h-28 bg-white/60 backdrop-blur-3xl border-t border-white/20 flex justify-around items-center px-10 z-[40] rounded-t-[3.5rem] shadow-2xl">
         {[
           { id: "home", icon: HomeIcon }, { id: "agenda", icon: Calendar }, { id: "family", icon: Users }, { id: "settings", icon: Settings }
         ].map((tab) => (
@@ -287,7 +284,7 @@ const Index = () => {
 
       <AnimatePresence>
         {isAiProcessing && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] flex items-center justify-center bg-white/95 backdrop-blur-2xl">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] flex items-center justify-center bg-white/80 backdrop-blur-3xl">
             <div className="flex flex-col items-center gap-8 text-center p-12">
               <div className="w-28 h-28 bg-[#0EA5E9]/10 rounded-[3rem] flex items-center justify-center relative">
                 <div className="absolute inset-0 bg-[#0EA5E9]/20 rounded-[3rem] animate-ping" />
