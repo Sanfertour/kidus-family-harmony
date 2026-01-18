@@ -174,7 +174,7 @@ const Index = () => {
     );
   }
 
-  return (
+ return (
     <div className="relative min-h-screen w-full overflow-hidden bg-transparent font-sans">
       <Header />
       
@@ -182,27 +182,63 @@ const Index = () => {
       <main className="container mx-auto px-6 pt-6 max-w-md relative z-10 pb-44">
         <AnimatePresence mode="wait">
           {activeTab === "home" && (
-            <motion.div key="home" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-8">
-              <h1 className="text-5xl font-black text-slate-800 leading-[1.1] tracking-tighter px-2 font-nunito">
-                Nido en <br/> <span className="text-[#0EA5E9]">calma.</span>
-              </h1>
-              
-              {/* GLASSMOPHISM CARD */}
-              <div className="p-10 rounded-[3.5rem] bg-white/60 backdrop-blur-2xl border border-white/40 shadow-xl shadow-slate-200/20">
-                <label className="text-[10px] font-black text-[#0EA5E9] uppercase tracking-[0.2em] mb-4 block">Sincronía del Nido</label>
-                <h3 className="text-3xl font-black text-slate-800 mb-2">{familyMembers.length} integrantes</h3>
-                <p className="text-slate-500 font-bold text-sm tracking-tight">Tu tribu está conectada y fluyendo.</p>
+            <motion.div 
+              key="home" 
+              initial={{ opacity: 0, y: 20 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              exit={{ opacity: 0, y: -20 }} 
+              className="space-y-8"
+            >
+              {/* SALUDO DINÁMICO SEGÚN MOMENTO DEL DÍA */}
+              <div className="px-2">
+                <h1 className="text-5xl font-black text-slate-800 leading-[1.1] tracking-tighter font-nunito">
+                  {new Date().getHours() < 12 ? "Buen día," : new Date().getHours() < 20 ? "Energía alta," : "Nido en calma,"}<br/> 
+                  <span className="text-[#0EA5E9]">Guía.</span>
+                </h1>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mt-3">Rendimiento de la Tribu</p>
+              </div>
+
+              {/* DASHBOARD CARD - GLASSMOPHISM PRO */}
+              <div className="p-10 rounded-[3.5rem] bg-white/60 backdrop-blur-2xl border border-white/40 shadow-xl shadow-slate-200/20 relative overflow-hidden group">
+                <div className="relative z-10">
+                  <label className="text-[10px] font-black text-[#0EA5E9] uppercase tracking-[0.2em] mb-4 block">Sincronía Actual</label>
+                  <div className="flex items-baseline gap-2">
+                    <h3 className="text-5xl font-black text-slate-800">{familyMembers.length}</h3>
+                    <span className="text-xl font-bold text-slate-400 tracking-tight">integrantes</span>
+                  </div>
+                  <p className="text-slate-500 font-bold text-sm tracking-tight mt-2">Tu equipo está fluyendo en armonía.</p>
+                </div>
+                {/* Decoración sutil de fondo para la tarjeta */}
+                <div className="absolute -right-6 -bottom-6 w-32 h-32 bg-[#0EA5E9]/5 rounded-full blur-2xl group-hover:bg-[#0EA5E9]/10 transition-colors duration-700" />
               </div>
               
+              {/* ACCESOS RÁPIDOS CON FEEDBACK HÁPTICO */}
               <div className="grid grid-cols-2 gap-5">
-                <button onClick={() => { triggerHaptic('soft'); setActiveTab("agenda"); }} className="p-10 rounded-[3.5rem] flex flex-col items-center gap-4 bg-[#0EA5E9] text-white shadow-2xl active:scale-95 transition-all">
-                  <Calendar size={28} strokeWidth={3} />
+                <button 
+                  onClick={() => { triggerHaptic('soft'); setActiveTab("agenda"); }} 
+                  className="p-10 rounded-[3.5rem] flex flex-col items-center gap-4 bg-[#0EA5E9] text-white shadow-2xl active:scale-95 transition-all group"
+                >
+                  <Calendar size={28} strokeWidth={3} className="group-hover:scale-110 transition-transform duration-300" />
                   <span className="text-[11px] font-black uppercase tracking-widest">Agenda</span>
                 </button>
-                <button onClick={() => { triggerHaptic('soft'); setActiveTab("family"); }} className="p-10 rounded-[3.5rem] flex flex-col items-center gap-4 bg-white/60 backdrop-blur-xl text-[#F97316] border border-white/40 shadow-xl active:scale-95 transition-all">
-                  <Users size={28} strokeWidth={3} />
+                <button 
+                  onClick={() => { triggerHaptic('soft'); setActiveTab("family"); }} 
+                  className="p-10 rounded-[3.5rem] flex flex-col items-center gap-4 bg-white/60 backdrop-blur-xl text-[#F97316] border border-white/40 shadow-xl active:scale-95 transition-all group"
+                >
+                  <Users size={28} strokeWidth={3} className="group-hover:scale-110 transition-transform duration-300" />
                   <span className="text-[11px] font-black uppercase tracking-widest">Tribu</span>
                 </button>
+              </div>
+
+              {/* HIT DEL DÍA - MENTALIDAD DE EQUIPO ÉLITE */}
+              <div className="mx-2 p-6 rounded-[2.5rem] bg-slate-800 text-white/90 flex items-center gap-4 shadow-lg">
+                <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center">
+                  <div className="w-2 h-2 bg-[#0EA5E9] rounded-full animate-pulse" />
+                </div>
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-widest opacity-50">Siguiente hito</p>
+                  <p className="text-sm font-bold">Logística del equipo lista</p>
+                </div>
               </div>
             </motion.div>
           )}
@@ -212,7 +248,6 @@ const Index = () => {
               <AgendaView />
             </motion.div>
           )}
-
           {activeTab === "family" && (
             <motion.div key="family" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8 pb-10">
               <div className="flex justify-between items-end px-4">
