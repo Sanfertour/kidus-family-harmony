@@ -1,21 +1,22 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { 
-  Clock, 
-  User, 
-  Bell, 
-  Lock, 
-  AlertTriangle, 
-  ShieldCheck, 
-  Share2, 
-  Heart, 
-  Calendar as CalendarIcon, 
-  ChevronRight 
+  Clock, Bell, Lock, AlertTriangle, ShieldCheck, 
+  Share2, Heart, Calendar as CalendarIcon, ChevronRight, Users
 } from 'lucide-react';
 import { format, startOfWeek, addDays, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
-import { NotificationsDrawer } from './NotificationsDrawer'; // Asegúrate de que el nombre del archivo coincida
+import { NotificationsDrawer } from './NotificationsDrawer';
+
+// Función de vibración para feedback táctil
+const triggerHaptic = (type: 'soft' | 'success' | 'warning') => {
+  if (typeof navigator !== "undefined" && navigator.vibrate) {
+    if (type === 'soft') navigator.vibrate(10);
+    else if (type === 'warning') navigator.vibrate([40, 100, 40]);
+    else navigator.vibrate([20, 30, 20]);
+  }
+};
 
 export const AgendaView = () => {
   const [events, setEvents] = useState<any[]>([]);
@@ -30,7 +31,6 @@ export const AgendaView = () => {
   const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
   const weekDays = [...Array(7)].map((_, i) => addDays(weekStart, i));
 
-  // Función para contar notificaciones pendientes
   const fetchUnreadCount = async (nid: string) => {
     const { count } = await supabase
       .from('notifications')
@@ -52,10 +52,7 @@ export const AgendaView = () => {
 
     const { data: eventsData, error } = await supabase
       .from('events')
-      .select(`
-        *,
-        profiles!events_assigned_to_fkey (display_name, avatar_url, id)
-      `)
+      .select(`*, profiles!events_assigned_to_fkey (display_name, avatar_url, id)`)
       .eq('nest_id', profile?.nest_id)
       .order('event_date', { ascending: true });
 
@@ -78,170 +75,136 @@ export const AgendaView = () => {
       });
     });
     setConflicts(conflictIds);
+    if (conflictIds.length > 0) triggerHaptic('warning');
   };
 
   const handleDelegarInterno = async (event: any) => {
+    triggerHaptic('soft');
     const { data: { user } } = await supabase.auth.getUser();
     if (!user || !nestId) return;
 
-    const { data: members } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('nest_id', nestId)
-      .neq('id', user.id);
+    const { data: members } = await supabase.from('profiles').select('id').eq('nest_id', nestId).neq('id', user.id);
 
     const { error } = await supabase.from('notifications').insert({
-      nest_id: nestId,
-      sender_id: user.id,
-      receiver_id: members?.[0]?.id || null,
-      event_id: event.id,
-      type: 'DELEGATION_REQUEST',
-      message: `Petición de relevo para: ${event.description}`
+      nest_id: nestId, sender_id: user.id, receiver_id: members?.[0]?.id || null,
+      event_id: event.id, type: 'DELEGATION_REQUEST',
+      message: `Petición de relevo: ${event.description}`
     });
 
     if (!error) {
-      toast({ title: "Solicitud de Relevo", description: "Enviando notificación al equipo del Nido..." });
-    }
-  };
-
-  const handleRedApoyo = async (event: any) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user || !nestId) return;
-
-    const nombreApoyo = prompt("¿Quién de la Red de Apoyo se encarga? (Ej: Abuela Carmen)");
-    if (!nombreApoyo) return;
-
-    const { error } = await supabase.from('notifications').insert({
-      nest_id: nestId,
-      sender_id: user.id,
-      event_id: event.id,
-      type: 'EXTERNAL_SUPPORT_NOTICE',
-      message: `${nombreApoyo} se encargará de: ${event.description}`,
-      metadata: { externo: nombreApoyo }
-    });
-
-    if (!error) {
-      toast({ 
-        title: "Red de Apoyo Activada", 
-        description: `Se ha avisado al nido que ${nombreApoyo} se encarga.`,
-        className: "bg-emerald-50 text-emerald-700 border-emerald-200"
-      });
+      toast({ title: "Relevo en camino", description: "Notificando a la tribu..." });
+      triggerHaptic('success');
     }
   };
 
   useEffect(() => { 
     fetchEvents(); 
-    
-    // Suscripción para que el puntito de la campana se actualice solo
     if (nestId) {
-      const channel = supabase
-        .channel('notif-count')
-        .on('postgres_changes', 
-          { event: '*', schema: 'public', table: 'notifications', filter: `nest_id=eq.${nestId}` }, 
-          () => fetchUnreadCount(nestId)
-        )
-        .subscribe();
+      const channel = supabase.channel('notif-count').on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'notifications', filter: `nest_id=eq.${nestId}` }, 
+        () => fetchUnreadCount(nestId)
+      ).subscribe();
       return () => { supabase.removeChannel(channel); };
     }
   }, [nestId]);
 
   return (
-    <div className="space-y-8 pb-32 animate-in fade-in duration-700 font-nunito">
-      {/* HEADER Y CAMPANA */}
-      <div className="flex justify-between items-center px-4">
+    <div className="space-y-10 pb-32 animate-in fade-in duration-700 font-sans">
+      {/* HEADER DE AGENDA */}
+      <div className="flex justify-between items-end px-6">
         <div>
-          <h2 className="text-4xl font-black text-slate-800 tracking-tight">Agenda</h2>
-          <p className="text-[10px] font-black text-[#0EA5E9] uppercase tracking-[0.3em]">Sincronización Familiar</p>
+          <h2 className="text-5xl font-black text-slate-800 tracking-tight">Agenda</h2>
+          <p className="text-[11px] font-black text-primary uppercase tracking-[0.3em] mt-1">Sincro de la Tribu</p>
         </div>
-        <div className="relative">
-          <button 
-            onClick={() => setIsNotifOpen(true)}
-            className={`w-14 h-14 rounded-[1.5rem] flex items-center justify-center transition-all ${unreadCount > 0 ? 'bg-orange-50 text-orange-500 shadow-lg shadow-orange-100 animate-pulse' : 'bg-white text-slate-300 shadow-sm border border-slate-100'}`}
-          >
-            <Bell size={24} strokeWidth={2.5} />
-            {unreadCount > 0 && <span className="absolute top-3 right-3 w-3 h-3 bg-orange-600 rounded-full border-2 border-white" />}
-          </button>
-        </div>
+        <button 
+          onClick={() => { triggerHaptic('soft'); setIsNotifOpen(true); }}
+          className={`w-16 h-16 rounded-5xl flex items-center justify-center transition-all duration-500 ${unreadCount > 0 ? 'bg-orange-50 text-secondary shadow-haptic animate-pulse' : 'bg-white text-slate-300 shadow-brisa'}`}
+        >
+          <Bell size={28} strokeWidth={2.5} />
+          {unreadCount > 0 && <span className="absolute top-4 right-4 w-4 h-4 bg-secondary rounded-full border-4 border-white" />}
+        </button>
       </div>
 
-      {/* MINI CALENDARIO SEMANAL */}
-      <div className="px-4 overflow-x-auto no-scrollbar">
-        <div className="flex gap-3 pb-2">
+      {/* CALENDARIO SEMANAL FLUIDO */}
+      <div className="px-6 overflow-x-auto no-scrollbar">
+        <div className="flex gap-4 pb-4">
           {weekDays.map((day, i) => {
             const isSelected = isSameDay(day, selectedDate);
-            const hasEvents = events.some(e => isSameDay(new Date(e.event_date), day));
             return (
               <button 
                 key={i}
-                onClick={() => setSelectedDate(day)}
-                className={`flex-shrink-0 w-16 h-24 rounded-[2rem] flex flex-col items-center justify-center transition-all duration-300 ${isSelected ? 'bg-slate-900 text-white shadow-xl scale-105' : 'bg-white text-slate-400 border border-slate-50'}`}
+                onClick={() => { triggerHaptic('soft'); setSelectedDate(day); }}
+                className={`flex-shrink-0 w-20 h-28 rounded-[2.5rem] flex flex-col items-center justify-center transition-all duration-500 ${isSelected ? 'bg-slate-800 text-white shadow-haptic scale-105' : 'bg-white/60 backdrop-blur-md text-slate-400 border border-white/50 shadow-brisa'}`}
               >
-                <span className="text-[9px] font-black uppercase tracking-widest mb-2">{format(day, 'EEE', { locale: es })}</span>
-                <span className="text-xl font-black">{format(day, 'd')}</span>
-                {hasEvents && <div className={`w-1.5 h-1.5 rounded-full mt-2 ${isSelected ? 'bg-[#0EA5E9]' : 'bg-slate-200'}`} />}
+                <span className="text-[10px] font-black uppercase tracking-widest mb-2 opacity-60">{format(day, 'EEE', { locale: es })}</span>
+                <span className="text-2xl font-black">{format(day, 'd')}</span>
+                {events.some(e => isSameDay(new Date(e.event_date), day)) && 
+                  <div className={`w-2 h-2 rounded-full mt-2 ${isSelected ? 'bg-primary' : 'bg-slate-200'}`} />
+                }
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* LISTADO DE EVENTOS */}
-      <div className="px-4 space-y-6">
+      {/* LISTADO DE ACTIVIDADES */}
+      <div className="px-6 space-y-6">
         <div className="flex items-center justify-between px-2">
-          <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Tareas Próximas</h3>
-          <ChevronRight size={16} className="text-slate-300" />
+          <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Próximos Pasos</h3>
+          <ChevronRight size={18} className="text-slate-300" />
         </div>
 
         {events.length === 0 ? (
-          <div className="p-10 text-center bg-slate-50 rounded-[3rem] border-2 border-dashed border-slate-100">
-            <CalendarIcon size={40} className="mx-auto text-slate-200 mb-4" />
-            <p className="text-slate-400 font-bold">No hay planes para hoy</p>
+          <div className="p-12 text-center bg-white/40 backdrop-blur-xl rounded-[3.5rem] border-4 border-dashed border-white/60">
+            <CalendarIcon size={48} className="mx-auto text-slate-200 mb-4 opacity-50" />
+            <p className="text-slate-400 font-black text-sm uppercase tracking-widest">Paz total en el nido</p>
           </div>
         ) : (
-          events.map((event) => {
+          events.filter(e => isSameDay(new Date(e.event_date), selectedDate)).map((event) => {
             const isConflict = conflicts.includes(event.id);
-            const isPrivate = event.is_private;
             return (
-              <div key={event.id} className="relative group">
-                <div className={`p-8 rounded-[3rem] backdrop-blur-md border transition-all duration-500 ${isPrivate ? 'bg-slate-900/5 border-slate-200' : 'bg-white/80 border-white/50 shadow-xl shadow-slate-200/40'} ${isConflict ? 'ring-2 ring-orange-400 ring-offset-4' : ''}`}>
-                  <div className="flex justify-between items-start mb-6">
-                    <div className="space-y-2">
-                      <div className="flex gap-2">
-                        {isPrivate && <Badge icon={<Lock size={10} />} label="Privado" color="bg-slate-800" />}
-                        {isConflict && <Badge icon={<AlertTriangle size={10} />} label="Alerta Naranja" color="bg-orange-600" />}
-                      </div>
-                      <h4 className={`text-2xl font-black leading-tight ${isPrivate ? 'text-slate-400 blur-[3px]' : 'text-slate-800'}`}>
-                        {isPrivate ? 'Ocupado' : event.description}
-                      </h4>
-                    </div>
-                    <div className="bg-white px-4 py-3 rounded-2xl shadow-sm border border-slate-50 text-center">
-                      <span className="block text-sm font-black text-[#0EA5E9]">{format(new Date(event.event_date), "HH:mm")}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-6 border-t border-slate-100/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-[#0EA5E9] flex items-center justify-center text-white font-black text-xs">
-                        {event.profiles?.display_name?.charAt(0)}
-                      </div>
-                      <div>
-                        <p className="text-[8px] font-black text-slate-300 uppercase">Miembro</p>
-                        <p className="text-xs font-black text-slate-700">{event.profiles?.display_name}</p>
-                      </div>
-                    </div>
-
-                    {isConflict ? (
-                      <div className="flex gap-2">
-                        <ActionButton icon={<Share2 size={16} />} onClick={() => handleDelegarInterno(event)} label="Delegar" color="hover:text-[#0EA5E9]" />
-                        <ActionButton icon={<Heart size={16} />} onClick={() => handleRedApoyo(event)} label="Apoyo" color="hover:text-emerald-500" />
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1 text-slate-300">
-                        <ShieldCheck size={16} />
-                        <span className="text-[9px] font-black uppercase tracking-widest">Ok</span>
+              <div key={event.id} className={`p-8 rounded-[3.5rem] backdrop-blur-2xl border transition-all duration-500 bg-white/80 border-white/60 shadow-tribu-card ${isConflict ? 'ring-4 ring-secondary/20 scale-[0.98]' : ''}`}>
+                <div className="flex justify-between items-start mb-6">
+                  <div className="space-y-3">
+                    {isConflict && (
+                      <div className="flex items-center gap-2 bg-secondary/10 px-4 py-1.5 rounded-full w-fit">
+                        <AlertTriangle size={14} className="text-secondary" />
+                        <span className="text-[9px] font-black text-secondary uppercase tracking-widest">Solapamiento</span>
                       </div>
                     )}
+                    <h4 className="text-2xl font-black text-slate-800 leading-tight">{event.description}</h4>
                   </div>
+                  <div className="bg-slate-50 px-4 py-2.5 rounded-3xl border border-white shadow-inner">
+                    <span className="text-sm font-black text-primary">{format(new Date(event.event_date), "HH:mm")}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-6 border-t border-slate-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black shadow-haptic" style={{ backgroundColor: event.profiles?.avatar_url || '#0EA5E9' }}>
+                      {event.profiles?.display_name?.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">En cargo de</p>
+                      <p className="text-sm font-black text-slate-700">{event.profiles?.display_name || 'Tribu'}</p>
+                    </div>
+                  </div>
+
+                  {isConflict ? (
+                    <div className="flex gap-3">
+                      <button onClick={() => handleDelegarInterno(event)} className="p-4 bg-primary/10 text-primary rounded-2xl active:scale-90 transition-all">
+                        <Share2 size={20} strokeWidth={3} />
+                      </button>
+                      <button className="p-4 bg-secondary/10 text-secondary rounded-2xl active:scale-90 transition-all">
+                        <Heart size={20} strokeWidth={3} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-mint bg-mint/5 px-4 py-2 rounded-2xl">
+                      <ShieldCheck size={16} strokeWidth={3} />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Fluyendo</span>
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -249,17 +212,7 @@ export const AgendaView = () => {
         )}
       </div>
 
-      {/* COMPONENTE DRAWER DE NOTIFICACIONES */}
-      <NotificationsDrawer 
-        isOpen={isNotifOpen} 
-        onClose={() => {
-          setIsNotifOpen(false);
-          fetchEvents(); // Refrescar por si se aceptó algún relevo
-        }} 
-        nestId={nestId} 
-      />
+      <NotificationsDrawer isOpen={isNotifOpen} onClose={() => { setIsNotifOpen(false); fetchEvents(); }} nestId={nestId} />
     </div>
   );
 };
-
-// ... Helpers Badge y ActionButton se mantienen igual
