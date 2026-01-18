@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
   X, Calendar, Clock, CheckCircle2, Shield, EyeOff, 
-  MapPin, Sparkles, Loader2, Users 
+  MapPin, Sparkles, Loader2, Users, UserCheck 
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -22,7 +22,8 @@ export const ManualEventDrawer = ({
   members: any[]; initialData?: any;
 }) => {
   const [title, setTitle] = useState('');
-  const [subjectId, setSubjectId] = useState('');
+  const [subjectId, setSubjectId] = useState(''); // Quién realiza la actividad (Peques/Todos)
+  const [assignedTo, setAssignedTo] = useState(''); // Quién es el responsable (Guía/Pareja)
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [location, setLocation] = useState('');
@@ -58,13 +59,19 @@ export const ManualEventDrawer = ({
     setLoading(true);
     triggerHaptic('success');
     
+    // El evento se guarda con:
+    // 1. Quién lo hace (assigned_to -> Peque/Tribu)
+    // 2. Quién lo gestiona (responsable_id -> El Guía que se encarga)
     const { error } = await supabase.from('events').insert([{ 
       description: title,
       event_date: new Date(`${date}T${time}:00`).toISOString(),
-      assigned_to: subjectId || null,
+      assigned_to: subjectId || null, 
       nest_id: currentNestId,
       status: 'pending',
       is_private: isPrivate,
+      location: location,
+      // Suponiendo que hemos añadido esta columna responsable_id en la tabla events
+      created_by: assignedTo || null 
     }]);
 
     if (error) {
@@ -83,35 +90,35 @@ export const ManualEventDrawer = ({
     <div className="fixed inset-0 z-[100] flex items-end justify-center font-sans">
       <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm animate-in fade-in duration-300" onClick={onClose} />
       
-      <div className={`relative w-full max-w-md transition-all duration-500 rounded-t-[3.5rem] p-10 shadow-2xl animate-in slide-in-from-bottom max-h-[92vh] overflow-y-auto border-t ${isPrivate ? 'bg-slate-950 text-white border-white/10' : 'bg-white text-slate-800 border-slate-100'}`}>
+      <div className={`relative w-full max-w-md transition-all duration-500 rounded-t-[3.5rem] p-10 shadow-2xl animate-in slide-in-from-bottom max-h-[95vh] overflow-y-auto border-t ${isPrivate ? 'bg-slate-950 text-white border-white/10' : 'bg-slate-50 text-slate-800 border-white'}`}>
         
         <div className={`w-16 h-1.5 rounded-full mx-auto mb-8 ${isPrivate ? 'bg-slate-800' : 'bg-slate-200'}`} />
         
-        <div className="flex justify-between items-start mb-10">
+        <div className="flex justify-between items-start mb-8">
           <div className="space-y-1">
             <div className="flex items-center gap-3">
-              {initialData && <Sparkles size={20} className="text-[#0EA5E9] animate-pulse" />}
-              <h2 className="text-3xl font-black tracking-tighter">
-                {initialData ? 'Validar Sincro' : isPrivate ? 'Solo para ti' : 'Nueva Actividad'}
+              {initialData && <Sparkles size={24} className="text-[#0EA5E9] animate-pulse" />}
+              <h2 className="text-4xl font-black tracking-tighter">
+                {initialData ? 'Validar' : isPrivate ? 'Privado' : 'Actividad'}
               </h2>
             </div>
-            <p className={`text-[10px] font-black uppercase tracking-[0.3em] ${isPrivate ? 'text-slate-500' : 'text-slate-400'}`}>Gestión de la Tribu</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#0EA5E9]">Gestión de la Tribu</p>
           </div>
-          <button onClick={() => { triggerHaptic('soft'); onClose(); }} className="p-2 active:scale-90 transition-all opacity-40 hover:opacity-100">
-            <X size={28} />
+          <button onClick={() => { triggerHaptic('soft'); onClose(); }} className="p-3 bg-white/10 rounded-2xl active:scale-90 transition-all">
+            <X size={24} />
           </button>
         </div>
         
-        <div className="space-y-8">
-          {/* MODO PRIVADO REFORZADO */}
-          <div className={`flex items-center justify-between p-6 rounded-[2rem] border-2 transition-all ${isPrivate ? 'bg-slate-900 border-[#F97316]/30' : 'bg-slate-50 border-slate-100 shadow-inner'}`}>
+        <div className="space-y-6">
+          {/* MODO PRIVADO */}
+          <div className={`flex items-center justify-between p-6 rounded-[2.5rem] border-2 transition-all ${isPrivate ? 'bg-slate-900 border-[#F97316]/40' : 'bg-white border-slate-100 shadow-sm'}`}>
             <div className="flex items-center gap-4">
-              <div className={`p-3 rounded-2xl ${isPrivate ? 'bg-[#F97316] text-white shadow-lg shadow-[#F97316]/20' : 'bg-white text-slate-500 shadow-sm'}`}>
+              <div className={`p-3 rounded-2xl ${isPrivate ? 'bg-[#F97316] text-white' : 'bg-slate-100 text-slate-400'}`}>
                 {isPrivate ? <EyeOff size={22} /> : <Shield size={22} />}
               </div>
               <div>
-                <p className="text-[11px] font-black uppercase tracking-wider">Privacidad</p>
-                <p className={`text-[9px] font-bold ${isPrivate ? 'text-slate-400' : 'text-slate-500'}`}>Solo tú verás esto</p>
+                <p className="text-[11px] font-black uppercase tracking-wider">Solo para mis ojos</p>
+                <p className="text-[9px] font-bold opacity-50">No aparecerá en el nido compartido</p>
               </div>
             </div>
             <Switch 
@@ -121,47 +128,76 @@ export const ManualEventDrawer = ({
             />
           </div>
 
-          {/* INPUTS CON MÁS CONTRASTE */}
+          {/* ACTIVIDAD */}
           <div className="space-y-3">
-            <label className={`text-[10px] font-black uppercase tracking-widest ml-4 ${isPrivate ? 'text-slate-400' : 'text-slate-600'}`}>¿Qué actividad es?</label>
+            <label className="text-[10px] font-black uppercase tracking-widest ml-4 opacity-50">Título de la actividad</label>
             <Input 
-              placeholder="Ej: Natación, Dentista..."
               value={title} 
               onChange={(e) => setTitle(e.target.value)} 
-              className={`rounded-3xl h-16 border-2 font-black text-lg px-8 transition-all ${isPrivate ? 'bg-slate-900 border-slate-800 text-white placeholder:text-slate-700' : 'bg-white border-slate-200 text-slate-800 placeholder:text-slate-400 focus:border-[#0EA5E9]'}`} 
+              className={`rounded-[2rem] h-16 border-2 font-black text-lg px-8 transition-all ${isPrivate ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 focus:border-[#0EA5E9]'}`} 
             />
           </div>
 
+          {/* ASIGNACIÓN (A QUIÉN AFECTA) */}
           <div className="space-y-3">
-            <label className={`text-[10px] font-black uppercase tracking-widest ml-4 flex items-center gap-2 ${isPrivate ? 'text-slate-400' : 'text-slate-600'}`}>
-              <Users size={12} /> ¿Para quién es?
+            <label className="text-[10px] font-black uppercase tracking-widest ml-4 flex items-center gap-2 opacity-50">
+              <Users size={12} /> Protagonista (Peques/Tribu)
             </label>
-            <select 
-              className={`w-full h-16 rounded-3xl border-2 px-8 text-sm font-black outline-none appearance-none transition-all ${isPrivate ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-700 focus:border-[#0EA5E9]'}`} 
-              value={subjectId} 
-              onChange={(e) => setSubjectId(e.target.value)}
-            >
-              <option value="">Toda la tribu</option>
-              {members.map(m => <option key={m.id} value={m.id}>{m.display_name}</option>)}
-            </select>
+            <div className="flex flex-wrap gap-2">
+              <button 
+                onClick={() => setSubjectId('')}
+                className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase transition-all ${!subjectId ? 'bg-slate-800 text-white shadow-lg' : 'bg-white border border-slate-200 text-slate-400'}`}
+              >
+                Toda la tribu
+              </button>
+              {members.map(m => (
+                <button 
+                  key={m.id}
+                  onClick={() => setSubjectId(m.id)}
+                  className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase transition-all ${subjectId === m.id ? 'bg-[#0EA5E9] text-white shadow-lg' : 'bg-white border border-slate-200 text-slate-400'}`}
+                >
+                  {m.display_name}
+                </button>
+              ))}
+            </div>
           </div>
 
+          {/* RESPONSABLE (QUIÉN LO GESTIONA - DELEGACIÓN) */}
+          {!isPrivate && (
+            <div className="space-y-3">
+              <label className="text-[10px] font-black uppercase tracking-widest ml-4 flex items-center gap-2 opacity-50">
+                <UserCheck size={12} /> Guía Responsable (Delegar)
+              </label>
+              <select 
+                className={`w-full h-16 rounded-[2rem] border-2 px-8 text-sm font-black outline-none appearance-none transition-all ${isPrivate ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 focus:border-[#0EA5E9]'}`} 
+                value={assignedTo} 
+                onChange={(e) => setAssignedTo(e.target.value)}
+              >
+                <option value="">Cualquier Guía</option>
+                {members.filter(m => m.role === 'autonomous').map(m => (
+                  <option key={m.id} value={m.id}>{m.display_name} (Guía)</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* FECHA Y HORA */}
           <div className="grid grid-cols-2 gap-5">
             <div className="space-y-3">
-              <label className={`text-[10px] font-black uppercase tracking-widest ml-4 flex items-center gap-2 ${isPrivate ? 'text-slate-400' : 'text-slate-600'}`}><Calendar size={12} /> Fecha</label>
-              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={`rounded-3xl h-16 border-2 font-black ${isPrivate ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200'}`} />
+              <label className="text-[10px] font-black uppercase tracking-widest ml-4 opacity-50">Fecha</label>
+              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={`rounded-[1.5rem] h-14 border-2 font-black ${isPrivate ? 'bg-slate-900 border-slate-800' : 'bg-white'}`} />
             </div>
             <div className="space-y-3">
-              <label className={`text-[10px] font-black uppercase tracking-widest ml-4 flex items-center gap-2 ${isPrivate ? 'text-slate-400' : 'text-slate-600'}`}><Clock size={12} /> Hora</label>
-              <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} className={`rounded-3xl h-16 border-2 font-black ${isPrivate ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200'}`} />
+              <label className="text-[10px] font-black uppercase tracking-widest ml-4 opacity-50">Hora</label>
+              <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} className={`rounded-[1.5rem] h-14 border-2 font-black ${isPrivate ? 'bg-slate-900 border-slate-800' : 'bg-white'}`} />
             </div>
           </div>
 
-          {/* BOTÓN SUBIR AL NIDO */}
+          {/* BOTÓN SUBIR */}
           <Button 
             onClick={handleSave} 
             disabled={loading} 
-            className={`w-full h-20 rounded-[2.5rem] font-black text-lg tracking-[0.2em] shadow-xl active:scale-95 transition-all mt-6 ${isPrivate ? 'bg-[#F97316] hover:bg-orange-600 text-white' : 'bg-[#0EA5E9] hover:bg-slate-900 text-white'}`}
+            className={`w-full h-20 rounded-[2.5rem] font-black text-lg tracking-[0.2em] shadow-2xl active:scale-95 transition-all mt-4 ${isPrivate ? 'bg-[#F97316] text-white' : 'bg-slate-800 text-white'}`}
           >
             {loading ? <Loader2 className="animate-spin" /> : initialData ? "CONFIRMAR SINCRO" : "SUBIR AL NIDO"}
           </Button>
