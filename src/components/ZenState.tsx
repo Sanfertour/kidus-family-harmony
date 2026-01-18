@@ -4,86 +4,68 @@ import { Wind, Leaf } from "lucide-react";
 const ZenState = () => {
   return (
     <motion.div
-      className="zen-state flex flex-col items-center justify-center py-16 px-6"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, ease: "easeOut" }}
+      className="zen-state flex flex-col items-center justify-center py-20 px-6"
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }} // Ease-out suave (Brisa)
     >
-      {/* Animated breeze illustration */}
+      {/* Ilustración de Brisa Animada */}
       <motion.div
-        className="relative mb-8"
-        animate={{ y: [0, -8, 0] }}
-        transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+        className="relative mb-10"
+        animate={{ y: [0, -12, 0] }}
+        transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
       >
-        <div className="w-28 h-28 rounded-full bg-gradient-to-br from-primary/10 to-secondary/30 flex items-center justify-center">
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary/15 to-secondary/40 flex items-center justify-center">
-            <Wind className="w-10 h-10 text-primary/70" />
+        <div className="w-32 h-32 rounded-[3rem] bg-gradient-to-br from-kidus-sky/10 to-kidus-vital/20 flex items-center justify-center backdrop-blur-sm border border-white/50 shadow-brisa">
+          <div className="w-24 h-24 rounded-[2.5rem] bg-white/40 flex items-center justify-center">
+            <Wind className="w-12 h-12 text-kidus-sky/60" />
           </div>
         </div>
         
-        {/* Floating leaves */}
+        {/* Hojas flotantes sincronizadas */}
         <motion.div
-          className="absolute -top-3 right-0"
-          animate={{ 
-            x: [0, 15, 0], 
-            y: [0, -10, 0],
-            rotate: [0, 15, 0]
-          }}
-          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute -top-4 right-2"
+          animate={{ x: [0, 15, 0], y: [0, -10, 0], rotate: [0, 25, 0] }}
+          transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
         >
-          <Leaf className="w-5 h-5 text-success/60" />
+          <Leaf className="w-6 h-6 text-kidus-mint/50" />
         </motion.div>
+        
         <motion.div
-          className="absolute bottom-2 -left-4"
-          animate={{ 
-            x: [0, -10, 0], 
-            y: [0, 5, 0],
-            rotate: [0, -20, 0]
-          }}
-          transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+          className="absolute bottom-2 -left-6"
+          animate={{ x: [0, -12, 0], y: [0, 8, 0], rotate: [0, -30, 0] }}
+          transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
         >
-          <Leaf className="w-4 h-4 text-primary/50" />
-        </motion.div>
-        <motion.div
-          className="absolute top-1/2 -right-6"
-          animate={{ 
-            x: [0, 8, 0], 
-            y: [0, -5, 0],
-            rotate: [0, 10, 0]
-          }}
-          transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
-        >
-          <Leaf className="w-3 h-3 text-accent/50" />
+          <Leaf className="w-5 h-5 text-kidus-sky/40" />
         </motion.div>
       </motion.div>
 
-      {/* Zen message */}
+      {/* Mensaje de la Tribu */}
       <motion.h2
-        className="text-2xl font-bold text-foreground mb-3 text-center"
+        className="text-3xl font-black text-slate-800 mb-4 text-center font-nunito tracking-tight"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.2 }}
+        transition={{ delay: 0.4 }}
       >
-        Tu Nido está en paz
+        Sincronía total
       </motion.h2>
       
       <motion.p
-        className="text-muted-foreground text-center max-w-[280px] leading-relaxed text-sm"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.3 }}
-      >
-        Disfruta del silencio. KidUs vigila por ti.
-      </motion.p>
-
-      {/* Subtle tip */}
-      <motion.div
-        className="mt-8 px-4 py-2 rounded-full bg-secondary/50 text-secondary-foreground text-xs font-medium"
+        className="text-slate-500 text-center max-w-[300px] leading-relaxed text-base font-medium"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5 }}
       >
-        Toca + para añadir eventos
+        Tu equipo está cubierto. Disfruta de la calma en el Nido.
+      </motion.p>
+
+      {/* CTA con Feedback Visual */}
+      <motion.div
+        className="mt-12 px-8 py-3 rounded-full bg-white/60 backdrop-blur-md border border-white/80 text-kidus-vital text-xs font-black uppercase tracking-[0.2em] shadow-sm"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.7 }}
+      >
+        Pulsa + para gestionar la tribu
       </motion.div>
     </motion.div>
   );
