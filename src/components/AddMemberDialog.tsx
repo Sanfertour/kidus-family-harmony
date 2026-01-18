@@ -7,6 +7,7 @@ import {
   DialogTitle,
   DialogDescription,
   DialogTrigger,
+  DialogClose,
 } from "@/components/ui/dialog"; 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +17,9 @@ import {
   UserCircle2, 
   Loader2, 
   Baby, 
-  UserPlus
+  UserPlus,
+  X,
+  Sparkles
 } from "lucide-react";
 
 const triggerHaptic = (type: 'soft' | 'success') => {
@@ -60,7 +63,7 @@ export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.R
       const { error } = await supabase.from('profiles').insert({
         display_name: name,
         nest_id: myProfile?.nest_id,
-        role: role, // 'autonomous' para Guía, 'dependent' para Tribu
+        role: role, 
         avatar_url: selectedColor.hex,
         updated_at: new Date().toISOString()
       });
@@ -87,7 +90,12 @@ export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.R
       
       <DialogContent className="sm:max-w-md border-none bg-white/95 backdrop-blur-2xl shadow-2xl rounded-[3.5rem] p-10 outline-none overflow-hidden font-sans">
         
-        {/* Línea de color dinámica superior */}
+        {/* BOTÓN DE CIERRE ZEN (SALIR EN CASO DE ERROR O CAMBIO DE IDEA) */}
+        <DialogClose className="absolute right-8 top-8 p-2 rounded-2xl bg-slate-100 text-slate-400 hover:text-slate-800 transition-all active:scale-90 z-50">
+          <X size={20} strokeWidth={3} />
+        </DialogClose>
+
+        {/* Línea de color dinámica superior (Mantenida) */}
         <div className={`absolute top-0 left-0 w-full h-2 ${selectedColor.bg} transition-colors duration-500`} />
 
         <DialogHeader className="space-y-6">
@@ -97,7 +105,7 @@ export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.R
             </div>
           </div>
           <div className="text-center">
-            <DialogTitle className="text-4xl font-black text-slate-800 tracking-tighter font-nunito">Sumar Integrante</DialogTitle>
+            <DialogTitle className="text-4xl font-black text-slate-800 tracking-tighter font-nunito leading-tight">Sumar Integrante</DialogTitle>
             <DialogDescription className="text-slate-400 text-[10px] font-black uppercase tracking-[0.4em] mt-2">
               Gestión del Nido
             </DialogDescription>
@@ -142,7 +150,7 @@ export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.R
             </button>
           </div>
 
-          {/* Selector de Color */}
+          {/* Selector de Color (Mantenido Íntegro) */}
           <div className="flex justify-center gap-3">
             {TRIBU_COLORS.map((color) => (
               <button
@@ -156,13 +164,27 @@ export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.R
             ))}
           </div>
 
-          <Button 
-            type="submit" 
-            disabled={loading || !name} 
-            className={`w-full h-20 rounded-[2.5rem] ${selectedColor.bg} ${selectedColor.hover} text-white font-black text-sm tracking-[0.2em] shadow-xl active:scale-95 transition-all duration-400 uppercase`}
-          >
-            {loading ? <Loader2 className="animate-spin" /> : "Integrar al Nido"}
-          </Button>
+          <div className="flex flex-col gap-3">
+            <Button 
+              type="submit" 
+              disabled={loading || !name} 
+              className={`w-full h-20 rounded-[2.5rem] ${selectedColor.bg} ${selectedColor.hover} text-white font-black text-sm tracking-[0.2em] shadow-xl active:scale-95 transition-all duration-400 uppercase`}
+            >
+              {loading ? <Loader2 className="animate-spin" /> : "Integrar al Nido"}
+            </Button>
+
+            {/* BOTÓN EXTRA DE SALIDA PARA ERROR O CANCELACIÓN */}
+            <DialogClose asChild>
+              <Button 
+                variant="ghost" 
+                type="button"
+                onClick={() => triggerHaptic('soft')}
+                className="text-slate-400 font-black text-[9px] uppercase tracking-[0.3em] hover:bg-transparent hover:text-slate-600 transition-colors"
+              >
+                Volver a la Agenda
+              </Button>
+            </DialogClose>
+          </div>
         </form>
       </DialogContent>
     </Dialog>
