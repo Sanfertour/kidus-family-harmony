@@ -231,13 +231,15 @@ const Index = () => {
               </div>
 
               {/* HIT DEL DÍA - MENTALIDAD DE EQUIPO ÉLITE */}
-              <div className="mx-2 p-6 rounded-[2.5rem] bg-slate-800 text-white/90 flex items-center gap-4 shadow-lg">
-                <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center">
-                  <div className="w-2 h-2 bg-[#0EA5E9] rounded-full animate-pulse" />
+              {/* ESTADO DE SINCRONÍA - FILOSOFÍA KIDUS */}
+              <div className="mx-2 p-6 rounded-[2.5rem] bg-slate-800/80 backdrop-blur-2xl text-white/90 flex items-center gap-4 shadow-2xl border border-white/5">
+                <div className="w-14 h-14 bg-white/5 rounded-[1.5rem] flex items-center justify-center relative">
+                  <div className="absolute inset-0 bg-[#F97316]/20 rounded-[1.5rem] animate-pulse" />
+                  <div className="w-2.5 h-2.5 bg-[#F97316] rounded-full shadow-[0_0_12px_rgba(249,115,22,0.8)]" />
                 </div>
                 <div>
-                  <p className="text-[9px] font-black uppercase tracking-widest opacity-50">Siguiente hito</p>
-                  <p className="text-sm font-bold">Logística del equipo lista</p>
+                  <p className="text-[9px] font-black uppercase tracking-[0.3em] text-[#F97316]">Sincro del Nido</p>
+                  <p className="text-sm font-bold tracking-tight">Logística de la tribu activa</p>
                 </div>
               </div>
             </motion.div>
