@@ -101,10 +101,11 @@ const Index = () => {
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+    
     triggerHaptic('success');
     setIsAiProcessing(true);
     
-    const messages = ["Escaneando...", "IA trabajando...", "Sincronizando..."];
+    const messages = ["Sincronizando...", "IA analizando circular...", "Preparando misión..."];
     let msgIndex = 0;
     const interval = setInterval(() => {
       setAiMessage(messages[msgIndex % messages.length]);
@@ -113,8 +114,15 @@ const Index = () => {
 
     try {
       const fileName = `${Math.random()}.${file.name.split('.').pop()}`;
-      await supabase.storage.from('event-attachments').upload(fileName, file);
-      const { data: { publicUrl } } = supabase.storage.from('event-attachments').getPublicUrl(fileName);
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('event-attachments')
+        .upload(fileName, file);
+      
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('event-attachments')
+        .getPublicUrl(fileName);
       
       const { data: aiResult, error: aiError } = await supabase.functions.invoke('process-image-ai', { 
         body: { imageUrl: publicUrl } 
@@ -122,20 +130,29 @@ const Index = () => {
 
       if (aiError) throw aiError;
 
+      // Mejora KidUs: Mapeo inteligente hacia el Drawer
       setScannedData({
-        description: aiResult.description || "Nueva actividad",
+        title: aiResult.title || "Nueva actividad",
         date: aiResult.date || new Date().toISOString().split('T')[0],
-        time: aiResult.time || "12:00",
-        location: aiResult.location || ""
+        time: aiResult.time || "09:00",
+        // Mapeamos la descripción al campo de Preparación del Drawer
+        description: aiResult.preparation || aiResult.description || "",
+        event_type: aiResult.event_type || 'escolar'
       });
       
+      clearInterval(interval);
       setIsAiProcessing(false);
       setIsDrawerOpen(true);
-      clearInterval(interval);
+      triggerHaptic('success');
+      
     } catch (error) {
       clearInterval(interval);
       setIsAiProcessing(false);
-      toast({ title: "Error de lectura", description: "La IA no pudo procesar la imagen.", variant: "destructive" });
+      toast({ 
+        title: "Nido desconectado", 
+        description: "La IA no ha podido leer la imagen. Inténtalo de nuevo.", 
+        variant: "destructive" 
+      });
     }
   };
 
@@ -174,11 +191,10 @@ const Index = () => {
     );
   }
 
- return (
+  return (
     <div className="relative min-h-screen w-full overflow-hidden bg-transparent font-sans">
       <Header />
       
-      {/* ELIMINADO bg-slate-50 PARA QUE SE VEAN LAS OLAS */}
       <main className="container mx-auto px-6 pt-6 max-w-md relative z-10 pb-44">
         <AnimatePresence mode="wait">
           {activeTab === "home" && (
@@ -189,7 +205,6 @@ const Index = () => {
               exit={{ opacity: 0, y: -20 }} 
               className="space-y-8"
             >
-              {/* SALUDO DINÁMICO SEGÚN MOMENTO DEL DÍA */}
               <div className="px-2">
                 <h1 className="text-5xl font-black text-slate-800 leading-[1.1] tracking-tighter font-nunito">
                   {new Date().getHours() < 12 ? "Buen día," : new Date().getHours() < 20 ? "Energía alta," : "Nido en calma,"}<br/> 
@@ -198,7 +213,6 @@ const Index = () => {
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mt-3">Rendimiento de la Tribu</p>
               </div>
 
-              {/* DASHBOARD CARD - GLASSMOPHISM PRO */}
               <div className="p-10 rounded-[3.5rem] bg-white/60 backdrop-blur-2xl border border-white/40 shadow-xl shadow-slate-200/20 relative overflow-hidden group">
                 <div className="relative z-10">
                   <label className="text-[10px] font-black text-[#0EA5E9] uppercase tracking-[0.2em] mb-4 block">Sincronía Actual</label>
@@ -208,11 +222,9 @@ const Index = () => {
                   </div>
                   <p className="text-slate-500 font-bold text-sm tracking-tight mt-2">Tu equipo está fluyendo en armonía.</p>
                 </div>
-                {/* Decoración sutil de fondo para la tarjeta */}
                 <div className="absolute -right-6 -bottom-6 w-32 h-32 bg-[#0EA5E9]/5 rounded-full blur-2xl group-hover:bg-[#0EA5E9]/10 transition-colors duration-700" />
               </div>
               
-              {/* ACCESOS RÁPIDOS CON FEEDBACK HÁPTICO */}
               <div className="grid grid-cols-2 gap-5">
                 <button 
                   onClick={() => { triggerHaptic('soft'); setActiveTab("agenda"); }} 
@@ -230,8 +242,6 @@ const Index = () => {
                 </button>
               </div>
 
-              {/* HIT DEL DÍA - MENTALIDAD DE EQUIPO ÉLITE */}
-              {/* ESTADO DE SINCRONÍA - FILOSOFÍA KIDUS */}
               <div className="mx-2 p-6 rounded-[2.5rem] bg-slate-800/80 backdrop-blur-2xl text-white/90 flex items-center gap-4 shadow-2xl border border-white/5">
                 <div className="w-14 h-14 bg-white/5 rounded-[1.5rem] flex items-center justify-center relative">
                   <div className="absolute inset-0 bg-[#F97316]/20 rounded-[1.5rem] animate-pulse" />
@@ -287,7 +297,6 @@ const Index = () => {
         </AnimatePresence>
       </main>
 
-      {/* NAVEGACIÓN INFERIOR GLASS */}
       <nav className="fixed bottom-0 left-0 right-0 h-28 bg-white/60 backdrop-blur-3xl border-t border-white/20 flex justify-around items-center px-10 z-[40] rounded-t-[3.5rem] shadow-2xl">
         {[
           { id: "home", icon: HomeIcon }, { id: "agenda", icon: Calendar }, { id: "family", icon: Users }, { id: "settings", icon: Settings }
@@ -302,7 +311,6 @@ const Index = () => {
         ))}
       </nav>
 
-      {/* FAB DINÁMICO */}
       <div className="fixed bottom-36 right-8 z-50 flex flex-col items-center">
         <div className={`flex flex-col gap-6 mb-6 transition-all duration-500 ${isFabOpen ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-20 scale-50 pointer-events-none'}`}>
           <button onClick={() => { triggerHaptic('soft'); setIsFabOpen(false); fileInputRef.current?.click(); }} className="w-16 h-16 bg-[#0EA5E9] rounded-2xl flex items-center justify-center text-white shadow-xl border-4 border-white active:scale-90 transition-all">
@@ -321,15 +329,15 @@ const Index = () => {
 
       <AnimatePresence>
         {isAiProcessing && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] flex items-center justify-center bg-white/80 backdrop-blur-3xl">
-            <div className="flex flex-col items-center gap-8 text-center p-12">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] flex items-center justify-center bg-white/40 backdrop-blur-3xl">
+            <div className="flex flex-col items-center gap-8 text-center p-12 bg-white/80 rounded-[4rem] shadow-2xl border border-white shadow-sky-100/50">
               <div className="w-28 h-28 bg-[#0EA5E9]/10 rounded-[3rem] flex items-center justify-center relative">
                 <div className="absolute inset-0 bg-[#0EA5E9]/20 rounded-[3rem] animate-ping" />
                 <Camera className="text-[#0EA5E9] relative z-10" size={44} />
               </div>
               <div className="space-y-3">
-                <h3 className="text-4xl font-black text-slate-800 tracking-tighter">IA KidUs</h3>
-                <p className="text-[#0EA5E9] font-black text-xs uppercase tracking-[0.4em]">{aiMessage}</p>
+                <h3 className="text-4xl font-black text-slate-800 tracking-tighter font-nunito">IA KidUs</h3>
+                <p className="text-[#0EA5E9] font-black text-[10px] uppercase tracking-[0.4em]">{aiMessage}</p>
               </div>
             </div>
           </motion.div>
