@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   Bell, AlertTriangle, Share2, ChevronRight, ChevronLeft, 
-  MapPin, Sparkles, Clock, Star, Loader2, Settings2 
+  MapPin, Sparkles, Clock, Star, Loader2, Settings2, Edit3 
 } from 'lucide-react';
 import { 
   format, startOfWeek, addDays, isSameDay, 
@@ -13,7 +13,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
 import { NotificationsDrawer } from './NotificationsDrawer';
 
-type ReminderLeadTime = '30m' | '1h' | '24h';
+// Definimos el tipo para los recordatorios específicos por evento
+type ReminderLeadTime = '30m' | '1h' | '24h' | 'none';
 
 const triggerHaptic = (type: 'soft' | 'success' | 'warning') => {
   if (typeof navigator !== "undefined" && navigator.vibrate) {
@@ -32,8 +33,9 @@ export const AgendaView = () => {
   const [nestId, setNestId] = useState<string | null>(null);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [showSettings, setShowSettings] = useState(false);
-  const [reminderTime, setReminderTime] = useState<ReminderLeadTime>('24h');
+  
+  // Estado para edición contextual de evento
+  const [editingEventId, setEditingEventId] = useState<string | null>(null);
 
   const { toast } = useToast();
   const weekDays = [...Array(7)].map((_, i) => addDays(currentWeekStart, i));
@@ -54,7 +56,6 @@ export const AgendaView = () => {
 
         if (!error && eventsData) {
           setEvents(eventsData);
-          // Detectar colisiones (zen logic)
           const conflictIds = eventsData.filter((e1, i) => 
             eventsData.some((e2, j) => i !== j && e1.assigned_to === e2.assigned_to && 
             Math.abs(new Date(e1.event_date).getTime() - new Date(e2.event_date).getTime()) < 3600000)
@@ -68,6 +69,21 @@ export const AgendaView = () => {
         setUnreadCount(count || 0);
       }
     } catch (e) { console.error(e); } finally { setLoading(false); }
+  };
+
+  // Función para actualizar recordatorio de un evento específico
+  const updateEventReminder = async (eventId: string, time: ReminderLeadTime) => {
+    triggerHaptic('success');
+    const { error } = await supabase
+      .from('events')
+      .update({ reminder_setting: time }) // Asumiendo que esta columna existe en tu tabla
+      .eq('id', eventId);
+
+    if (!error) {
+      toast({ title: "Sincronía Editada", description: `Aviso configurado para ${time}.` });
+      setEditingEventId(null);
+      fetchEvents();
+    }
   };
 
   useEffect(() => {
@@ -89,57 +105,33 @@ export const AgendaView = () => {
   return (
     <div className="min-h-screen bg-slate-50 pb-32 font-sans selection:bg-sky-100">
       
-      {/* SECCIÓN AIRE (HEADER) */}
-      <header className="pt-16 pb-12 px-10 bg-white rounded-b-[4rem] shadow-sm transition-all duration-700">
-        <div className="flex justify-between items-end">
+      {/* HEADER INTEGRADO (FONDO ELIMINADO PARA FLUIDEZ ZEN) */}
+      <header className="pt-16 pb-12 px-10 transition-all duration-700">
+        <div className="flex justify-between items-start">
           <div className="space-y-2">
             <h2 className="text-7xl font-black text-slate-800 tracking-tighter font-nunito leading-none">Agenda</h2>
             <div className="flex items-center gap-4">
               <span className="h-1.5 w-10 bg-[#F97316] rounded-full" />
-              <p className="text-[11px] font-black text-sky-500 uppercase tracking-[0.4em]">Sincroniza tu Nido</p>
+              <p className="text-[11px] font-black text-sky-500 uppercase tracking-[0.4em]">Gestión de la Tribu</p>
             </div>
           </div>
 
-          <div className="flex gap-4">
-            <button 
-              onClick={() => { triggerHaptic('soft'); setShowSettings(!showSettings); }}
-              className={`p-4 rounded-[2rem] transition-all duration-400 active:scale-95 ${showSettings ? 'bg-slate-800 text-white' : 'bg-slate-50 text-slate-400'}`}
-            >
-              <Settings2 size={24} />
-            </button>
-            <button 
-              onClick={() => { triggerHaptic('soft'); setIsNotifOpen(true); }}
-              className="relative w-20 h-20 rounded-[2.5rem] bg-slate-800 text-white flex items-center justify-center shadow-2xl shadow-slate-200 active:scale-90 transition-all duration-400"
-            >
-              <Bell size={28} />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-8 h-8 bg-[#F97316] text-white rounded-full border-4 border-white flex items-center justify-center text-xs font-black">
-                  {unreadCount}
-                </span>
-              )}
-            </button>
-          </div>
+          <button 
+            onClick={() => { triggerHaptic('soft'); setIsNotifOpen(true); }}
+            className="relative w-20 h-20 rounded-[2.5rem] bg-slate-800 text-white flex items-center justify-center shadow-2xl shadow-slate-200 active:scale-90 transition-all duration-400"
+          >
+            <Bell size={28} />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-8 h-8 bg-[#F97316] text-white rounded-full border-4 border-slate-50 flex items-center justify-center text-xs font-black">
+                {unreadCount}
+              </span>
+            )}
+          </button>
         </div>
-
-        <AnimatePresence>
-          {showSettings && (
-            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="mt-8 flex gap-3">
-              {(['30m', '1h', '24h'] as ReminderLeadTime[]).map((time) => (
-                <button
-                  key={time}
-                  onClick={() => { triggerHaptic('success'); setReminderTime(time); setShowSettings(false); }}
-                  className={`flex-1 py-4 rounded-[1.8rem] text-[10px] font-black uppercase tracking-widest transition-all ${reminderTime === time ? 'bg-sky-500 text-white shadow-lg' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}
-                >
-                  Aviso {time}
-                </button>
-              ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
       </header>
 
-      {/* SELECTOR DE CALMA (CALENDARIO) */}
-      <section className="px-8 -mt-8">
+      {/* SELECTOR DE CALMA (CALENDARIO GLASSMORPHISM) */}
+      <section className="px-8 -mt-4">
         <div className="bg-white/40 backdrop-blur-2xl p-6 rounded-[3.5rem] border border-white/60 shadow-xl shadow-slate-200/40">
           <div className="flex justify-between items-center px-4 mb-6">
             <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
@@ -189,13 +181,15 @@ export const AgendaView = () => {
               <motion.div 
                 layout initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                 key={event.id}
-                className={`group relative p-8 rounded-[3.5rem] transition-all duration-500 border border-white shadow-sm hover:shadow-2xl hover:shadow-slate-200/50 bg-white`}
+                onClick={() => { triggerHaptic('soft'); setEditingEventId(editingEventId === event.id ? null : event.id); }}
+                className={`group relative p-8 rounded-[3.5rem] transition-all duration-500 border border-white shadow-sm hover:shadow-2xl hover:shadow-slate-200/50 bg-white cursor-pointer overflow-hidden ${editingEventId === event.id ? 'ring-2 ring-sky-500/20' : ''}`}
               >
                 {conflicts.includes(event.id) && (
                   <div className="absolute -top-3 left-12 bg-red-500 text-white text-[8px] font-black px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
                     <AlertTriangle size={10} /> SOLAPE
                   </div>
                 )}
+                
                 <div className="flex justify-between items-start mb-6">
                   <div className="space-y-4">
                     <div className="inline-flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-full">
@@ -204,21 +198,53 @@ export const AgendaView = () => {
                     </div>
                     <h4 className="text-4xl font-black text-slate-800 tracking-tighter leading-none">{event.description}</h4>
                   </div>
-                  <button className="p-5 rounded-[1.8rem] bg-slate-50 text-slate-400 hover:bg-sky-50 hover:text-sky-500 transition-all">
-                    <Share2 size={20} />
-                  </button>
+                  <div className="p-5 rounded-[1.8rem] bg-slate-50 text-slate-400 group-hover:text-sky-500 transition-all">
+                    {editingEventId === event.id ? <Settings2 size={20} className="animate-spin-slow" /> : <Edit3 size={20} />}
+                  </div>
                 </div>
+
+                {/* Edición contextual del recordatorio */}
+                <AnimatePresence>
+                  {editingEventId === event.id && (
+                    <motion.div 
+                      initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+                      className="mb-6 pt-4 border-t border-slate-50"
+                      onClick={(e) => e.stopPropagation()} // Evita cerrar al tocar los botones
+                    >
+                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3 ml-2">Sincronizar aviso previo</p>
+                      <div className="flex gap-2">
+                        {(['30m', '1h', '24h', 'none'] as ReminderLeadTime[]).map((time) => (
+                          <button
+                            key={time}
+                            onClick={() => updateEventReminder(event.id, time)}
+                            className={`flex-1 py-3 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all ${event.reminder_setting === time ? 'bg-sky-500 text-white shadow-md' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}
+                          >
+                            {time === 'none' ? 'Sin aviso' : time}
+                          </button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
                 <div className="flex items-center justify-between pt-6 border-t border-slate-50">
                   <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-[1.4rem] bg-slate-100 flex items-center justify-center font-black text-slate-400 text-sm overflow-hidden">
+                    <div className="w-14 h-14 rounded-[1.4rem] bg-slate-100 flex items-center justify-center font-black text-slate-400 text-sm overflow-hidden border border-white">
                       {event.profiles?.avatar_url ? <img src={event.profiles.avatar_url} className="w-full h-full object-cover" /> : event.profiles?.display_name?.charAt(0)}
                     </div>
                     <div>
-                      <p className="text-[8px] font-black uppercase tracking-widest text-slate-300">Guía al mando</p>
+                      <p className="text-[8px] font-black uppercase tracking-widest text-slate-300">Responsable</p>
                       <p className="text-sm font-black text-slate-700">{event.profiles?.display_name || 'Tribu'}</p>
                     </div>
                   </div>
-                  <ChevronRight size={24} className="text-slate-200 group-hover:text-sky-500 group-hover:translate-x-2 transition-all" />
+                  <div className="flex items-center gap-2">
+                    {event.reminder_setting && event.reminder_setting !== 'none' && (
+                      <span className="text-[9px] font-black text-sky-500 bg-sky-50 px-3 py-1 rounded-full uppercase tracking-tighter">
+                        Aviso: {event.reminder_setting}
+                      </span>
+                    )}
+                    <ChevronRight size={24} className="text-slate-200 group-hover:text-sky-500 group-hover:translate-x-2 transition-all" />
+                  </div>
                 </div>
               </motion.div>
             ))
