@@ -7,23 +7,24 @@ export default {
   theme: {
     container: {
       center: true,
-      padding: "2rem", // Más 'brisa' en los laterales
+      padding: "2rem",
       screens: {
         "2xl": "1400px",
       },
     },
     extend: {
       fontFamily: {
-        // Nunito Black para titulares potentes según el nuevo manual
+        // Priorizamos Nunito para toda la interfaz KidUs
         sans: ['Nunito', 'system-ui', 'sans-serif'],
         nunito: ['Nunito', 'sans-serif'],
       },
       colors: {
-        border: "rgba(255, 255, 255, 0.4)", // Bordes para Glassmorphism
-        input: "#E2E8F0",
+        // Bordes ultra-light para ese Glassmorphism premium
+        border: "rgba(255, 255, 255, 0.2)", 
+        input: "rgba(255, 255, 255, 0.3)",
         ring: "#0EA5E9",
-        background: "#F8FAFC", // Slate 50: Limpio y Zen
-        foreground: "#1E293B", // Slate 800: Texto potente
+        background: "#F8FAFC", // Slate 50: Paz visual
+        foreground: "#1E293B", // Slate 800: Texto con autoridad
         primary: {
           DEFAULT: "#0EA5E9", // Sky Blue
           foreground: "#FFFFFF",
@@ -32,14 +33,15 @@ export default {
           DEFAULT: "#F97316", // Vital Orange
           foreground: "#FFFFFF",
         },
+        // Paleta KidUs Pro
         kidus: {
           sky: "#0EA5E9",
           vital: "#F97316",
           violet: "#8B5CF6",
-          mint: "#10B981", // Verde para éxito de la tribu
+          mint: "#10B981", 
           slate: "#F8FAFC",
         },
-        // Colores de la Tribu (Inclusivos y potentes)
+        // Identificadores de la Tribu
         tribu: {
           1: "#0EA5E9",
           2: "#F97316",
@@ -50,16 +52,16 @@ export default {
         },
       },
       borderRadius: {
-        "2xl": "1rem",     // Inputs
+        "2xl": "1rem",     
         "3xl": "1.5rem",
         "4xl": "2rem",
-        "5xl": "2.5rem",   // Botones y Avatares (Manual Zen)
+        "5xl": "2.5rem",   
         "6xl": "3rem",
-        "7xl": "3.5rem",   // Tarjetas Principales (Brisa orgánica)
+        "7xl": "3.5rem",   // El estándar de oro para las Cards del Nido
       },
       boxShadow: {
-        'brisa': '0 8px 32px rgba(15, 23, 42, 0.05)',
-        'haptic': '0 20px 40px rgba(14, 165, 233, 0.15)',
+        'brisa': '0 8px 32px rgba(15, 23, 42, 0.04)',
+        'haptic': '0 20px 40px rgba(14, 165, 233, 0.12)',
         'tribu-card': '0 25px 50px -12px rgba(15, 23, 42, 0.08)',
       },
       keyframes: {
@@ -80,7 +82,15 @@ export default {
         "float": {
           "0%, 100%": { transform: "translateY(0)" },
           "50%": { transform: "translateY(-12px)" },
-        }
+        },
+        "accordion-down": {
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
+        },
+        "accordion-up": {
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
+        },
       },
       animation: {
         "wave-slow": "wave-apple 22s ease-in-out infinite",
@@ -94,5 +104,6 @@ export default {
       }
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  // Añadimos el plugin de tipografía para que las notas del nido se lean perfectas
+  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
 } satisfies Config;
