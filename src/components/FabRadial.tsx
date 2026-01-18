@@ -1,86 +1,61 @@
-import { useState } from "react";
-import { Plus, Camera, Image, FileText, Edit } from "lucide-react";
-import { Dialog, DialogTrigger } from "@/components/ui/dialog"; // Importa DialogTrigger
-
-// Diálogos de contenido (estos los crearemos luego como Drawers)
-import { ManualEventDrawer } from "@/components/ManualEventDrawer"; // Futuro
-import { UploadDocumentDrawer } from "@/components/UploadDocumentDrawer"; // Futuro
-
 export const FabRadial = ({ onEventAdded, members }: { onEventAdded: () => void; members: any[] }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [dialogType, setDialogType] = useState<'' | 'manual' | 'upload'>('');
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false); // Estado para controlar los drawers
+  const [activeDrawer, setActiveDrawer] = useState<'manual' | 'ia' | null>(null);
 
-  const handleFabClick = () => {
+  const toggleFab = () => {
+    triggerHaptic('soft');
     setIsOpen(!isOpen);
-  };
-
-  const handleSubButtonClick = (type: 'manual' | 'upload') => {
-    setDialogType(type);
-    setIsDrawerOpen(true); // Abre el drawer correspondiente
-    setIsOpen(false); // Cierra el FAB radial
   };
 
   return (
     <>
-      <div className="fab-radial-container">
-        {/* Botones secundarios */}
-        {/* Cámara */}
-        <button 
-          className={`fab-sub-button ${isOpen ? 'visible' : ''}`}
-          onClick={() => console.log('Abrir cámara')} // Aquí irá la lógica de cámara
-          style={{ transform: isOpen ? 'translateY(-250px) scale(1)' : '' }}
-        >
-          <Camera className="w-6 h-6" />
-        </button>
-        {/* Galería */}
-        <button 
-          className={`fab-sub-button ${isOpen ? 'visible' : ''}`}
-          onClick={() => console.log('Abrir galería')} // Aquí irá la lógica de galería
-          style={{ transform: isOpen ? 'translateY(-190px) scale(1)' : '' }}
-        >
-          <Image className="w-6 h-6" />
-        </button>
-        {/* PDF */}
-        <button 
-          className={`fab-sub-button ${isOpen ? 'visible' : ''}`}
-          onClick={() => handleSubButtonClick('upload')}
-          style={{ transform: isOpen ? 'translateY(-130px) scale(1)' : '' }}
-        >
-          <FileText className="w-6 h-6" />
-        </button>
-        {/* Lápiz (Manual) */}
-        <button 
-          className={`fab-sub-button ${isOpen ? 'visible' : ''}`}
-          onClick={() => handleSubButtonClick('manual')}
-          style={{ transform: isOpen ? 'translateY(-70px) scale(1)' : '' }}
-        >
-          <Edit className="w-6 h-6" />
-        </button>
+      <div className="fixed bottom-10 right-8 z-[100] flex flex-col items-center gap-4">
+        {/* Sub-botón: Escáner IA */}
+        {isOpen && (
+          <motion.button
+            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+            onClick={() => { setActiveDrawer('ia'); setIsOpen(false); }}
+            className="w-14 h-14 bg-[#0EA5E9] text-white rounded-2xl shadow-lg flex items-center justify-center"
+          >
+            <Sparkles size={24} />
+          </motion.button>
+        )}
 
-        {/* Botón principal del FAB */}
-        <button className={`fab-main-button ${isOpen ? 'open' : ''}`} onClick={handleFabClick}>
-          <Plus />
+        {/* Sub-botón: Manual */}
+        {isOpen && (
+          <motion.button
+            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+            onClick={() => { setActiveDrawer('manual'); setIsOpen(false); }}
+            className="w-14 h-14 bg-slate-800 text-white rounded-2xl shadow-lg flex items-center justify-center"
+          >
+            <Edit size={24} />
+          </motion.button>
+        )}
+
+        {/* Botón Principal */}
+        <button 
+          onClick={toggleFab}
+          className={`w-18 h-18 rounded-[2rem] flex items-center justify-center shadow-2xl transition-all duration-500 ${isOpen ? 'bg-orange-500 rotate-45' : 'bg-[#F97316] text-white'}`}
+        >
+          <Plus size={32} strokeWidth={3} />
         </button>
       </div>
 
-      {/* DRAWERS: Se abrirán desde abajo */}
-      {dialogType === 'manual' && (
-        <ManualEventDrawer 
-          isOpen={isDrawerOpen} 
-          onClose={() => setIsDrawerOpen(false)} 
-          onEventAdded={onEventAdded} 
-          members={members} 
-        />
-      )}
-      {dialogType === 'upload' && (
-        <UploadDocumentDrawer 
-          isOpen={isDrawerOpen} 
-          onClose={() => setIsDrawerOpen(false)} 
-          onEventAdded={onEventAdded} 
-          members={members} 
-        />
-      )}
+      {/* Control de Drawers centralizado */}
+      <ManualEventDrawer 
+        isOpen={activeDrawer === 'manual'} 
+        onClose={() => setActiveDrawer(null)} 
+        onEventAdded={onEventAdded} 
+        members={members} 
+      />
+      
+      <UploadDocumentDrawer 
+        isOpen={activeDrawer === 'ia'} 
+        onClose={() => setActiveDrawer(null)} 
+        onEventAdded={onEventAdded} 
+        members={members}
+        type="camera" // Por defecto abre cámara
+      />
     </>
   );
 };
