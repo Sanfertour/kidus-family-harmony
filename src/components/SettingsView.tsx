@@ -24,8 +24,18 @@ export const SettingsView = ({ nestId, members, onRefresh }: { nestId: string | 
   const [isJoining, setIsJoining] = useState(false);
   const { toast } = useToast();
 
-  // Corregido: Si no hay nestId, mostramos un placeholder limpio
   const displayToken = nestId ? `KID-${nestId.substring(0, 4).toUpperCase()}` : "KID-NEW";
+
+  // --- FUNCIÓN DE EDICIÓN (LA QUE FALTABA) ---
+  const startEditing = (member: any) => {
+    triggerHaptic('soft');
+    setEditForm({
+      name: member.display_name || '',
+      color: member.avatar_url || '#0EA5E9',
+      role: member.role || 'dependent'
+    });
+    setEditingId(member.id);
+  };
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(displayToken);
@@ -35,9 +45,7 @@ export const SettingsView = ({ nestId, members, onRefresh }: { nestId: string | 
   };
 
   const handleJoinNest = async () => {
-    // Limpiamos el código por si el usuario escribe "KID-" manualmente
     const cleanInput = joinCode.replace("KID-", "").trim();
-    
     if (cleanInput.length < 4) {
       toast({ title: "Código incompleto", variant: "destructive" });
       return;
@@ -45,7 +53,6 @@ export const SettingsView = ({ nestId, members, onRefresh }: { nestId: string | 
     
     setIsJoining(true);
     try {
-      triggerHaptic('success');
       const { data: partnerProfile } = await supabase
         .from('profiles')
         .select('nest_id')
@@ -61,7 +68,7 @@ export const SettingsView = ({ nestId, members, onRefresh }: { nestId: string | 
       const { data: { user } } = await supabase.auth.getUser();
       await supabase.from('profiles').update({ nest_id: partnerProfile.nest_id }).eq('id', user?.id);
 
-      toast({ title: "Sincronía del Nido Éxitosa" });
+      toast({ title: "Sincronía del Nido Exitosa" });
       setJoinCode("");
       onRefresh();
     } catch (error) {
@@ -90,16 +97,19 @@ export const SettingsView = ({ nestId, members, onRefresh }: { nestId: string | 
   };
 
   const deleteMember = async (id: string, name: string) => {
+    // Si confirmas, ejecutamos el borrado
     if (confirm(`¿Eliminar a ${name} de la tribu?`)) {
       triggerHaptic('warning');
       try {
+        // Ejecución en Supabase
         const { error } = await supabase.from('profiles').delete().eq('id', id);
         if (error) throw error;
         
-        // Importante: Llamamos a onRefresh para actualizar el estado global del Index
+        // REFRESH INMEDIATO: Esto llama a fetchAllData en Index.tsx
         onRefresh(); 
-        toast({ title: "Miembro fuera de la tribu" });
+        toast({ title: "Miembro eliminado" });
       } catch (error) {
+        console.error(error);
         toast({ title: "Error al eliminar", variant: "destructive" });
       }
     }
@@ -107,14 +117,12 @@ export const SettingsView = ({ nestId, members, onRefresh }: { nestId: string | 
 
   return (
     <div className="space-y-10 pb-44 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      
       <div className="px-6">
         <h2 className="text-5xl font-black text-slate-800 tracking-tighter font-nunito">Radar</h2>
         <p className="text-[10px] font-black text-[#0EA5E9] uppercase tracking-[0.4em] mt-1">Gestión de la Tribu</p>
       </div>
 
-      {/* TOKEN CARD - CORREGIDO */}
-      <div className="mx-6 p-10 rounded-[3.5rem] bg-[#0EA5E9] text-white shadow-2xl relative overflow-hidden group">
+      <div className="mx-6 p-10 rounded-[3.5rem] bg-[#0EA5E9] text-white shadow-2xl relative overflow-hidden">
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-8 opacity-80">
             <Hash size={16} />
@@ -128,10 +136,8 @@ export const SettingsView = ({ nestId, members, onRefresh }: { nestId: string | 
           </div>
           <p className="text-[11px] font-bold opacity-70">Usa este código para conectar con otro Guía.</p>
         </div>
-        <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-white/10 rounded-full blur-3xl animate-pulse" />
       </div>
 
-      {/* VINCULAR NIDO */}
       <div className="mx-6 p-8 rounded-[3.5rem] bg-white border border-slate-100 shadow-sm">
         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 block text-center">Vincular Nido Existente</label>
         <div className="flex gap-2">
@@ -151,7 +157,6 @@ export const SettingsView = ({ nestId, members, onRefresh }: { nestId: string | 
         </div>
       </div>
 
-      {/* MIEMBROS - CAMBIO DE "EQUIPO" A "TRIBU" */}
       <div className="mx-6 space-y-4">
         <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-4">Equipo en calma</h3>
 
@@ -163,7 +168,21 @@ export const SettingsView = ({ nestId, members, onRefresh }: { nestId: string | 
                   value={editForm.name} 
                   onChange={e => setEditForm({...editForm, name: e.target.value})}
                   className="w-full h-14 bg-slate-50 rounded-2xl px-6 font-black text-slate-800 border-none outline-none focus:ring-2 focus:ring-[#0EA5E9]"
+                  placeholder="Nombre..."
                 />
+                
+                {/* SELECTOR DE COLOR (AVATAR) */}
+                <div className="flex justify-between px-2">
+                  {AVATAR_COLORS.map(color => (
+                    <button
+                      key={color}
+                      onClick={() => setEditForm({...editForm, color})}
+                      className={`w-8 h-8 rounded-full transition-all ${editForm.color === color ? 'ring-4 ring-slate-200 scale-125' : 'scale-100'}`}
+                      style={{ backgroundColor: color }}
+                    />
+                  ))}
+                </div>
+
                 <div className="flex justify-between gap-2 p-1 bg-slate-100 rounded-[1.5rem]">
                   {[ {l: 'Guía', v: 'autonomous'}, {l: 'Tribu', v: 'dependent'} ].map(role => (
                     <button
@@ -178,10 +197,10 @@ export const SettingsView = ({ nestId, members, onRefresh }: { nestId: string | 
                   ))}
                 </div>
                 <div className="flex gap-3 pt-2">
-                  <Button onClick={() => saveEdit(member.id)} className="flex-1 h-14 bg-[#0EA5E9] rounded-2xl font-black uppercase text-[10px] tracking-widest text-white">
+                  <Button onClick={() => saveEdit(member.id)} className="flex-1 h-14 bg-[#0EA5E9] rounded-2xl font-black uppercase text-[10px] tracking-widest text-white hover:bg-[#0EA5E9]/90">
                     <Save size={18} className="mr-2" /> Guardar
                   </Button>
-                  <button onClick={() => setEditingId(null)} className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400">
+                  <button onClick={() => setEditingId(null)} className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400 hover:bg-slate-200 transition-colors">
                     <X size={20} />
                   </button>
                 </div>
@@ -200,7 +219,7 @@ export const SettingsView = ({ nestId, members, onRefresh }: { nestId: string | 
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => startEditing(member)} className="w-12 h-12 rounded-2xl flex items-center justify-center text-slate-300 active:scale-95 transition-all">
+                  <button onClick={() => startEditing(member)} className="w-12 h-12 rounded-2xl flex items-center justify-center text-slate-300 hover:text-[#0EA5E9] active:scale-95 transition-all">
                     <Edit2 size={20} />
                   </button>
                   <button onClick={() => deleteMember(member.id, member.display_name)} className="w-12 h-12 rounded-2xl flex items-center justify-center text-slate-200 hover:text-red-500 active:scale-95 transition-all">
