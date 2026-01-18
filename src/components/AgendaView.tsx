@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   Bell, AlertTriangle, Share2, Calendar as CalendarIcon, 
-  ChevronRight, ChevronLeft, MapPin, Sparkles, Clock, Star
+  ChevronRight, ChevronLeft, MapPin, Sparkles, Clock, Star,
+  Loader2 // Corregido: Importación añadida para evitar ReferenceError
 } from 'lucide-react';
 import { 
   format, startOfWeek, addDays, isSameDay, 
@@ -53,37 +54,43 @@ export const AgendaView = () => {
   };
 
   const fetchEvents = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data: profile } = await supabase.from('profiles').select('nest_id').eq('id', user.id).maybeSingle();
-    if (profile?.nest_id) {
-      setNestId(profile.nest_id);
-      const { data: eventsData, error } = await supabase
-        .from('events')
-        .select(`*, profiles!events_assigned_to_fkey (display_name, avatar_url, id)`)
-        .eq('nest_id', profile.nest_id)
-        .order('event_date', { ascending: true });
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: profile } = await supabase.from('profiles').select('nest_id').eq('id', user.id).maybeSingle();
       
-      if (!error && eventsData) {
-        detectCollisions(eventsData);
-        setEvents(eventsData);
+      if (profile?.nest_id) {
+        setNestId(profile.nest_id);
+        const { data: eventsData, error } = await supabase
+          .from('events')
+          .select(`*, profiles!events_assigned_to_fkey (display_name, avatar_url, id)`)
+          .eq('nest_id', profile.nest_id)
+          .order('event_date', { ascending: true });
+        
+        if (!error && eventsData) {
+          detectCollisions(eventsData);
+          setEvents(eventsData);
+        }
+        
+        // Corregido: Usamos 'is_read' para evitar el Error 400 si 'read' no existe
+        const { count } = await supabase
+          .from('notifications')
+          .select('*', { count: 'exact', head: true })
+          .eq('receiver_id', user.id)
+          .eq('is_read', false); 
+        
+        setUnreadCount(count || 0);
       }
-      
-      const { count } = await supabase
-        .from('notifications')
-        .select('*', { count: 'exact', head: true })
-        .eq('receiver_id', user.id)
-        .eq('read', false);
-      setUnreadCount(count || 0);
+    } catch (e) {
+      console.error("Error en la sincronización:", e);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  // --- LOGICA TIEMPO REAL Y PUSH ---
   useEffect(() => {
     if (!nestId) return;
 
-    // Solicitar permiso para notificaciones nativas
     if ("Notification" in window && Notification.permission === "default") {
       Notification.requestPermission();
     }
@@ -104,7 +111,6 @@ export const AgendaView = () => {
             triggerHaptic('warning');
             setUnreadCount(prev => prev + 1);
             
-            // Notificación nativa del sistema
             if (Notification.permission === "granted") {
               new Notification("KidUs: Relevo en la Tribu", {
                 body: payload.new.message,
@@ -116,7 +122,7 @@ export const AgendaView = () => {
               title: "Sincronía Nido",
               description: payload.new.message,
             });
-            fetchEvents(); // Refrescar para ver nuevos cambios
+            fetchEvents();
           }
         }
       )
@@ -150,7 +156,8 @@ export const AgendaView = () => {
     const { error } = await supabase.from('notifications').insert({
       nest_id: nestId, sender_id: user.id, receiver_id: members?.[0]?.id || null,
       event_id: event.id, type: 'DELEGATION_REQUEST',
-      message: `Relevo: ${event.description}`
+      message: `Relevo: ${event.description}`,
+      is_read: false
     });
     if (!error) {
       toast({ title: "Petición enviada", description: "El otro Guía ha sido notificado." });
@@ -159,6 +166,14 @@ export const AgendaView = () => {
   };
 
   useEffect(() => { fetchEvents(); }, [nestId]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <Loader2 className="w-12 h-12 text-sky-500 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-32 font-sans overflow-x-hidden">
