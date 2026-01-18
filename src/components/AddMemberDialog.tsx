@@ -11,9 +11,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Sparkles, ShieldCheck, HeartHandshake, UserCircle2, Loader2 } from "lucide-react";
+import { 
+  ShieldCheck, 
+  UserCircle2, 
+  Loader2, 
+  Baby, 
+  UserPlus
+} from "lucide-react";
 
-// Función de vibración para feedback táctil (Sincronía de la tribu)
 const triggerHaptic = (type: 'soft' | 'success') => {
   if (typeof navigator !== "undefined" && navigator.vibrate) {
     if (type === 'soft') navigator.vibrate(10);
@@ -24,8 +29,8 @@ const triggerHaptic = (type: 'soft' | 'success') => {
 const TRIBU_COLORS = [
   { name: 'Sky', hex: '#0EA5E9', bg: 'bg-[#0EA5E9]', hover: 'hover:bg-[#0EA5E9]/90', shadow: 'shadow-sky-200' },
   { name: 'Vital', hex: '#F97316', bg: 'bg-[#F97316]', hover: 'hover:bg-[#F97316]/90', shadow: 'shadow-orange-200' },
-  { name: 'Menta', hex: '#10B981', bg: 'bg-[#10B981]', hover: 'hover:bg-[#10B981]/90', shadow: 'shadow-emerald-200' },
   { name: 'Zen', hex: '#8B5CF6', bg: 'bg-[#8B5CF6]', hover: 'hover:bg-[#8B5CF6]/90', shadow: 'shadow-purple-200' },
+  { name: 'Menta', hex: '#10B981', bg: 'bg-[#10B981]', hover: 'hover:bg-[#10B981]/90', shadow: 'shadow-emerald-200' },
   { name: 'Fuego', hex: '#F43F5E', bg: 'bg-[#F43F5E]', hover: 'hover:bg-[#F43F5E]/90', shadow: 'shadow-rose-200' },
 ];
 
@@ -40,7 +45,7 @@ export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.R
     e.preventDefault();
     if (!name.trim()) return;
     setLoading(true);
-    triggerHaptic('success'); // Feedback de éxito al procesar
+    triggerHaptic('success');
     
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -55,18 +60,22 @@ export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.R
       const { error } = await supabase.from('profiles').insert({
         display_name: name,
         nest_id: myProfile?.nest_id,
-        role: role,
+        role: role, // 'autonomous' para Guía, 'dependent' para Tribu
         avatar_url: selectedColor.hex,
         updated_at: new Date().toISOString()
       });
 
       if (error) throw error;
 
-      toast({ title: "Tribu expandida", description: `${name} ya forma parte del nido.` });
+      toast({ 
+        title: role === 'autonomous' ? "Nuevo Guía en el Nido" : "Tribu expandida", 
+        description: `${name} ya forma parte de la sincronía.` 
+      });
+      
       setName("");
       onMemberAdded();
     } catch (error: any) {
-      toast({ title: "Error de sincronía", description: "No pudimos integrar al miembro.", variant: "destructive" });
+      toast({ title: "Error de sincronía", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -76,21 +85,21 @@ export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.R
     <Dialog>
       <DialogTrigger asChild onClick={() => triggerHaptic('soft')}>{children}</DialogTrigger>
       
-      <DialogContent className="sm:max-w-md border-none bg-white/95 backdrop-blur-2xl shadow-2xl rounded-[3.5rem] p-10 outline-none overflow-hidden">
+      <DialogContent className="sm:max-w-md border-none bg-white/95 backdrop-blur-2xl shadow-2xl rounded-[3.5rem] p-10 outline-none overflow-hidden font-sans">
         
-        {/* Brisa Visual Superior Dinámica */}
-        <div className={`absolute top-0 left-0 w-full h-2 ${selectedColor.bg} opacity-40 transition-colors duration-500`} />
+        {/* Línea de color dinámica superior */}
+        <div className={`absolute top-0 left-0 w-full h-2 ${selectedColor.bg} transition-colors duration-500`} />
 
         <DialogHeader className="space-y-6">
           <div className="flex justify-center">
-            <div className={`w-24 h-24 rounded-[2.5rem] ${selectedColor.bg} ${selectedColor.shadow} shadow-2xl flex items-center justify-center text-white text-4xl font-black transition-all duration-500 hover:scale-110`}>
-              {name ? name.charAt(0).toUpperCase() : <UserCircle2 size={44} strokeWidth={1.5} />}
+            <div className={`w-24 h-24 rounded-[2.8rem] ${selectedColor.bg} ${selectedColor.shadow} shadow-2xl flex items-center justify-center text-white text-4xl font-black transition-all duration-500 hover:rotate-3 hover:scale-105`}>
+              {name ? name.charAt(0).toUpperCase() : <UserPlus size={40} strokeWidth={2.5} />}
             </div>
           </div>
           <div className="text-center">
-            <DialogTitle className="text-3xl font-black text-slate-800 tracking-tight">Nuevo Integrante</DialogTitle>
+            <DialogTitle className="text-4xl font-black text-slate-800 tracking-tighter font-nunito">Sumar Integrante</DialogTitle>
             <DialogDescription className="text-slate-400 text-[10px] font-black uppercase tracking-[0.4em] mt-2">
-              Sincronía de la Tribu
+              Gestión del Nido
             </DialogDescription>
           </div>
         </DialogHeader>
@@ -99,54 +108,60 @@ export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.R
           <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Nombre o apodo"
-            className="h-16 rounded-3xl border-none bg-slate-100/50 px-8 font-black text-slate-800 placeholder:text-slate-300 focus:ring-4 focus:ring-primary/20 transition-all text-center text-lg"
+            placeholder="Nombre del integrante"
+            className="h-16 rounded-[1.8rem] border-none bg-slate-100/50 px-8 font-black text-slate-800 placeholder:text-slate-300 focus:ring-4 focus:ring-primary/10 transition-all text-center text-lg"
           />
 
           <div className="grid grid-cols-2 gap-4">
             <button
               type="button"
               onClick={() => { triggerHaptic('soft'); setRole('autonomous'); }}
-              className={`flex flex-col items-center p-6 rounded-[2.5rem] transition-all duration-400 ${
-                role === 'autonomous' ? "bg-white shadow-xl scale-105" : "bg-transparent opacity-30 grayscale"
+              className={`flex flex-col items-center p-6 rounded-[2.5rem] transition-all duration-500 border-2 ${
+                role === 'autonomous' 
+                ? "bg-white border-sky-100 shadow-xl shadow-sky-100 scale-105" 
+                : "bg-transparent border-transparent opacity-40 grayscale"
               }`}
             >
-              <ShieldCheck className={role === 'autonomous' ? "text-sky-500" : "text-slate-500"} size={32} />
+              <ShieldCheck className={role === 'autonomous' ? "text-[#0EA5E9]" : "text-slate-500"} size={32} strokeWidth={2.5} />
               <span className="text-[10px] font-black mt-3 uppercase tracking-widest text-slate-800">Guía</span>
+              <p className="text-[7px] font-bold text-slate-400 mt-1">Adulto/Tutor</p>
             </button>
+
             <button
               type="button"
               onClick={() => { triggerHaptic('soft'); setRole('dependent'); }}
-              className={`flex flex-col items-center p-6 rounded-[2.5rem] transition-all duration-400 ${
-                role === 'dependent' ? "bg-white shadow-xl scale-105" : "bg-transparent opacity-30 grayscale"
+              className={`flex flex-col items-center p-6 rounded-[2.5rem] transition-all duration-500 border-2 ${
+                role === 'dependent' 
+                ? "bg-white border-orange-100 shadow-xl shadow-orange-100 scale-105" 
+                : "bg-transparent border-transparent opacity-40 grayscale"
               }`}
             >
-              <HeartHandshake className={role === 'dependent' ? "text-orange-500" : "text-slate-500"} size={32} />
-              <span className="text-[10px] font-black mt-3 uppercase tracking-widest text-slate-800">Peque</span>
+              <Baby className={role === 'dependent' ? "text-[#F97316]" : "text-slate-500"} size={32} strokeWidth={2.5} />
+              <span className="text-[10px] font-black mt-3 uppercase tracking-widest text-slate-800">Tribu</span>
+              <p className="text-[7px] font-bold text-slate-400 mt-1">Peque/Dependiente</p>
             </button>
           </div>
 
-          {/* Selector de Color KidUs */}
+          {/* Selector de Color */}
           <div className="flex justify-center gap-3">
             {TRIBU_COLORS.map((color) => (
               <button
                 key={color.name}
                 type="button"
                 onClick={() => { triggerHaptic('soft'); setSelectedColor(color); }}
-                className={`w-10 h-10 rounded-full ${color.bg} transition-all duration-300 ${
-                  selectedColor.name === color.name ? "scale-125 ring-4 ring-white shadow-lg" : "scale-90 opacity-40 hover:opacity-100"
+                className={`w-10 h-10 rounded-2xl ${color.bg} transition-all duration-300 ${
+                  selectedColor.name === color.name ? "scale-110 rotate-12 ring-4 ring-slate-100 shadow-lg" : "scale-90 opacity-30 hover:opacity-100"
                 }`}
               />
             ))}
           </div>
 
-          {/* BOTÓN FINAL CORREGIDO: IMPACTO Y FEEDBACK */}
           <Button 
             type="submit" 
-            disabled={loading} 
-            className={`w-full h-20 rounded-[2.5rem] ${selectedColor.bg} ${selectedColor.hover} text-white font-black text-base tracking-[0.2em] shadow-lg active:scale-95 transition-all duration-400 uppercase`}
+            disabled={loading || !name} 
+            className={`w-full h-20 rounded-[2.5rem] ${selectedColor.bg} ${selectedColor.hover} text-white font-black text-sm tracking-[0.2em] shadow-xl active:scale-95 transition-all duration-400 uppercase`}
           >
-            {loading ? <Loader2 className="animate-spin" /> : "UNIR A LA TRIBU"}
+            {loading ? <Loader2 className="animate-spin" /> : "Integrar al Nido"}
           </Button>
         </form>
       </DialogContent>
