@@ -28,7 +28,7 @@ const ZenBackground = () => {
         />
       </div>
 
-      {/* Capa de Grano Fino NATIVA (Sin llamadas externas a Vercel) */}
+      {/* Capa de Grano Fino NATIVA */}
       <svg className="absolute inset-0 w-full h-full opacity-[0.04] pointer-events-none contrast-150 brightness-100">
         <filter id="noise">
           <feTurbulence type="fractalNoise" baseFrequency="0.6" numOctaves="3" stitchTiles="stitch" />
