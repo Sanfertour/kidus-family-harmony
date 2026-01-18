@@ -61,7 +61,6 @@ const Index = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       
-      // 1. Obtener o crear perfil (Lógica Pro: Auto-Guía por defecto)
       let { data: myProfile } = await supabase
         .from('profiles')
         .select('*')
@@ -74,7 +73,7 @@ const Index = () => {
           .upsert({ 
             id: user.id, 
             display_name: user.user_metadata.full_name || 'Nuevo Guía',
-            role: 'autonomous', // Siempre entra como Guía
+            role: 'autonomous',
             nest_id: myProfile?.nest_id || crypto.randomUUID()
           })
           .select()
@@ -88,11 +87,13 @@ const Index = () => {
           .from('profiles')
           .select('*')
           .eq('nest_id', myProfile.nest_id)
-          .order('role', { ascending: true }); // Guías arriba
+          .order('role', { ascending: true });
+        
+        // Actualizamos el estado local para que el borrado/añadido sea reactivo
         setFamilyMembers(profiles || []);
       }
     } catch (error) {
-      console.error("Error cargando equipo:", error);
+      console.error("Error cargando la tribu:", error);
     } finally {
       setLoading(false);
     }
@@ -116,7 +117,6 @@ const Index = () => {
       await supabase.storage.from('event-attachments').upload(fileName, file);
       const { data: { publicUrl } } = supabase.storage.from('event-attachments').getPublicUrl(fileName);
       
-      // Sincronía con Edge Function de IA
       const { data: aiResult, error: aiError } = await supabase.functions.invoke('process-image-ai', { 
         body: { imageUrl: publicUrl } 
       });
@@ -192,9 +192,9 @@ const Index = () => {
               </h1>
               
               <div className="p-10 rounded-[3.5rem] bg-white border border-white shadow-xl shadow-slate-200/50">
-                <label className="text-[10px] font-black text-[#0EA5E9] uppercase tracking-[0.2em] mb-4 block">Sincronía Actual</label>
+                <label className="text-[10px] font-black text-[#0EA5E9] uppercase tracking-[0.2em] mb-4 block">Sincronía del Nido</label>
                 <h3 className="text-3xl font-black text-slate-800 mb-2">{familyMembers.length} integrantes</h3>
-                <p className="text-slate-400 font-bold text-sm tracking-tight">Tu equipo está conectado y fluyendo.</p>
+                <p className="text-slate-400 font-bold text-sm tracking-tight">Tu tribu está conectada y fluyendo.</p>
               </div>
               
               <div className="grid grid-cols-2 gap-5">
@@ -220,8 +220,8 @@ const Index = () => {
             <motion.div key="family" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8 pb-10">
               <div className="flex justify-between items-end px-4">
                 <div>
-                  <h2 className="text-5xl font-black text-slate-800 tracking-tighter">Tribu</h2>
-                  <p className="text-[10px] font-black text-[#F97316] uppercase tracking-widest mt-1">Gestión de Equipo</p>
+                  <h2 className="text-5xl font-black text-slate-800 tracking-tighter font-nunito">Tribu</h2>
+                  <p className="text-[10px] font-black text-[#F97316] uppercase tracking-widest mt-1">Gestión del Nido</p>
                 </div>
                 <AddMemberDialog onMemberAdded={fetchAllData}>
                   <button onClick={() => triggerHaptic('soft')} className="w-16 h-16 bg-[#0EA5E9] rounded-2xl flex items-center justify-center text-white shadow-lg active:scale-90 transition-all">
@@ -237,7 +237,7 @@ const Index = () => {
                     </div>
                     <span className="font-black text-slate-800 text-sm text-center line-clamp-1">{member.display_name}</span>
                     <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest mt-2">
-                      {member.role === 'autonomous' ? 'Guía' : 'Peque'}
+                      {member.role === 'autonomous' ? 'Guía' : 'Tribu'}
                     </span>
                   </div>
                 ))}
