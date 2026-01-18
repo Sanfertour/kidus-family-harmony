@@ -7,11 +7,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import Header from "@/components/Header";
 import { AgendaView } from "@/components/AgendaView";
 import { AddMemberDialog } from "@/components/AddMemberDialog";
-import { SettingsView } from "@/components/SettingsView"; // Componente extraído
+import { SettingsView } from "@/components/SettingsView";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { ManualEventDrawer } from "@/components/ManualEventDrawer";
 
+// URL del logo optimizada
 const LOGO_URL = "https://raw.githubusercontent.com/Sanfertour/kidus-family-harmony/main/src/assets/kidus-logo-C1AuyFb2.png";
 
 const triggerHaptic = (type: 'soft' | 'success') => {
@@ -39,7 +40,7 @@ const Index = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   
   const [isAiProcessing, setIsAiProcessing] = useState(false);
-  const [aiMessage, setAiMessage] = useState("Sincronizando...");
+  const [aiMessage, setAiMessage] = useState("Analizando...");
   const [scannedData, setScannedData] = useState<any>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -68,13 +69,23 @@ const Index = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data: myProfile } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
+      
+      const { data: myProfile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .maybeSingle();
       
       if (myProfile?.nest_id) {
         setMyNestId(myProfile.nest_id);
-        const { data: profiles } = await supabase.from('profiles').select('*').eq('nest_id', myProfile.nest_id);
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('nest_id', myProfile.nest_id);
         setFamilyMembers(profiles || []);
       }
+    } catch (error) {
+      console.error("Error cargando equipo:", error);
     } finally {
       setLoading(false);
     }
@@ -86,8 +97,7 @@ const Index = () => {
     triggerHaptic('success');
     setIsAiProcessing(true);
     
-    // Simulación de pasos de IA para el usuario
-    const messages = ["Analizando imagen...", "Escaneando con IA...", "Sincronizando equipo..."];
+    const messages = ["Escaneando...", "IA trabajando...", "Sincronizando..."];
     let msgIndex = 0;
     const interval = setInterval(() => {
       setAiMessage(messages[msgIndex % messages.length]);
@@ -107,21 +117,26 @@ const Index = () => {
       });
       setIsAiProcessing(false);
       setIsDrawerOpen(true);
-      triggerHaptic('success');
-      toast({ title: "¡Tribu lista!", description: "Actividad detectada con éxito." });
       clearInterval(interval);
     } catch (error) {
       clearInterval(interval);
       setIsAiProcessing(false);
-      toast({ title: "Aviso", description: "No se pudo procesar la imagen.", variant: "destructive" });
+      toast({ title: "Aviso", description: "Reintenta el escaneo.", variant: "destructive" });
     }
   };
 
   if (loading) return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-[#F8FAFC]">
+    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#F8FAFC]">
       <KidUsDynamicBackground />
-      <div className="animate-float w-20 h-20 bg-primary rounded-[2.5rem] shadow-haptic flex items-center justify-center border-4 border-white z-10">
-        <Loader2 className="text-white animate-spin" size={32} />
+      <div className="relative">
+        <div className="absolute inset-0 animate-ping bg-primary/20 rounded-[3rem] -z-10" />
+        <div className="w-24 h-24 bg-white rounded-[2.5rem] shadow-tribu-card flex items-center justify-center border border-white/50 z-10 animate-float">
+          <Loader2 className="text-primary animate-spin" size={40} strokeWidth={3} />
+        </div>
+      </div>
+      <div className="mt-12 text-center space-y-2">
+        <h3 className="text-3xl font-black text-slate-800 tracking-tight">Sincronizando Nido</h3>
+        <p className="text-primary font-black text-[10px] uppercase tracking-[0.4em] opacity-60">Preparando la Tribu...</p>
       </div>
     </div>
   );
@@ -167,7 +182,7 @@ const Index = () => {
               <div className="p-10 rounded-7xl bg-white/70 backdrop-blur-2xl shadow-tribu-card border border-white/50">
                 <label className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4 block">Estado de la Tribu</label>
                 <h3 className="text-2xl font-black text-slate-800 mb-2">{familyMembers.length} integrantes</h3>
-                <p className="text-slate-500 font-medium">Todo tu equipo está sincronizado.</p>
+                <p className="text-slate-500 font-medium">Equipo sincronizado correctamente.</p>
               </div>
               
               <div className="grid grid-cols-2 gap-5">
@@ -197,19 +212,20 @@ const Index = () => {
               </div>
               <div className="grid grid-cols-2 gap-5">
                 {familyMembers.map((member) => (
-                  <div key={member.id} className="p-8 rounded-7xl flex flex-col items-center bg-white/70 backdrop-blur-2xl border border-white/50 shadow-brisa transition-all">
+                  <div key={member.id} className="p-8 rounded-7xl flex flex-col items-center bg-white/70 backdrop-blur-2xl border border-white/50 shadow-brisa transition-all active:scale-95">
                     <div className="w-20 h-20 rounded-5xl flex items-center justify-center text-2xl font-black text-white shadow-haptic mb-4" style={{ backgroundColor: member.avatar_url || '#0EA5E9' }}>
                       {member.display_name?.charAt(0).toUpperCase()}
                     </div>
                     <span className="font-black text-slate-800 text-sm text-center line-clamp-1">{member.display_name}</span>
-                    <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest mt-2">{member.role === 'autonomous' ? 'Guía' : 'Peque'}</span>
+                    <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest mt-2">
+                      {member.role === 'autonomous' ? 'Guía' : 'Peque'}
+                    </span>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          {/* LA NUEVA VISTA DE AJUSTES CONECTADA */}
           {activeTab === "settings" && (
             <div className="animate-in fade-in duration-500">
               <SettingsView nestId={myNestId} members={familyMembers} />
@@ -218,7 +234,6 @@ const Index = () => {
         </AnimatePresence>
       </main>
 
-      {/* NAVEGACIÓN PRINCIPAL */}
       <nav className="fixed bottom-0 left-0 right-0 h-28 bg-white/70 backdrop-blur-2xl border-t border-white/20 flex justify-around items-center px-10 z-40 rounded-t-7xl shadow-brisa">
         {[
           { id: "home", icon: HomeIcon }, { id: "agenda", icon: Calendar }, { id: "family", icon: Users }, { id: "settings", icon: Settings }
@@ -229,7 +244,6 @@ const Index = () => {
         ))}
       </nav>
 
-      {/* FAB - BOTÓN DE ACCIÓN FLOTANTE */}
       <div className="fixed bottom-36 right-8 z-50 flex flex-col items-center">
         <div className={`flex flex-col gap-6 mb-6 transition-all duration-500 ${isFabOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-20 pointer-events-none'}`}>
           <button onClick={() => { triggerHaptic('soft'); setIsFabOpen(false); fileInputRef.current?.click(); }} className="w-16 h-16 bg-accent rounded-5xl flex items-center justify-center text-white shadow-haptic border-4 border-white active:scale-90">
@@ -246,7 +260,6 @@ const Index = () => {
 
       <input type="file" ref={fileInputRef} className="hidden" accept="image/*" capture="environment" onChange={handleFileChange} />
 
-      {/* OVERLAY DE PROCESAMIENTO IA */}
       {isAiProcessing && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-white/90 backdrop-blur-3xl">
           <div className="flex flex-col items-center gap-8 text-center p-12">
