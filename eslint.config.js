@@ -20,7 +20,13 @@ export default tseslint.config(
     rules: {
       ...reactHooks.configs.recommended.rules,
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
-      "@typescript-eslint/no-unused-vars": "off",
+      // Cambiado de "off" a "warn" para mantener el Nido limpio de código muerto
+      "@typescript-eslint/no-unused-vars": ["warn", { 
+        "argsIgnorePattern": "^_", 
+        "varsIgnorePattern": "^_" 
+      }],
+      // Forzamos mejores prácticas en hooks para evitar bucles infinitos en la sincronización
+      "react-hooks/exhaustive-deps": "warn",
     },
   },
 );
