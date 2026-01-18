@@ -9,6 +9,7 @@ import {
   addWeeks, subWeeks, isToday 
 } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
 import { NotificationsDrawer } from './NotificationsDrawer';
 
@@ -20,7 +21,6 @@ const triggerHaptic = (type: 'soft' | 'success' | 'warning') => {
   }
 };
 
-// Sistema de Estilos Dinámicos KidUs
 const getEventStyles = (type: string) => {
   switch (type?.toLowerCase()) {
     case 'escolar': case 'menú': 
@@ -67,6 +67,14 @@ export const AgendaView = () => {
         detectCollisions(eventsData);
         setEvents(eventsData);
       }
+      
+      // Simulación de conteo (Aquí podrías añadir tu lógica de fetch para notificaciones)
+      const { count } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('receiver_id', user.id)
+        .eq('read', false);
+      setUnreadCount(count || 0);
     }
     setLoading(false);
   };
@@ -107,7 +115,7 @@ export const AgendaView = () => {
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-32 font-sans overflow-x-hidden">
       
-      {/* HEADER DINÁMICO CON GRADIENTE */}
+      {/* HEADER DINÁMICO */}
       <div className="relative pt-12 pb-8 px-8 overflow-hidden bg-white">
         <div className="absolute top-0 right-0 -translate-y-12 translate-x-12 w-64 h-64 bg-sky-100/50 rounded-full blur-3xl" />
         <div className="absolute bottom-0 left-0 translate-y-12 -translate-x-12 w-64 h-64 bg-orange-100/50 rounded-full blur-3xl" />
@@ -120,17 +128,41 @@ export const AgendaView = () => {
               <p className="text-[11px] font-black text-sky-500 uppercase tracking-[0.3em]">Nido Sincronizado</p>
             </div>
           </div>
+
+          {/* CAMPANA KIDUS CON DESTELLO Y MOVIMIENTO */}
           <button 
             onClick={() => { triggerHaptic('soft'); setIsNotifOpen(true); }}
-            className={`w-16 h-16 rounded-[2.5rem] flex items-center justify-center transition-all duration-500 shadow-2xl active:scale-90 ${unreadCount > 0 ? 'bg-orange-500 text-white animate-pulse' : 'bg-slate-800 text-white'}`}
+            className={`relative w-16 h-16 rounded-[2.2rem] flex items-center justify-center transition-all duration-500 shadow-2xl active:scale-90 group
+              ${unreadCount > 0 
+                ? 'bg-gradient-to-br from-[#F97316] to-[#EA580C] text-white rotate-[-10deg]' 
+                : 'bg-slate-800 text-white'}`}
           >
-            <Bell size={24} strokeWidth={2.5} />
-            {unreadCount > 0 && <span className="absolute top-0 right-0 w-6 h-6 bg-white text-orange-600 rounded-full border-4 border-orange-500 flex items-center justify-center text-[10px] font-black">{unreadCount}</span>}
+            {unreadCount > 0 && (
+              <span className="absolute inset-0 rounded-[2.2rem] bg-[#F97316] animate-ping opacity-40" />
+            )}
+            
+            <Bell 
+              size={24} 
+              strokeWidth={2.5} 
+              className={`${unreadCount > 0 ? 'animate-[bounce_2s_infinite]' : ''} relative z-10`} 
+            />
+            
+            {unreadCount > 0 && (
+              <motion.span 
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                className="absolute -top-1 -right-1 w-7 h-7 bg-white text-[#F97316] rounded-full border-[3px] border-[#F97316] flex items-center justify-center text-[10px] font-black shadow-lg z-20"
+              >
+                {unreadCount}
+              </motion.span>
+            )}
+            
+            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
           </button>
         </div>
       </div>
 
-      {/* CALENDARIO SEMANAL 7 DÍAS - ESTILO CAPSULA */}
+      {/* CALENDARIO SEMANAL */}
       <div className="px-6 -mt-4 mb-8">
         <div className="bg-white/80 backdrop-blur-xl p-4 rounded-[3.5rem] shadow-xl border border-white/50">
           <div className="flex justify-between items-center px-6 mb-4">
@@ -205,8 +237,8 @@ export const AgendaView = () => {
                     )}
                   </div>
                   
-                  <div className="bg-white/20 backdrop-blur-md p-4 rounded-[2rem] border border-white/30">
-                    <Share2 size={20} className="text-white" onClick={() => handleDelegarInterno(event)} />
+                  <div className="bg-white/20 backdrop-blur-md p-4 rounded-[2rem] border border-white/30" onClick={(e) => { e.stopPropagation(); handleDelegarInterno(event); }}>
+                    <Share2 size={20} className="text-white" />
                   </div>
                 </div>
 
