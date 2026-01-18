@@ -63,12 +63,12 @@ export const AgendaView = () => {
         .select(`*, profiles!events_assigned_to_fkey (display_name, avatar_url, id)`)
         .eq('nest_id', profile.nest_id)
         .order('event_date', { ascending: true });
+      
       if (!error && eventsData) {
         detectCollisions(eventsData);
         setEvents(eventsData);
       }
       
-      // Simulación de conteo (Aquí podrías añadir tu lógica de fetch para notificaciones)
       const { count } = await supabase
         .from('notifications')
         .select('*', { count: 'exact', head: true })
@@ -78,6 +78,54 @@ export const AgendaView = () => {
     }
     setLoading(false);
   };
+
+  // --- LOGICA TIEMPO REAL Y PUSH ---
+  useEffect(() => {
+    if (!nestId) return;
+
+    // Solicitar permiso para notificaciones nativas
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+
+    const channel = supabase
+      .channel('realtime-notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `nest_id=eq.${nestId}`
+        },
+        async (payload) => {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (payload.new.receiver_id === user?.id) {
+            triggerHaptic('warning');
+            setUnreadCount(prev => prev + 1);
+            
+            // Notificación nativa del sistema
+            if (Notification.permission === "granted") {
+              new Notification("KidUs: Relevo en la Tribu", {
+                body: payload.new.message,
+                icon: "/favicon.ico"
+              });
+            }
+
+            toast({
+              title: "Sincronía Nido",
+              description: payload.new.message,
+            });
+            fetchEvents(); // Refrescar para ver nuevos cambios
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [nestId]);
 
   const detectCollisions = (allEvents: any[]) => {
     const conflictIds: string[] = [];
@@ -115,7 +163,6 @@ export const AgendaView = () => {
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-32 font-sans overflow-x-hidden">
       
-      {/* HEADER DINÁMICO */}
       <div className="relative pt-12 pb-8 px-8 overflow-hidden bg-white">
         <div className="absolute top-0 right-0 -translate-y-12 translate-x-12 w-64 h-64 bg-sky-100/50 rounded-full blur-3xl" />
         <div className="absolute bottom-0 left-0 translate-y-12 -translate-x-12 w-64 h-64 bg-orange-100/50 rounded-full blur-3xl" />
@@ -129,7 +176,6 @@ export const AgendaView = () => {
             </div>
           </div>
 
-          {/* CAMPANA KIDUS CON DESTELLO Y MOVIMIENTO */}
           <button 
             onClick={() => { triggerHaptic('soft'); setIsNotifOpen(true); }}
             className={`relative w-16 h-16 rounded-[2.2rem] flex items-center justify-center transition-all duration-500 shadow-2xl active:scale-90 group
@@ -162,7 +208,6 @@ export const AgendaView = () => {
         </div>
       </div>
 
-      {/* CALENDARIO SEMANAL */}
       <div className="px-6 -mt-4 mb-8">
         <div className="bg-white/80 backdrop-blur-xl p-4 rounded-[3.5rem] shadow-xl border border-white/50">
           <div className="flex justify-between items-center px-6 mb-4">
@@ -193,7 +238,6 @@ export const AgendaView = () => {
         </div>
       </div>
 
-      {/* LISTADO DE EVENTOS */}
       <div className="px-8 space-y-6">
         <div className="flex items-center gap-3 ml-2">
           <Star size={16} className="text-orange-500 fill-orange-500" />
