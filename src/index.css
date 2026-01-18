@@ -8,30 +8,32 @@
     --sky-blue: 14 165 233;     /* #0EA5E9 */
   }
 
-  /* Reset estructural: El Nido es un lienzo con scroll natural */
-  html {
-    height: 100%;
+  /* Reset estructural: El Nido es un lienzo infinito con scroll natural */
+  html, body {
+    /* Permitimos que el contenido defina la altura total */
+    height: auto; 
+    min-height: 100%;
+    margin: 0;
+    padding: 0;
+    /* overscroll-behavior-y: contain evita el bloqueo por rebote en iOS */
+    overscroll-behavior-y: contain; 
+    /* Forzamos el scroll vertical para que la agenda fluya sin cortes */
+    overflow-y: auto !important;
     scroll-behavior: smooth;
   }
 
   body {
     @apply text-slate-800 antialiased bg-slate-50;
     font-family: 'Nunito', sans-serif;
-    margin: 0;
-    padding: 0;
-    min-height: 100vh;
-    /* Eliminamos el rebote elástico molesto en móviles */
-    overscroll-behavior-y: none;
+    /* El body debe ser relativo para que el scroll fluya con el contenido */
+    position: relative; 
     -webkit-tap-highlight-color: transparent;
-    /* Permitimos que el cuerpo sea el contenedor del scroll */
-    position: relative;
   }
 
   #root {
-    @apply min-h-screen flex flex-col relative;
-    /* Aseguramos que el contenido fluya hacia abajo */
-    display: flex;
-    flex-direction: column;
+    /* El root debe poder crecer libremente con la Tribu */
+    min-height: 100vh;
+    @apply relative flex flex-col;
   }
 }
 
@@ -43,7 +45,7 @@
     transition: all 400ms cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  /* Efecto de presión táctil para interactuar con la Tribu */
+  /* Efecto de presión táctil sutil */
   .glass-card:active {
     @apply scale-[0.98];
   }
@@ -53,7 +55,7 @@
     @apply flex items-center justify-center border-none cursor-pointer shadow-lg;
     width: 70px;
     height: 70px;
-    border-radius: 2rem; /* Geometría más acorde a KidUs que el círculo puro */
+    border-radius: 2rem;
     background: linear-gradient(135deg, #0EA5E9, #F97316);
     transition: all 400ms cubic-bezier(0.68, -0.55, 0.26, 1.55);
     @apply text-white;
@@ -64,13 +66,13 @@
   }
 
   .fab-main-button.open {
-    @apply rotate-[135deg] bg-slate-800;
-    background: #1E293B; /* Slate 800 sólido al abrir para contraste */
+    @apply rotate-[135deg];
+    background: #1E293B; /* Slate 800 sólido al abrir */
   }
 }
 
 @layer utilities {
-  /* 3. SISTEMA DE ANIMACIONES ZEN (Fluidez del Nido) */
+  /* 3. SISTEMA DE ANIMACIONES ZEN */
   .animate-wave-slow {
     animation: wave-apple 22s ease-in-out infinite;
   }
@@ -114,7 +116,6 @@
 
   /* Sombra Hática KidUs */
   .shadow-haptic {
-    shadow-color: rgba(14, 165, 233, 0.2);
     box-shadow: 0 20px 40px -15px rgba(14, 165, 233, 0.3);
   }
 }
