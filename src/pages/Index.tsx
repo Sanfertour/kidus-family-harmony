@@ -130,12 +130,10 @@ const Index = () => {
 
       if (aiError) throw aiError;
 
-      // Mejora KidUs: Mapeo inteligente hacia el Drawer
       setScannedData({
         title: aiResult.title || "Nueva actividad",
         date: aiResult.date || new Date().toISOString().split('T')[0],
         time: aiResult.time || "09:00",
-        // Mapeamos la descripción al campo de Preparación del Drawer
         description: aiResult.preparation || aiResult.description || "",
         event_type: aiResult.event_type || 'escolar'
       });
@@ -192,7 +190,7 @@ const Index = () => {
   }
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden bg-transparent font-sans">
+    <div className="relative h-screen w-full overflow-y-auto bg-transparent font-sans scroll-smooth">
       <Header />
       
       <main className="container mx-auto px-6 pt-6 max-w-md relative z-10 pb-44">
