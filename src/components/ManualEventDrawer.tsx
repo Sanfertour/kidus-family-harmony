@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { 
   X, Users, UserCheck, Shield, EyeOff, 
-  Calendar, Clock, BookOpen, Trophy, HeartPulse, ListChecks, Sparkles 
+  Calendar, Clock, BookOpen, Trophy, HeartPulse, ListChecks, Sparkles, Loader2 
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -43,7 +43,6 @@ export const ManualEventDrawer = ({
 
   useEffect(() => {
     const prepareDrawer = async () => {
-      // Priorizar datos que vienen de la IA o de una edición
       if (initialData) {
         setTitle(initialData.title || '');
         setDate(initialData.date || '');
@@ -93,12 +92,24 @@ export const ManualEventDrawer = ({
     <div className="fixed inset-0 z-[100] flex items-end justify-center font-sans">
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={onClose} />
       
-      <div className={`relative w-full max-w-md rounded-t-[3.5rem] p-8 shadow-2xl animate-in slide-in-from-bottom duration-500 max-h-[92vh] overflow-y-auto ${isPrivate ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-800 border-t border-white'}`}>
+      <div className={`relative w-full max-w-md rounded-t-[3.5rem] p-8 shadow-2xl animate-in slide-in-from-bottom duration-500 max-h-[92vh] overflow-y-auto no-scrollbar ${isPrivate ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-800 border-t border-white'}`}>
         
+        {/* BOTÓN DE CIERRE TÁCTIL (KidUs Style) */}
+        <button 
+          onClick={() => { triggerHaptic('soft'); onClose(); }}
+          className={`absolute top-6 right-8 w-12 h-12 rounded-full flex items-center justify-center transition-all active:scale-90 z-20 ${isPrivate ? 'bg-white/10 text-white' : 'bg-slate-200/50 text-slate-600'}`}
+        >
+          <X size={24} strokeWidth={3} />
+        </button>
+
         <div className="w-12 h-1.5 bg-slate-300/50 rounded-full mx-auto mb-8" />
 
         <div className="space-y-6 pb-12">
           {/* CATEGORÍAS */}
+          <div className="flex justify-between gap-2 pr-12"> {/* pr-12 para que no choque con la X */}
+             <h2 className="text-xl font-black tracking-tight">Nuevo en el Nido</h2>
+          </div>
+
           <div className="flex justify-between gap-2">
             {EVENT_CATEGORIES.map((cat) => (
               <button key={cat.id} onClick={() => { triggerHaptic('soft'); setEventType(cat.id); }} 
