@@ -38,9 +38,9 @@
         height: 100%;
         margin: 0;
         padding: 0;
-        overflow: hidden; /* El scroll se gestionará dentro de los componentes del Nido */
+        overflow: hidden;
         background-color: #F8FAFC; /* Slate 50 */
-        -webkit-tap-highlight-color: transparent; /* Elimina el recuadro gris al tocar en iOS */
+        -webkit-tap-highlight-color: transparent;
       }
     </style>
 
@@ -49,10 +49,20 @@
       window.OneSignalDeferred = window.OneSignalDeferred || [];
       OneSignalDeferred.push(function(OneSignal) {
         OneSignal.init({
-          appId: "810a2f7e-f786-42b0-af39-1cc848d55248", // <-- SUSTITUYE ESTO CON TU ID DE ONESIGNAL
+          appId: "810a2f7e-f786-42b0-af39-1cc848d55248",
           allowLocalhostAsSecureOrigin: true,
           serviceWorkerParam: { scope: "/" },
           serviceWorkerPath: "OneSignalSDKWorker.js",
+        });
+
+        // Toque Pro: Escuchador de eventos para asegurar la sincronía de la Tribu
+        OneSignal.Notifications.addEventListener("permissionChange", function(permission) {
+          if (permission) {
+            console.log("🌿 KidUs: La Tribu ha sincronizado las notificaciones.");
+            // Aquí podrías disparar el navigator.vibrate([20, 30, 20]) si quisieras
+          } else {
+            console.warn("⚠️ KidUs: El Nido está operando sin notificaciones activas.");
+          }
         });
       });
     </script>
