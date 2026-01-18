@@ -4,12 +4,10 @@
 
 @layer base {
   :root {
-    /* Identidad KidUs: Colores con máxima saturación para efecto líquido */
-    --vital-orange: 249 115 22; /* #F97316 */
-    --sky-blue: 14 165 233;     /* #0EA5E9 */
+    --vital-orange: 249 115 22;
+    --sky-blue: 14 165 233;
   }
 
-  /* Reset estructural para fluidez total en el Nido */
   html, body {
     height: auto; 
     min-height: 100%;
@@ -35,7 +33,6 @@
 }
 
 @layer components {
-  /* 1. GLASSMORPHISM PREMIUM: Backdrop-blur ultra denso */
   .glass-card {
     @apply backdrop-blur-3xl bg-white/40 border border-white/60 shadow-xl;
     border-radius: 3.5rem; 
@@ -46,7 +43,6 @@
     @apply scale-[0.96] brightness-95;
   }
 
-  /* 2. FAB: Botón de Energía Vital con gradiente líquido */
   .fab-main-button {
     @apply flex items-center justify-center border-none cursor-pointer shadow-2xl;
     width: 72px;
@@ -56,50 +52,39 @@
     transition: all 500ms cubic-bezier(0.68, -0.6, 0.32, 1.6);
     @apply text-white;
   }
-
-  .fab-main-button:active {
-    @apply scale-90 rotate-3 shadow-inner;
-  }
-
-  .fab-main-button.open {
-    @apply rotate-[135deg] bg-slate-900;
-  }
 }
 
 @layer utilities {
-  /* 3. FONDO LÍQUIDO KIDUS: Franjas estrechas y colores sólidos */
+  /* 3. MULTI-FRANJAS LÍQUIDAS (Efecto Cebra KidUs) */
   .bg-liquid-tribe {
-    /* El truco pro: stops al 49% y 51% para una frontera líquida casi perfecta */
-    background: linear-gradient(
-      165deg, 
-      #0EA5E9 0%, 
-      #0EA5E9 49%, 
-      #F97316 51%, 
-      #F97316 95%, 
-      #0EA5E9 100%
+    /* Usamos repeating-linear-gradient para forzar múltiples franjas estrechas */
+    background: repeating-linear-gradient(
+      165deg,
+      #0EA5E9 0px,
+      #0EA5E9 40px,   /* Ancho de la franja azul */
+      #F97316 40px,
+      #F97316 80px    /* Ancho de la franja naranja */
     );
-    /* Multiplicamos el size por 5 para que las franjas sean mucho más estrechas */
-    background-size: 100% 500%; 
-    animation: liquid-flow 15s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+    background-size: 200% 200%; 
+    animation: liquid-flow 20s linear infinite;
   }
 
-  /* 4. ANIMACIONES VISCOSAS: Efecto gotas de mercurio */
+  /* 4. ANIMACIONES VISCOSAS CON NITIDEZ (Blur reducido al mínimo) */
   .animate-liquid-fast {
     animation: liquid-morph 10s cubic-bezier(0.7, 0, 0.3, 1) infinite;
-    filter: blur(50px);
+    filter: blur(12px); /* Blur muy bajo para que se vean las franjas */
     will-change: transform, border-radius;
   }
 
   .animate-liquid-slow {
-    animation: liquid-morph 20s cubic-bezier(0.4, 0, 0.2, 1) infinite reverse;
-    filter: blur(60px);
+    animation: liquid-morph 25s cubic-bezier(0.4, 0, 0.2, 1) infinite reverse;
+    filter: blur(18px); /* Blur sutil */
     will-change: transform, border-radius;
   }
 
   @keyframes liquid-flow {
-    0% { background-position: 50% 0%; }
-    50% { background-position: 50% 100%; }
-    100% { background-position: 50% 0%; }
+    0% { background-position: 0% 0%; }
+    100% { background-position: 100% 100%; }
   }
 
   @keyframes liquid-morph {
@@ -109,19 +94,17 @@
     }
     33% { 
       border-radius: 70% 30% 46% 54% / 30% 29% 71% 70%; 
-      transform: translate(5%, -5%) scale(1.3) rotate(8deg); 
+      transform: translate(5%, -5%) scale(1.4) rotate(15deg); 
     }
     66% { 
       border-radius: 100% 60% 60% 100% / 100% 100% 60% 60%; 
-      transform: translate(-3%, 8%) scale(1.2) rotate(-5deg); 
+      transform: translate(-3%, 8%) scale(1.2) rotate(-10deg); 
     }
   }
 
-  /* 5. INTERFAZ ZEN Y LIMPIEZA */
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-  /* Sombras táctiles para la Tribu */
   .shadow-haptic {
     box-shadow: 0 25px 50px -12px rgba(14, 165, 233, 0.4);
   }
