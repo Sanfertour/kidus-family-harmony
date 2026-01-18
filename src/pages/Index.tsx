@@ -12,23 +12,16 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { ManualEventDrawer } from "@/components/ManualEventDrawer";
 
-// URL del logo optimizada
+// URL del logo optimizada para el Nido
 const LOGO_URL = "https://raw.githubusercontent.com/Sanfertour/kidus-family-harmony/main/src/assets/kidus-logo-C1AuyFb2.png";
 
+// Sistema de Feedback Háptico KidUs
 const triggerHaptic = (type: 'soft' | 'success') => {
   if (typeof navigator !== "undefined" && navigator.vibrate) {
-    if (type === 'soft') navigator.vibrate(15);
-    else navigator.vibrate([20, 40, 20]);
+    if (type === 'soft') navigator.vibrate(10);
+    else navigator.vibrate([20, 30, 20]);
   }
 };
-
-const KidUsDynamicBackground = () => (
-  <div className="fixed inset-0 -z-10 overflow-hidden bg-[#F8FAFC]">
-    <div className="absolute top-[-15%] left-[-10%] w-[100%] h-[80%] bg-[#0EA5E9]/10 animate-wave-slow blur-[100px]" />
-    <div className="absolute bottom-[-10%] right-[-5%] w-[80%] h-[70%] bg-[#F97316]/10 animate-wave-medium blur-[100px]" />
-    <div className="absolute top-[20%] right-[10%] w-[40%] h-[40%] bg-[#8B5CF6]/5 animate-float blur-[120px]" />
-  </div>
-);
 
 const Index = () => {
   const [session, setSession] = useState<any>(null);
@@ -85,7 +78,7 @@ const Index = () => {
         setFamilyMembers(profiles || []);
       }
     } catch (error) {
-      console.error("Error cargando equipo:", error);
+      console.error("Error cargando la tribu:", error);
     } finally {
       setLoading(false);
     }
@@ -97,7 +90,7 @@ const Index = () => {
     triggerHaptic('success');
     setIsAiProcessing(true);
     
-    const messages = ["Escaneando...", "IA trabajando...", "Sincronizando..."];
+    const messages = ["Escaneando Nido...", "IA Analizando...", "Sincronizando..."];
     let msgIndex = 0;
     const interval = setInterval(() => {
       setAiMessage(messages[msgIndex % messages.length]);
@@ -111,7 +104,7 @@ const Index = () => {
       const { data: aiResult } = await supabase.functions.invoke('process-image-ai', { body: { imageUrl: publicUrl } });
 
       setScannedData({
-        description: aiResult.description || "Nueva actividad",
+        description: aiResult.description || "Nueva actividad de la Tribu",
         date: aiResult.date || new Date().toISOString().split('T')[0],
         time: aiResult.time || "12:00"
       });
@@ -121,18 +114,15 @@ const Index = () => {
     } catch (error) {
       clearInterval(interval);
       setIsAiProcessing(false);
-      toast({ title: "Aviso", description: "Reintenta el escaneo.", variant: "destructive" });
+      toast({ title: "Aviso del Guía", description: "Reintenta el escaneo para sincronizar.", variant: "destructive" });
     }
   };
 
+  // ESTADO: CARGANDO NIDO
   if (loading) return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#F8FAFC]">
-      <KidUsDynamicBackground />
-      <div className="relative">
-        <div className="absolute inset-0 animate-ping bg-primary/20 rounded-[3rem] -z-10" />
-        <div className="w-24 h-24 bg-white rounded-[2.5rem] shadow-tribu-card flex items-center justify-center border border-white/50 z-10 animate-float">
-          <Loader2 className="text-primary animate-spin" size={40} strokeWidth={3} />
-        </div>
+    <div className="min-h-screen w-full flex flex-col items-center justify-center">
+      <div className="w-24 h-24 bg-white rounded-[2.5rem] shadow-tribu-card flex items-center justify-center border border-white/50 animate-float">
+        <Loader2 className="text-primary animate-spin" size={40} strokeWidth={3} />
       </div>
       <div className="mt-12 text-center space-y-2">
         <h3 className="text-3xl font-black text-slate-800 tracking-tight">Sincronizando Nido</h3>
@@ -141,13 +131,13 @@ const Index = () => {
     </div>
   );
 
+  // ESTADO: BIENVENIDA (AUTH)
   if (!session) {
     return (
-      <div className="min-h-screen w-full flex flex-col items-center justify-center p-8 bg-[#F8FAFC] relative overflow-hidden font-sans">
-        <KidUsDynamicBackground />
+      <div className="min-h-screen w-full flex flex-col items-center justify-center p-8 relative overflow-hidden">
         <div className="relative z-10 text-center space-y-12 w-full max-w-sm">
           <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
-            <div className="w-36 h-36 bg-white/70 backdrop-blur-2xl rounded-[3.5rem] flex items-center justify-center mx-auto shadow-brisa border border-white/50">
+            <div className="w-36 h-36 glass-card flex items-center justify-center mx-auto">
               <img src={LOGO_URL} alt="KidUs" className="w-24 h-24 object-contain" />
             </div>
           </motion.div>
@@ -166,9 +156,9 @@ const Index = () => {
     );
   }
 
+  // ESTADO: DASHBOARD PRINCIPAL
   return (
-    <div className="relative min-h-screen w-full overflow-hidden pb-32 font-sans bg-[#F8FAFC]">
-      <KidUsDynamicBackground />
+    <div className="relative min-h-screen w-full pb-32">
       <Header />
       
       <main className="container mx-auto px-6 pt-6 max-w-md relative z-10">
@@ -179,7 +169,7 @@ const Index = () => {
                 Nido en <br/> <span className="text-primary">equilibrio.</span>
               </h1>
               
-              <div className="p-10 rounded-7xl bg-white/70 backdrop-blur-2xl shadow-tribu-card border border-white/50">
+              <div className="p-10 glass-card">
                 <label className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4 block">Estado de la Tribu</label>
                 <h3 className="text-2xl font-black text-slate-800 mb-2">{familyMembers.length} integrantes</h3>
                 <p className="text-slate-500 font-medium">Equipo sincronizado correctamente.</p>
@@ -203,7 +193,7 @@ const Index = () => {
           {activeTab === "family" && (
             <div className="space-y-6">
               <div className="flex justify-between items-center px-4">
-                <h2 className="text-4xl font-black text-slate-800">Tribu</h2>
+                <h2 className="text-4xl font-black text-slate-800 tracking-tight">Tribu</h2>
                 <AddMemberDialog onMemberAdded={fetchAllData}>
                   <button onClick={() => triggerHaptic('soft')} className="w-16 h-16 bg-primary rounded-4xl flex items-center justify-center text-white shadow-haptic active:scale-90 transition-all">
                     <Plus size={32} strokeWidth={3} />
@@ -212,12 +202,12 @@ const Index = () => {
               </div>
               <div className="grid grid-cols-2 gap-5">
                 {familyMembers.map((member) => (
-                  <div key={member.id} className="p-8 rounded-7xl flex flex-col items-center bg-white/70 backdrop-blur-2xl border border-white/50 shadow-brisa transition-all active:scale-95">
+                  <div key={member.id} className="p-8 glass-card flex flex-col items-center">
                     <div className="w-20 h-20 rounded-5xl flex items-center justify-center text-2xl font-black text-white shadow-haptic mb-4" style={{ backgroundColor: member.avatar_url || '#0EA5E9' }}>
                       {member.display_name?.charAt(0).toUpperCase()}
                     </div>
                     <span className="font-black text-slate-800 text-sm text-center line-clamp-1">{member.display_name}</span>
-                    <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest mt-2">
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-2">
                       {member.role === 'autonomous' ? 'Guía' : 'Peque'}
                     </span>
                   </div>
@@ -234,6 +224,7 @@ const Index = () => {
         </AnimatePresence>
       </main>
 
+      {/* NAVEGACIÓN INFERIOR GLASS */}
       <nav className="fixed bottom-0 left-0 right-0 h-28 bg-white/70 backdrop-blur-2xl border-t border-white/20 flex justify-around items-center px-10 z-40 rounded-t-7xl shadow-brisa">
         {[
           { id: "home", icon: HomeIcon }, { id: "agenda", icon: Calendar }, { id: "family", icon: Users }, { id: "settings", icon: Settings }
@@ -244,12 +235,13 @@ const Index = () => {
         ))}
       </nav>
 
+      {/* FAB DINÁMICO */}
       <div className="fixed bottom-36 right-8 z-50 flex flex-col items-center">
         <div className={`flex flex-col gap-6 mb-6 transition-all duration-500 ${isFabOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-20 pointer-events-none'}`}>
-          <button onClick={() => { triggerHaptic('soft'); setIsFabOpen(false); fileInputRef.current?.click(); }} className="w-16 h-16 bg-accent rounded-5xl flex items-center justify-center text-white shadow-haptic border-4 border-white active:scale-90">
+          <button onClick={() => { triggerHaptic('soft'); setIsFabOpen(false); fileInputRef.current?.click(); }} className="w-16 h-16 bg-sky-500 rounded-5xl flex items-center justify-center text-white shadow-haptic border-4 border-white active:scale-90">
             <Camera size={28} strokeWidth={2.5} />
           </button>
-          <button onClick={() => { triggerHaptic('soft'); setIsFabOpen(false); setIsDrawerOpen(true); }} className="w-16 h-16 bg-secondary rounded-5xl flex items-center justify-center text-white shadow-haptic border-4 border-white active:scale-90">
+          <button onClick={() => { triggerHaptic('soft'); setIsFabOpen(false); setIsDrawerOpen(true); }} className="w-16 h-16 bg-orange-500 rounded-5xl flex items-center justify-center text-white shadow-haptic border-4 border-white active:scale-90">
             <Plus size={28} strokeWidth={2.5} />
           </button>
         </div>
@@ -260,19 +252,22 @@ const Index = () => {
 
       <input type="file" ref={fileInputRef} className="hidden" accept="image/*" capture="environment" onChange={handleFileChange} />
 
-      {isAiProcessing && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-white/90 backdrop-blur-3xl">
-          <div className="flex flex-col items-center gap-8 text-center p-12">
-            <div className="w-24 h-24 bg-primary/10 rounded-7xl flex items-center justify-center animate-wave-slow shadow-inner">
-              <Camera className="text-primary animate-pulse" size={40} />
+      {/* PANTALLA DE PROCESAMIENTO IA */}
+      <AnimatePresence>
+        {isAiProcessing && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] flex items-center justify-center bg-white/90 backdrop-blur-3xl">
+            <div className="flex flex-col items-center gap-8 text-center p-12">
+              <div className="w-24 h-24 bg-primary/10 rounded-7xl flex items-center justify-center animate-wave-slow shadow-inner">
+                <Camera className="text-primary animate-pulse" size={40} />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-3xl font-black text-slate-800 tracking-tight">Sincronizando...</h3>
+                <p className="text-primary font-black text-[10px] uppercase tracking-[0.3em]">{aiMessage}</p>
+              </div>
             </div>
-            <div className="space-y-2">
-              <h3 className="text-3xl font-black text-slate-800">Sincronizando...</h3>
-              <p className="text-primary font-black text-[10px] uppercase tracking-[0.3em]">{aiMessage}</p>
-            </div>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <ManualEventDrawer isOpen={isDrawerOpen} onClose={() => { setIsDrawerOpen(false); setScannedData(null); }} members={familyMembers} onEventAdded={fetchAllData} initialData={scannedData} />
     </div>
