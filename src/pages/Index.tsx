@@ -11,15 +11,9 @@ import { SettingsView } from "@/components/SettingsView";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { ManualEventDrawer } from "@/components/ManualEventDrawer";
+import { triggerHaptic } from "@/utils/haptics"; // Importación corregida
 
 const LOGO_URL = "https://raw.githubusercontent.com/Sanfertour/kidus-family-harmony/main/src/assets/kidus-logo-C1AuyFb2.png";
-
-const triggerHaptic = (type: 'soft' | 'success') => {
-  if (typeof navigator !== "undefined" && navigator.vibrate) {
-    if (type === 'soft') navigator.vibrate(10);
-    else navigator.vibrate([20, 30, 20]);
-  }
-};
 
 const Index = () => {
   const [session, setSession] = useState<any>(null);
@@ -43,17 +37,6 @@ const Index = () => {
       if (session) fetchAllData();
       else setLoading(false);
     });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (session) fetchAllData();
-      else {
-        setLoading(false);
-        setFamilyMembers([]);
-      }
-    });
-
-    return () => subscription.unsubscribe();
   }, []);
 
   const fetchAllData = async () => {
@@ -61,28 +44,17 @@ const Index = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       
-      let { data: myProfile } = await supabase
+      // 1. Obtener perfil vinculado al Nido
+      const { data: myProfile } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
-        .maybeSingle();
-      
-      if (!myProfile || !myProfile.role) {
-        const { data: newProfile } = await supabase
-          .from('profiles')
-          .upsert({ 
-            id: user.id, 
-            display_name: user.user_metadata.full_name || 'Nuevo Guía',
-            role: 'autonomous',
-            nest_id: myProfile?.nest_id || crypto.randomUUID()
-          })
-          .select()
-          .single();
-        myProfile = newProfile;
-      }
+        .single();
       
       if (myProfile?.nest_id) {
         setMyNestId(myProfile.nest_id);
+        
+        // 2. Cargar toda la Tribu del Nido
         const { data: profiles } = await supabase
           .from('profiles')
           .select('*')
@@ -98,14 +70,16 @@ const Index = () => {
     }
   };
 
+  // --- Lógica IA (Mantenida y Estilizada) ---
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
     
-    triggerHaptic('success');
+    triggerHaptic('medium');
     setIsAiProcessing(true);
     
-    const messages = ["Sincronizando...", "IA analizando circular...", "Preparando misión..."];
+    // Simulación de pasos de IA para feedback UX
+    const messages = ["Escaneando circular...", "IA extrayendo fechas...", "Sincronizando Nido..."];
     let msgIndex = 0;
     const interval = setInterval(() => {
       setAiMessage(messages[msgIndex % messages.length]);
@@ -113,7 +87,7 @@ const Index = () => {
     }, 1500);
 
     try {
-      const fileName = `${Math.random()}.${file.name.split('.').pop()}`;
+      const fileName = `${myNestId}/${Date.now()}-${file.name}`;
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('event-attachments')
         .upload(fileName, file);
@@ -124,18 +98,18 @@ const Index = () => {
         .from('event-attachments')
         .getPublicUrl(fileName);
       
+      // Aquí invocas tu Edge Function de OpenAI/Gemini
       const { data: aiResult, error: aiError } = await supabase.functions.invoke('process-image-ai', { 
-        body: { imageUrl: publicUrl } 
+        body: { imageUrl: publicUrl, nest_id: myNestId } 
       });
 
       if (aiError) throw aiError;
 
       setScannedData({
-        title: aiResult.title || "Nueva actividad",
-        date: aiResult.date || new Date().toISOString().split('T')[0],
-        time: aiResult.time || "09:00",
-        description: aiResult.preparation || aiResult.description || "",
-        event_type: aiResult.event_type || 'escolar'
+        title: aiResult.title,
+        date: aiResult.date,
+        time: aiResult.time,
+        description: aiResult.description
       });
       
       clearInterval(interval);
@@ -146,196 +120,147 @@ const Index = () => {
     } catch (error) {
       clearInterval(interval);
       setIsAiProcessing(false);
-      toast({ 
-        title: "Nido desconectado", 
-        description: "La IA no ha podido leer la imagen. Inténtalo de nuevo.", 
-        variant: "destructive" 
-      });
+      toast({ title: "Error de IA", description: "No pudimos procesar la imagen.", variant: "destructive" });
     }
   };
 
-  if (loading) return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-transparent">
-      <div className="relative">
-        <div className="absolute inset-0 animate-ping bg-[#0EA5E9]/20 rounded-[3rem]" />
-        <div className="w-24 h-24 bg-white/80 backdrop-blur-xl rounded-[2.5rem] shadow-2xl flex items-center justify-center z-10 animate-pulse border border-white/50">
-          <Loader2 className="text-[#0EA5E9] animate-spin" size={40} strokeWidth={3} />
-        </div>
-      </div>
-    </div>
-  );
-
-  if (!session) {
-    return (
-      <div className="min-h-screen w-full flex flex-col items-center justify-center p-8 bg-transparent relative overflow-hidden">
-        <div className="relative z-10 text-center space-y-12 w-full max-w-sm">
-          <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
-            <div className="w-36 h-36 bg-white/70 backdrop-blur-2xl rounded-[3.5rem] shadow-xl flex items-center justify-center mx-auto border border-white/50">
-              <img src={LOGO_URL} alt="KidUs" className="w-24 h-24 object-contain" />
-            </div>
-          </motion.div>
-          <div className="space-y-2">
-            <h1 className="text-6xl font-black text-slate-800 tracking-tighter font-nunito">KidUs</h1>
-            <p className="text-slate-500 font-black uppercase tracking-[0.4em] text-[10px]">Armonía para tu Tribu</p>
-          </div>
-          <Button 
-            onClick={() => { triggerHaptic('soft'); supabase.auth.signInWithOAuth({ provider: 'google' }); }} 
-            className="w-full h-20 rounded-[2.5rem] bg-white/80 backdrop-blur-xl border-2 border-white text-slate-800 font-black shadow-xl active:scale-95 transition-all text-lg tracking-tight hover:bg-white"
-          >
-            SINCRO CON GOOGLE
-          </Button>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return null; // El App.tsx ya maneja el loading principal
 
   return (
-    <div className="relative h-screen w-full overflow-y-auto bg-transparent font-sans scroll-smooth">
+    <div className="relative min-h-screen w-full font-sans">
       <Header />
       
-      <main className="container mx-auto px-6 pt-6 max-w-md relative z-10 pb-44">
+      <main className="container mx-auto px-6 pt-10 max-w-md relative z-10 pb-44">
         <AnimatePresence mode="wait">
           {activeTab === "home" && (
             <motion.div 
               key="home" 
-              initial={{ opacity: 0, y: 20 }} 
-              animate={{ opacity: 1, y: 0 }} 
-              exit={{ opacity: 0, y: -20 }} 
-              className="space-y-8"
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
+              className="space-y-10"
             >
-              <div className="px-2">
-                <h1 className="text-5xl font-black text-slate-800 leading-[1.1] tracking-tighter font-nunito">
-                  {new Date().getHours() < 12 ? "Buen día," : new Date().getHours() < 20 ? "Energía alta," : "Nido en calma,"}<br/> 
-                  <span className="text-[#0EA5E9]">Guía.</span>
+              <header className="px-2">
+                <h1 className="text-6xl font-black text-slate-900 leading-[0.85] tracking-tighter">
+                  {new Date().getHours() < 12 ? "Buen día," : "Nido en,"}<br/> 
+                  <span className="text-sky-500">calma.</span>
                 </h1>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mt-3">Rendimiento de la Tribu</p>
-              </div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em] mt-6">Estado de la Tribu</p>
+              </header>
 
-              <div className="p-10 rounded-[3.5rem] bg-white/60 backdrop-blur-2xl border border-white/40 shadow-xl shadow-slate-200/20 relative overflow-hidden group">
+              {/* CARD DE ESTADO ÉLITE */}
+              <div className="p-12 rounded-[4rem] bg-white/40 backdrop-blur-3xl border border-white shadow-[0_20px_50px_rgba(0,0,0,0.04)] relative overflow-hidden group transition-all hover:shadow-sky-100/50">
                 <div className="relative z-10">
-                  <label className="text-[10px] font-black text-[#0EA5E9] uppercase tracking-[0.2em] mb-4 block">Sincronía Actual</label>
-                  <div className="flex items-baseline gap-2">
-                    <h3 className="text-5xl font-black text-slate-800">{familyMembers.length}</h3>
-                    <span className="text-xl font-bold text-slate-400 tracking-tight">integrantes</span>
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse" />
+                    <span className="text-[10px] font-black text-sky-600 uppercase tracking-widest">Sincronía Total</span>
                   </div>
-                  <p className="text-slate-500 font-bold text-sm tracking-tight mt-2">Tu equipo está fluyendo en armonía.</p>
+                  <div className="flex items-baseline gap-3">
+                    <h3 className="text-7xl font-black text-slate-900 tracking-tighter">{familyMembers.length}</h3>
+                    <span className="text-xl font-bold text-slate-400">Guías</span>
+                  </div>
                 </div>
-                <div className="absolute -right-6 -bottom-6 w-32 h-32 bg-[#0EA5E9]/5 rounded-full blur-2xl group-hover:bg-[#0EA5E9]/10 transition-colors duration-700" />
+                <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-sky-500/5 rounded-full blur-3xl group-hover:bg-sky-500/10 transition-colors" />
               </div>
               
-              <div className="grid grid-cols-2 gap-5">
+              {/* ACCESOS RÁPIDOS */}
+              <div className="grid grid-cols-2 gap-6">
                 <button 
                   onClick={() => { triggerHaptic('soft'); setActiveTab("agenda"); }} 
-                  className="p-10 rounded-[3.5rem] flex flex-col items-center gap-4 bg-[#0EA5E9] text-white shadow-2xl active:scale-95 transition-all group"
+                  className="p-12 rounded-[3.5rem] flex flex-col items-center gap-5 bg-slate-900 text-white shadow-2xl active:scale-95 transition-all"
                 >
-                  <Calendar size={28} strokeWidth={3} className="group-hover:scale-110 transition-transform duration-300" />
-                  <span className="text-[11px] font-black uppercase tracking-widest">Agenda</span>
+                  <Calendar size={32} strokeWidth={2.5} />
+                  <span className="text-[11px] font-black uppercase tracking-[0.2em]">Agenda</span>
                 </button>
                 <button 
                   onClick={() => { triggerHaptic('soft'); setActiveTab("family"); }} 
-                  className="p-10 rounded-[3.5rem] flex flex-col items-center gap-4 bg-white/60 backdrop-blur-xl text-[#F97316] border border-white/40 shadow-xl active:scale-95 transition-all group"
+                  className="p-12 rounded-[3.5rem] flex flex-col items-center gap-5 bg-white border border-slate-100 text-slate-900 shadow-xl active:scale-95 transition-all"
                 >
-                  <Users size={28} strokeWidth={3} className="group-hover:scale-110 transition-transform duration-300" />
-                  <span className="text-[11px] font-black uppercase tracking-widest">Tribu</span>
+                  <Users size={32} strokeWidth={2.5} />
+                  <span className="text-[11px] font-black uppercase tracking-[0.2em]">Tribu</span>
                 </button>
-              </div>
-
-              <div className="mx-2 p-6 rounded-[2.5rem] bg-slate-800/80 backdrop-blur-2xl text-white/90 flex items-center gap-4 shadow-2xl border border-white/5">
-                <div className="w-14 h-14 bg-white/5 rounded-[1.5rem] flex items-center justify-center relative">
-                  <div className="absolute inset-0 bg-[#F97316]/20 rounded-[1.5rem] animate-pulse" />
-                  <div className="w-2.5 h-2.5 bg-[#F97316] rounded-full shadow-[0_0_12px_rgba(249,115,22,0.8)]" />
-                </div>
-                <div>
-                  <p className="text-[9px] font-black uppercase tracking-[0.3em] text-[#F97316]">Sincro del Nido</p>
-                  <p className="text-sm font-bold tracking-tight">Logística de la tribu activa</p>
-                </div>
               </div>
             </motion.div>
           )}
 
           {activeTab === "agenda" && (
-            <motion.div key="agenda" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+            <motion.div key="agenda" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }}>
               <AgendaView />
             </motion.div>
           )}
+
           {activeTab === "family" && (
-            <motion.div key="family" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8 pb-10">
-              <div className="flex justify-between items-end px-4">
-                <div>
-                  <h2 className="text-5xl font-black text-slate-800 tracking-tighter font-nunito">Tribu</h2>
-                  <p className="text-[10px] font-black text-[#F97316] uppercase tracking-widest mt-1">Gestión del Nido</p>
-                </div>
+            <motion.div key="family" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="space-y-10">
+               <div className="flex justify-between items-end px-4">
+                <h2 className="text-6xl font-black text-slate-900 tracking-tighter">Tribu</h2>
                 <AddMemberDialog onMemberAdded={fetchAllData}>
-                  <button onClick={() => triggerHaptic('soft')} className="w-16 h-16 bg-[#0EA5E9] rounded-2xl flex items-center justify-center text-white shadow-lg active:scale-90 transition-all">
+                  <button className="w-20 h-20 bg-sky-500 rounded-[2rem] flex items-center justify-center text-white shadow-xl active:scale-90 transition-all">
                     <Plus size={32} strokeWidth={3} />
                   </button>
                 </AddMemberDialog>
               </div>
-              <div className="grid grid-cols-2 gap-5">
+              <div className="grid grid-cols-2 gap-6">
                 {familyMembers.map((member) => (
-                  <div key={member.id} className="p-8 rounded-[3rem] bg-white/60 backdrop-blur-xl border border-white/40 shadow-sm flex flex-col items-center hover:shadow-md transition-all">
-                    <div className="w-20 h-20 rounded-[2.2rem] flex items-center justify-center text-2xl font-black text-white shadow-lg mb-4" style={{ backgroundColor: member.avatar_url || '#0EA5E9' }}>
-                      {member.display_name?.charAt(0).toUpperCase()}
+                  <div key={member.id} className="p-10 rounded-[3.5rem] bg-white border border-slate-50 shadow-sm flex flex-col items-center">
+                    <div className="w-24 h-24 rounded-[2.5rem] bg-slate-100 flex items-center justify-center text-3xl font-black text-slate-400 mb-6 overflow-hidden">
+                      {member.avatar_url ? <img src={member.avatar_url} /> : member.display_name?.charAt(0)}
                     </div>
-                    <span className="font-black text-slate-800 text-sm text-center line-clamp-1">{member.display_name}</span>
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-2">
-                      {member.role === 'autonomous' ? 'Guía' : 'Tribu'}
-                    </span>
+                    <span className="font-black text-slate-900 text-lg">{member.display_name}</span>
                   </div>
                 ))}
               </div>
             </motion.div>
           )}
-
-          {activeTab === "settings" && (
-            <motion.div key="settings" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.05 }}>
-              <SettingsView nestId={myNestId} members={familyMembers} onRefresh={fetchAllData} />
-            </motion.div>
-          )}
         </AnimatePresence>
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 h-28 bg-white/60 backdrop-blur-3xl border-t border-white/20 flex justify-around items-center px-10 z-[40] rounded-t-[3.5rem] shadow-2xl">
+      {/* NAVBAR BRISA */}
+      <nav className="fixed bottom-0 left-0 right-0 h-32 bg-white/70 backdrop-blur-[40px] border-t border-white flex justify-around items-center px-12 z-[100] rounded-t-[4rem] shadow-[0_-20px_40px_rgba(0,0,0,0.03)]">
         {[
           { id: "home", icon: HomeIcon }, { id: "agenda", icon: Calendar }, { id: "family", icon: Users }, { id: "settings", icon: Settings }
         ].map((tab) => (
           <button 
             key={tab.id} 
             onClick={() => { triggerHaptic('soft'); setActiveTab(tab.id); }} 
-            className={`p-4 transition-all duration-400 ${activeTab === tab.id ? "text-[#0EA5E9] scale-125 -translate-y-4" : "text-slate-400"}`}
+            className={`p-5 transition-all duration-500 ${activeTab === tab.id ? "text-sky-500 scale-125 -translate-y-6 bg-white rounded-full shadow-lg" : "text-slate-300 hover:text-slate-400"}`}
           >
-            <tab.icon size={26} strokeWidth={activeTab === tab.id ? 3 : 2} />
+            <tab.icon size={28} strokeWidth={activeTab === tab.id ? 3 : 2} />
           </button>
         ))}
       </nav>
 
-      <div className="fixed bottom-36 right-8 z-50 flex flex-col items-center">
-        <div className={`flex flex-col gap-6 mb-6 transition-all duration-500 ${isFabOpen ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-20 scale-50 pointer-events-none'}`}>
-          <button onClick={() => { triggerHaptic('soft'); setIsFabOpen(false); fileInputRef.current?.click(); }} className="w-16 h-16 bg-[#0EA5E9] rounded-2xl flex items-center justify-center text-white shadow-xl border-4 border-white active:scale-90 transition-all">
-            <Camera size={28} strokeWidth={3} />
+      {/* FAB - BOTÓN DE ACCIÓN FLOTANTE (ESTILO ÉLITE) */}
+      <div className="fixed bottom-40 right-10 z-[110]">
+        <div className={`flex flex-col gap-6 mb-8 transition-all duration-700 ${isFabOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-20 pointer-events-none'}`}>
+          <button onClick={() => { triggerHaptic('medium'); setIsFabOpen(false); fileInputRef.current?.click(); }} className="w-20 h-20 bg-sky-500 rounded-[2.2rem] flex items-center justify-center text-white shadow-2xl border-4 border-white active:scale-90 transition-all hover:rotate-6">
+            <Camera size={32} />
           </button>
-          <button onClick={() => { triggerHaptic('soft'); setIsFabOpen(false); setIsDrawerOpen(true); }} className="w-16 h-16 bg-[#F97316] rounded-2xl flex items-center justify-center text-white shadow-xl border-4 border-white active:scale-90 transition-all">
-            <Plus size={28} strokeWidth={3} />
+          <button onClick={() => { triggerHaptic('soft'); setIsFabOpen(false); setIsDrawerOpen(true); }} className="w-20 h-20 bg-orange-500 rounded-[2.2rem] flex items-center justify-center text-white shadow-2xl border-4 border-white active:scale-90 transition-all hover:-rotate-6">
+            <Plus size={32} />
           </button>
         </div>
-        <button onClick={() => { triggerHaptic('soft'); setIsFabOpen(!isFabOpen); }} className={`w-20 h-20 rounded-[2.5rem] flex items-center justify-center text-white shadow-2xl transition-all duration-500 ${isFabOpen ? 'rotate-45 bg-slate-800' : 'bg-[#0EA5E9]'}`}>
-          <Plus size={36} strokeWidth={3} />
+        <button 
+          onClick={() => { triggerHaptic('soft'); setIsFabOpen(!isFabOpen); }} 
+          className={`w-24 h-24 rounded-[3rem] flex items-center justify-center text-white shadow-2xl transition-all duration-700 ${isFabOpen ? 'rotate-[135deg] bg-slate-900' : 'bg-sky-500 hover:scale-105'}`}
+        >
+          <Plus size={44} strokeWidth={3} />
         </button>
       </div>
 
       <input type="file" ref={fileInputRef} className="hidden" accept="image/*" capture="environment" onChange={handleFileChange} />
 
+      {/* OVERLAY PROCESANDO IA */}
       <AnimatePresence>
         {isAiProcessing && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] flex items-center justify-center bg-white/40 backdrop-blur-3xl">
-            <div className="flex flex-col items-center gap-8 text-center p-12 bg-white/80 rounded-[4rem] shadow-2xl border border-white shadow-sky-100/50">
-              <div className="w-28 h-28 bg-[#0EA5E9]/10 rounded-[3rem] flex items-center justify-center relative">
-                <div className="absolute inset-0 bg-[#0EA5E9]/20 rounded-[3rem] animate-ping" />
-                <Camera className="text-[#0EA5E9] relative z-10" size={44} />
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[300] flex items-center justify-center bg-slate-900/40 backdrop-blur-2xl">
+            <div className="flex flex-col items-center gap-10 text-center p-16 bg-white rounded-[5rem] shadow-2xl border border-white">
+              <div className="relative">
+                <div className="absolute inset-0 bg-sky-400/20 rounded-full animate-ping" />
+                <div className="w-32 h-32 bg-sky-50 rounded-[3rem] flex items-center justify-center text-sky-500 relative z-10">
+                  <Camera size={48} className="animate-pulse" />
+                </div>
               </div>
-              <div className="space-y-3">
-                <h3 className="text-4xl font-black text-slate-800 tracking-tighter font-nunito">IA KidUs</h3>
-                <p className="text-[#0EA5E9] font-black text-[10px] uppercase tracking-[0.4em]">{aiMessage}</p>
+              <div className="space-y-4">
+                <h3 className="text-4xl font-black text-slate-900 tracking-tighter">Visión IA</h3>
+                <p className="text-sky-500 font-black text-[10px] uppercase tracking-[0.6em] animate-pulse">{aiMessage}</p>
               </div>
             </div>
           </motion.div>
