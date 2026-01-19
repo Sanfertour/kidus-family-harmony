@@ -36,9 +36,17 @@ const Index = () => {
   // --- CICLO DE VIDA ---
   useEffect(() => {
     const initApp = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) await fetchAllData();
-      setLoading(false);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          await fetchAllData();
+        } else {
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error("Error inicializando sesión:", error);
+        setLoading(false);
+      }
     };
     initApp();
   }, []);
@@ -48,37 +56,39 @@ const Index = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       
-      // 1. Perfil y Nido
-      const { data: profile } = await supabase
+      // 1. Perfil y Nido (Usamos maybeSingle para evitar excepciones si el perfil no existe aún)
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('nest_id')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
+      
+      if (profileError) throw profileError;
       
       if (profile?.nest_id) {
         setMyNestId(profile.nest_id);
         
-        // 2. Cargar Tribu
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('nest_id', profile.nest_id)
-          .order('role', { ascending: true });
-        setFamilyMembers(profiles || []);
+        // 2. Cargar Tribu y Evento en paralelo para optimizar tiempo de carga
+        const [profilesRes, eventsRes] = await Promise.all([
+          supabase.from('profiles').select('*').eq('nest_id', profile.nest_id).order('role', { ascending: true }),
+          supabase.from('events')
+            .select('title')
+            .eq('nest_id', profile.nest_id)
+            .gte('start_time', new Date().toISOString())
+            .order('start_time', { ascending: true })
+            .limit(1)
+            .maybeSingle()
+        ]);
 
-        // 3. Cargar Próximo Evento (Para el Dashboard)
-        const { data: events } = await supabase
-          .from('events')
-          .select('title')
-          .eq('nest_id', profile.nest_id)
-          .gte('start_time', new Date().toISOString())
-          .order('start_time', { ascending: true })
-          .limit(1);
-        
-        if (events && events.length > 0) setNextEventTitle(events[0].title);
+        if (profilesRes.data) setFamilyMembers(profilesRes.data);
+        if (eventsRes.data) setNextEventTitle(eventsRes.data.title);
       }
     } catch (error) {
-      console.error("Error sincronizando Nido:", error);
+      console.error("Error en flujo de sincronía:", error);
+      toast({ title: "Sincronía lenta", description: "Revisando conexión con el Nido...", variant: "destructive" });
+    } finally {
+      // Pase lo que pase, liberamos la pantalla de carga
+      setLoading(false);
     }
   };
 
@@ -92,7 +102,7 @@ const Index = () => {
     setAiMessage("Leyendo circular...");
 
     try {
-      const fileName = `${myNestId}/${Date.now()}-${file.name}`;
+      const fileName = `${myNestId || 'unassigned'}/${Date.now()}-${file.name}`;
       const { error: uploadError } = await supabase.storage
         .from('event-attachments')
         .upload(fileName, file);
@@ -120,13 +130,19 @@ const Index = () => {
     }
   };
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-white space-y-4">
+        <div className="w-12 h-12 border-4 border-sky-100 border-t-sky-500 rounded-full animate-spin" />
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">Sincronizando Nido</p>
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-screen w-full bg-slate-50/50">
       <Header />
       
-      {/* CONTENIDO PRINCIPAL DINÁMICO */}
       <main className="container mx-auto px-6 pt-10 max-w-md relative z-10 pb-48">
         <AnimatePresence mode="wait">
           {activeTab === "home" && (
@@ -157,7 +173,7 @@ const Index = () => {
                 {familyMembers.map((member) => (
                   <div key={member.id} className="p-10 rounded-[3.5rem] bg-white border border-white shadow-sm flex flex-col items-center">
                     <div className="w-24 h-24 rounded-[2.5rem] flex items-center justify-center text-3xl font-black text-white mb-6 shadow-inner" style={{ backgroundColor: member.avatar_url || '#cbd5e1' }}>
-                      {member.display_name?.charAt(0)}
+                      {member.display_name?.charAt(0).toUpperCase()}
                     </div>
                     <span className="font-black text-slate-800 text-lg text-center">{member.display_name}</span>
                   </div>
@@ -177,10 +193,9 @@ const Index = () => {
         </AnimatePresence>
       </main>
 
-      {/* NAVEGACIÓN ÉLITE */}
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
 
-      {/* FAB - BOTÓN DE ACCIÓN FLOTANTE */}
+      {/* FAB */}
       <div className="fixed bottom-40 right-10 z-[110]">
         <div className={`flex flex-col gap-6 mb-8 transition-all duration-500 ${isFabOpen ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-10 scale-50 pointer-events-none'}`}>
           <button 
@@ -206,7 +221,6 @@ const Index = () => {
 
       <input type="file" ref={fileInputRef} className="hidden" accept="image/*" capture="environment" onChange={handleFileChange} />
 
-      {/* OVERLAY PROCESANDO IA */}
       <AnimatePresence>
         {isAiProcessing && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[300] flex items-center justify-center bg-white/60 backdrop-blur-2xl">
