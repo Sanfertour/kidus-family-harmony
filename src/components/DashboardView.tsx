@@ -1,78 +1,116 @@
+import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
-import { Calendar, Users, Zap, Bell } from "lucide-react";
+import { triggerHaptic } from "@/utils/haptics";
+import { Plus, Users, Sparkles, copy } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface DashboardProps {
   membersCount: number;
   onNavigate: (tab: string) => void;
+  nextEvent: string;
+  nestId: string | null;
 }
 
-const triggerHaptic = (type: 'soft' | 'success') => {
-  if (typeof navigator !== "undefined" && navigator.vibrate) {
-    type === 'soft' ? navigator.vibrate(10) : navigator.vibrate([20, 30, 20]);
-  }
-};
+export const DashboardView = ({ membersCount, onNavigate, nextEvent, nestId }: DashboardProps) => {
+  const { toast } = useToast();
+  const [isCreating, setIsCreating] = useState(false);
 
-export const DashboardView = ({ membersCount, onNavigate }: DashboardProps) => {
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Buen día" : hour < 20 ? "Energía alta" : "Nido en calma";
+  // Función para generar el código KID-XXXXX
+  const createNest = async () => {
+    setIsCreating(true);
+    triggerHaptic('medium');
+    
+    const randomCode = `KID-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // 1. Crear el Nido
+      const { data: nest, error: nestError } = await supabase
+        .from('nests')
+        .insert([{ nest_code: randomCode, name: `Nido de ${user.email?.split('@')[0]}` }])
+        .select()
+        .single();
+
+      if (nestError) throw nestError;
+
+      // 2. Vincular al Guía con este Nido
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ nest_id: nest.id })
+        .eq('id', user.id);
+
+      if (profileError) throw profileError;
+
+      toast({ title: "Nido Creado", description: `Tu código es ${randomCode}. ¡Sincronía activada!` });
+      window.location.reload(); // Recargamos para que Index pille el nuevo nest_id
+      
+    } catch (error) {
+      toast({ title: "Error", description: "No se pudo crear el nido.", variant: "destructive" });
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  if (!nestId) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 space-y-12 text-center">
+        <motion.div 
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="p-10 bg-white/60 backdrop-blur-3xl rounded-[4rem] border border-white shadow-brisa max-w-sm"
+        >
+          <div className="w-20 h-20 bg-sky-500 rounded-[2.5rem] flex items-center justify-center text-white mx-auto mb-8 shadow-xl">
+            <Plus size={40} strokeWidth={3} />
+          </div>
+          <h2 className="text-4xl font-black text-slate-900 tracking-tighter mb-4">Bienvenido, Guía</h2>
+          <p className="text-slate-500 text-sm font-medium leading-relaxed mb-10">
+            Tu nido aún no está sincronizado. Crea uno nuevo para empezar a gestionar tu tribu.
+          </p>
+          <button
+            onClick={createNest}
+            disabled={isCreating}
+            className="w-full py-6 bg-slate-900 text-white rounded-[2.2rem] font-black uppercase tracking-[0.2em] text-[10px] active:scale-95 transition-all shadow-2xl disabled:opacity-50"
+          >
+            {isCreating ? "Sincronizando..." : "Crear mi Nido"}
+          </button>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }} 
-      animate={{ opacity: 1, y: 0 }} 
-      exit={{ opacity: 0, y: -20 }} 
-      className="space-y-8"
-    >
-      {/* HEADER DINÁMICO */}
-      <div className="px-2">
-        <h1 className="text-5xl font-black text-slate-800 leading-[1.1] tracking-tighter font-nunito">
-          {greeting}, <br/> <span className="text-[#0EA5E9]">Guía.</span>
-        </h1>
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mt-3">Estado del Nido</p>
-      </div>
-
-      {/* CARD DE ESTADO (GLASS) */}
-      <div className="p-10 rounded-[3.5rem] bg-white/60 backdrop-blur-2xl border border-white/40 shadow-xl shadow-slate-200/20 relative overflow-hidden group">
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+      {/* CARD PRINCIPAL: ESTADO DEL NIDO */}
+      <section className="bg-white/70 backdrop-blur-3xl p-10 rounded-[3.5rem] border border-white shadow-brisa relative overflow-hidden">
         <div className="relative z-10">
-          <label className="text-[10px] font-black text-[#0EA5E9] uppercase tracking-[0.2em] mb-4 block">Sincronía Actual</label>
-          <div className="flex items-baseline gap-2">
-            <h3 className="text-5xl font-black text-slate-800">{membersCount}</h3>
-            <span className="text-xl font-bold text-slate-400">integrantes</span>
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-sky-500">Sincronía Activa</span>
           </div>
-          <p className="text-slate-500 font-bold text-sm tracking-tight mt-2">La tribu fluye en total armonía.</p>
+          <h3 className="text-5xl font-black text-slate-900 tracking-tighter mb-2">Tu Tribu</h3>
+          <p className="text-slate-400 font-medium">{membersCount} integrantes conectados</p>
         </div>
-        <Zap className="absolute -right-4 -bottom-4 text-[#0EA5E9]/5 w-32 h-32 rotate-12 group-hover:rotate-0 transition-transform duration-700" />
-      </div>
+        <Users className="absolute right-[-20px] bottom-[-20px] text-slate-50 w-40 h-40 -z-0" />
+      </section>
 
-      {/* ACCESOS RÁPIDOS */}
-      <div className="grid grid-cols-2 gap-5">
-        <button 
-          onClick={() => { triggerHaptic('soft'); onNavigate("agenda"); }} 
-          className="p-10 rounded-[3.5rem] flex flex-col items-center gap-4 bg-[#0EA5E9] text-white shadow-2xl active:scale-95 transition-all group"
-        >
-          <Calendar size={32} strokeWidth={3} className="group-hover:scale-110 transition-transform" />
-          <span className="text-[11px] font-black uppercase tracking-widest">Agenda</span>
-        </button>
-        
-        <button 
-          onClick={() => { triggerHaptic('soft'); onNavigate("family"); }} 
-          className="p-10 rounded-[3.5rem] flex flex-col items-center gap-4 bg-white/60 backdrop-blur-xl text-[#F97316] border border-white/40 shadow-xl active:scale-95 transition-all group"
-        >
-          <Users size={32} strokeWidth={3} className="group-hover:scale-110 transition-transform" />
-          <span className="text-[11px] font-black uppercase tracking-widest">Tribu</span>
-        </button>
-      </div>
-
-      {/* PRÓXIMO HIT DE LA TRIBU */}
-      <div className="mx-2 p-6 rounded-[2.5rem] bg-slate-800 text-white/90 flex items-center gap-4 shadow-lg">
-        <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center">
-          <Bell size={20} className="text-[#0EA5E9]" />
+      {/* CARD: PRÓXIMO EVENTO */}
+      <button 
+        onClick={() => onNavigate("agenda")}
+        className="w-full bg-slate-900 p-10 rounded-[3.5rem] text-left shadow-2xl shadow-slate-200 group active:scale-[0.98] transition-all"
+      >
+        <div className="flex justify-between items-start mb-10">
+          <div className="p-4 bg-white/10 rounded-2xl text-white">
+            <Sparkles size={24} />
+          </div>
+          <span className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Próximo en Sincro</span>
         </div>
-        <div>
-          <p className="text-[9px] font-black uppercase tracking-widest opacity-50">Próximo objetivo</p>
-          <p className="text-sm font-bold">Logística de la tribu sincronizada</p>
-        </div>
-      </div>
-    </motion.div>
+        <h4 className="text-3xl font-black text-white tracking-tighter leading-tight">
+          {nextEvent || "No hay eventos hoy"}
+        </h4>
+      </button>
+    </div>
   );
 };
