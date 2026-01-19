@@ -1,36 +1,30 @@
 import { useState, useEffect, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { motion, AnimatePresence } from "framer-motion";
-import { Camera, Plus } from "lucide-react";
-
-// Store Global (Zustand)
-import { useNestStore } from "@/store/useNestStore";
+import { Camera, Plus, Users } from "lucide-react";
 
 // Componentes del Ecosistema KidUs
 import Header from "@/components/Header";
 import { DashboardView } from "@/components/DashboardView";
 import { AgendaView } from "@/components/AgendaView";
 import { SettingsView } from "@/components/SettingsView";
-import { VaultView } from "@/components/VaultView"; // Importamos la nueva Bóveda
+import { VaultView } from "@/components/VaultView"; // IMPORTANTE: Asegúrate de que este archivo exista
 import { BottomNav } from "@/components/BottomNav";
 import { ManualEventDrawer } from "@/components/ManualEventDrawer";
 
 // Utilidades
 import { triggerHaptic } from "@/utils/haptics";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
-  // --- CONSUMO DEL STORE (Cerebro Global) ---
-  const { 
-    isLoading, 
-    nestId, 
-    familyMembers, 
-    fetchSession, 
-    nextEventTitle 
-  } = useNestStore();
-
-  // --- UI STATE LOCAL ---
+  // --- ESTADO GLOBAL ---
   const [activeTab, setActiveTab] = useState("home");
+  const [familyMembers, setFamilyMembers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [myNestId, setMyNestId] = useState("");
+  const [nextEventTitle, setNextEventTitle] = useState("");
+  
+  // --- UI STATE ---
   const [isFabOpen, setIsFabOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isAiProcessing, setIsAiProcessing] = useState(false);
@@ -40,12 +34,61 @@ const Index = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  // --- CARGA INICIAL ---
+  // --- CICLO DE VIDA ---
   useEffect(() => {
-    fetchSession();
+    const initApp = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          await fetchAllData();
+        } else {
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error("Error inicializando sesión:", error);
+        setLoading(false);
+      }
+    };
+    initApp();
   }, []);
 
-  // --- LÓGICA DE IA VISION (PROCESAMIENTO) ---
+  const fetchAllData = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('nest_id')
+        .eq('id', user.id)
+        .maybeSingle();
+      
+      if (profileError) throw profileError;
+      
+      if (profile?.nest_id) {
+        setMyNestId(profile.nest_id);
+        
+        const [profilesRes, eventsRes] = await Promise.all([
+          supabase.from('profiles').select('*').eq('nest_id', profile.nest_id).order('role', { ascending: true }),
+          supabase.from('events')
+            .select('title')
+            .eq('nest_id', profile.nest_id)
+            .gte('start_time', new Date().toISOString())
+            .order('start_time', { ascending: true })
+            .limit(1)
+            .maybeSingle()
+        ]);
+
+        if (profilesRes.data) setFamilyMembers(profilesRes.data);
+        if (eventsRes.data) setNextEventTitle(eventsRes.data.title);
+      }
+    } catch (error) {
+      console.error("Error en flujo de sincronía:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -55,7 +98,7 @@ const Index = () => {
     setAiMessage("Leyendo circular...");
 
     try {
-      const fileName = `${nestId || 'unassigned'}/${Date.now()}-${file.name}`;
+      const fileName = `${myNestId || 'unassigned'}/${Date.now()}-${file.name}`;
       const { error: uploadError } = await supabase.storage
         .from('event-attachments')
         .upload(fileName, file);
@@ -67,7 +110,7 @@ const Index = () => {
         .getPublicUrl(fileName);
       
       const { data: aiResult, error: aiError } = await supabase.functions.invoke('process-image-ai', { 
-        body: { imageUrl: publicUrl, nest_id: nestId } 
+        body: { imageUrl: publicUrl, nest_id: myNestId } 
       });
 
       if (aiError) throw aiError;
@@ -83,32 +126,23 @@ const Index = () => {
     }
   };
 
-  // --- PANTALLA DE CARGA ÉLITE ---
-  if (isLoading) {
+  if (loading) {
     return (
-      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-white space-y-6">
-        <div className="relative w-20 h-20">
-          <div className="absolute inset-0 border-8 border-sky-100 rounded-[2.5rem]" />
-          <div className="absolute inset-0 border-8 border-t-sky-500 rounded-[2.5rem] animate-spin" />
-        </div>
-        <div className="text-center">
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em] animate-pulse">
-            Sincronizando Nido
-          </p>
-        </div>
+      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-white space-y-4">
+        <div className="w-12 h-12 border-4 border-sky-100 border-t-sky-500 rounded-full animate-spin" />
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">Sincronizando Nido</p>
       </div>
     );
   }
 
   return (
-    <div className="relative min-h-screen w-full bg-nido-mesh">
+    <div className="relative min-h-screen w-full bg-slate-50/50">
       <Header />
       
       <main className="container mx-auto px-6 pt-10 max-w-md relative z-10 pb-48">
         <AnimatePresence mode="wait">
           {activeTab === "home" && (
             <DashboardView 
-              key="home"
               membersCount={familyMembers.length} 
               onNavigate={setActiveTab}
               nextEvent={nextEventTitle}
@@ -116,21 +150,20 @@ const Index = () => {
           )}
 
           {activeTab === "agenda" && (
-            <motion.div key="agenda" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+            <motion.div key="agenda" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
               <AgendaView />
             </motion.div>
           )}
 
           {activeTab === "vault" && (
-            <VaultView key="vault" nestId={nestId || ""} />
+            <VaultView nestId={myNestId} />
           )}
 
           {activeTab === "settings" && (
             <SettingsView 
-              key="settings"
-              nestId={nestId || ""} 
+              nestId={myNestId} 
               members={familyMembers} 
-              onRefresh={fetchSession}
+              onRefresh={fetchAllData}
               onClose={() => setActiveTab("home")}
             />
           )}
@@ -139,7 +172,7 @@ const Index = () => {
 
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
 
-      {/* FAB - ACCIONES RÁPIDAS */}
+      {/* FAB ACCIONES */}
       <div className="fixed bottom-40 right-10 z-[110]">
         <div className={`flex flex-col gap-6 mb-8 transition-all duration-500 ${isFabOpen ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-10 scale-50 pointer-events-none'}`}>
           <button 
@@ -157,7 +190,7 @@ const Index = () => {
         </div>
         <button 
           onClick={() => { triggerHaptic('soft'); setIsFabOpen(!isFabOpen); }} 
-          className={`w-24 h-24 rounded-[3rem] flex items-center justify-center text-white shadow-2xl transition-all duration-500 ${isFabOpen ? 'rotate-[135deg] bg-slate-900' : 'bg-sky-500 shadow-sky-200'}`}
+          className={`w-24 h-24 rounded-[3rem] flex items-center justify-center text-white shadow-2xl transition-all duration-500 ${isFabOpen ? 'rotate-[135deg] bg-slate-900' : 'bg-sky-500'}`}
         >
           <Plus size={44} strokeWidth={3} />
         </button>
@@ -165,26 +198,16 @@ const Index = () => {
 
       <input type="file" ref={fileInputRef} className="hidden" accept="image/*" capture="environment" onChange={handleFileChange} />
 
-      {/* OVERLAY IA */}
       <AnimatePresence>
         {isAiProcessing && (
-          <motion.div 
-            initial={{ opacity: 0 }} 
-            animate={{ opacity: 1 }} 
-            exit={{ opacity: 0 }} 
-            className="fixed inset-0 z-[300] flex items-center justify-center bg-white/60 backdrop-blur-2xl"
-          >
-            <div className="flex flex-col items-center gap-10 p-16 bg-white rounded-[5rem] shadow-2xl border border-white">
-              <div className="relative w-32 h-32 bg-sky-50 rounded-[3rem] flex items-center justify-center text-sky-500">
-                <div className="absolute inset-0 bg-sky-400/20 rounded-[3rem] animate-ping" />
-                <Camera size={48} className="animate-pulse" />
+          <div className="fixed inset-0 z-[300] flex items-center justify-center bg-white/60 backdrop-blur-2xl">
+             <div className="flex flex-col items-center gap-10 p-16 bg-white rounded-[5rem] shadow-2xl border border-white">
+              <div className="relative w-32 h-32 bg-sky-50 rounded-[3rem] flex items-center justify-center text-sky-500 animate-pulse">
+                <Camera size={48} />
               </div>
-              <div className="text-center space-y-4">
-                <h3 className="text-4xl font-black text-slate-900 tracking-tighter">IA KidUs</h3>
-                <p className="text-sky-500 font-black text-[10px] uppercase tracking-[0.6em]">{aiMessage}</p>
-              </div>
+              <p className="text-sky-500 font-black text-[10px] uppercase tracking-[0.6em]">{aiMessage}</p>
             </div>
-          </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
@@ -192,7 +215,7 @@ const Index = () => {
         isOpen={isDrawerOpen} 
         onClose={() => { setIsDrawerOpen(false); setScannedData(null); }} 
         members={familyMembers} 
-        onEventAdded={() => { fetchSession(); setActiveTab("agenda"); }} 
+        onEventAdded={() => { fetchAllData(); setActiveTab("agenda"); }} 
         initialData={scannedData} 
       />
     </div>
