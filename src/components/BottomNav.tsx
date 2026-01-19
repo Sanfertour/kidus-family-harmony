@@ -1,26 +1,22 @@
 import { motion } from "framer-motion";
 import { Home, Calendar, Users, FileText, Settings } from "lucide-react";
-
-const triggerNavHaptic = () => {
-  if (typeof navigator !== "undefined" && navigator.vibrate) {
-    navigator.vibrate(10);
-  }
-};
+import { triggerHaptic } from "@/utils/haptics"; // Unificamos con tu utilidad
 
 const navItems = [
   { id: "home", icon: Home, label: "Nido" },
-  { id: "calendar", icon: Calendar, label: "Sincro" },
-  { id: "tribe", icon: Users, label: "Tribu" },
+  { id: "agenda", icon: Calendar, label: "Sincro" }, // Cambiado a 'agenda' para coincidir con Index
+  { id: "family", icon: Users, label: "Tribu" },    // Cambiado a 'family' para coincidir con Index
   { id: "vault", icon: FileText, label: "Bóveda" },
   { id: "settings", icon: Settings, label: "Radar" },
 ];
 
-export const BottomNav = ({ activeTab, onTabChange }: any) => {
+export const BottomNav = ({ activeTab, onTabChange }: { activeTab: string, onTabChange: (id: string) => void }) => {
   return (
     <motion.nav
-      className="fixed bottom-0 left-0 right-0 h-24 bg-white/80 backdrop-blur-3xl border-t border-white/50 px-6 flex items-center justify-around z-50 pb-4 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]"
-      initial={{ y: 100 }}
+      className="fixed bottom-0 left-0 right-0 h-32 bg-white/70 backdrop-blur-[40px] border-t border-white/50 px-8 flex items-center justify-around z-50 pb-8 shadow-[0_-15px_50px_rgba(0,0,0,0.03)] rounded-t-[3.5rem]"
+      initial={{ y: 120 }}
       animate={{ y: 0 }}
+      transition={{ type: "spring", damping: 25, stiffness: 200 }}
     >
       {navItems.map((item) => {
         const Icon = item.icon;
@@ -30,32 +26,41 @@ export const BottomNav = ({ activeTab, onTabChange }: any) => {
           <button
             key={item.id}
             onClick={() => {
-              triggerNavHaptic();
+              triggerHaptic('soft');
               onTabChange(item.id);
             }}
-            className="flex flex-col items-center gap-1.5 group relative outline-none flex-1"
+            className="flex flex-col items-center gap-2 group relative outline-none flex-1 transition-all"
           >
-            {/* Indicador superior animado */}
-            {isActive && (
-              <motion.div
-                layoutId="navIndicator"
-                className="absolute -top-4 w-10 h-1 bg-[#0EA5E9] rounded-full shadow-[0_0_12px_#0EA5E9]"
-                transition={{ type: "spring", stiffness: 380, damping: 30 }}
-              />
-            )}
+            {/* Indicador de Activación Brisa */}
+            <AnimatePresence>
+              {isActive && (
+                <motion.div
+                  layoutId="activePill"
+                  className="absolute -top-4 w-12 h-1.5 bg-sky-500 rounded-full shadow-[0_0_20px_rgba(14,165,233,0.4)]"
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.5 }}
+                />
+              )}
+            </AnimatePresence>
             
-            {/* Contenedor del Icono con contraste ajustado */}
-            <div className={`p-1.5 transition-all duration-300 ${isActive ? "scale-115" : "opacity-70"}`}>
+            {/* Contenedor del Icono con escala dinámica */}
+            <motion.div 
+              animate={{ 
+                scale: isActive ? 1.2 : 1,
+                y: isActive ? -4 : 0 
+              }}
+              className={`p-1 transition-colors duration-300 ${isActive ? "text-sky-500" : "text-slate-400 group-hover:text-slate-600"}`}
+            >
               <Icon 
-                size={24} 
-                strokeWidth={isActive ? 2.5 : 2}
-                className={isActive ? "text-[#0EA5E9]" : "text-slate-800"} 
+                size={26} 
+                strokeWidth={isActive ? 3 : 2}
               />
-            </div>
+            </motion.div>
             
-            {/* Texto del Radar/Tribu */}
-            <span className={`text-[9px] font-black uppercase tracking-[0.2em] transition-colors duration-300 ${
-              isActive ? "text-slate-900" : "text-slate-500"
+            {/* Texto de la Tribu / Radar */}
+            <span className={`text-[9px] font-black uppercase tracking-[0.3em] transition-all duration-300 ${
+              isActive ? "text-slate-900 opacity-100" : "text-slate-400 opacity-60"
             }`}>
               {item.label}
             </span>
