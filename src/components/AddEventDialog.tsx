@@ -1,159 +1,170 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Bell, X, Loader2 } from "lucide-react";
+import { Plus, Bell, X, Loader2, Lock, Eye, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { checkConflicts } from "@/lib/nest-logic";
+import { triggerHaptic } from "@/utils/haptics";
 
 export const AddEventDialog = ({ members, onEventAdded, children }: { members: any[], onEventAdded: () => void, children?: React.ReactNode }) => {
   const [title, setTitle] = useState("");
   const [memberId, setMemberId] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
-  // Mantenemos la funcionalidad: Añadimos el estado de recordatorio sin alterar lo demás
   const [reminder, setReminder] = useState("24h"); 
+  const [isPrivate, setIsPrivate] = useState(false); // NUEVO: Modo Privado
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
 
-  const triggerHaptic = (type: 'soft' | 'success') => {
-    if (typeof navigator !== "undefined" && navigator.vibrate) {
-      if (type === 'soft') navigator.vibrate(10);
-      else navigator.vibrate([20, 30, 20]);
-    }
-  };
-
   const handleSave = async () => {
     if (!title || !memberId || !date || !time) {
-      toast({ title: "Faltan datos", description: "Completa todos los campos, capitán.", variant: "destructive" });
+      toast({ title: "Faltan datos", description: "El Nido necesita saber qué y cuándo.", variant: "destructive" });
       return;
     }
     setLoading(true);
 
-    const fullStartTime = `${date}T${time}:00`;
-    const endTime = new Date(new Date(fullStartTime).getTime() + 60 * 60 * 1000).toISOString(); 
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: profile } = await supabase.from('profiles').select('nest_id').eq('id', user?.id).single();
 
-    const conflicts = await checkConflicts(memberId, fullStartTime, endTime);
+      if (!profile?.nest_id) throw new Error("No tienes un Nido vinculado");
 
-    if (conflicts.length > 0) {
-      toast({ 
-        title: "¡Conflicto de Agenda!", 
-        description: `${members.find(m => m.id === memberId)?.display_name} ya tiene un evento a esa hora.`, 
-        variant: "destructive" 
-      });
-      setLoading(false);
-      return;
-    }
-    
-    // Mantenemos tu estructura de tabla exacta:
-    const { error } = await supabase
-      .from('events')
-      .insert([{ 
-        title, 
-        member_id: memberId, 
-        start_time: fullStartTime,
-        end_time: endTime,
-        category: 'logistics',
-        reminder_setting: reminder // Se añade el valor del selector
-      }]);
+      const fullStartTime = `${date}T${time}:00`;
+      const endTime = new Date(new Date(fullStartTime).getTime() + 60 * 60 * 1000).toISOString(); 
 
-    if (error) {
-      toast({ title: "Error", description: "No se pudo guardar el evento.", variant: "destructive" });
-    } else {
-      toast({ title: "¡Evento creado!", description: "La agenda se ha actualizado." });
+      // Insertamos con la nueva lógica de Sincronía
+      const { error } = await supabase
+        .from('events')
+        .insert([{ 
+          title, 
+          assigned_to: memberId, // Cambiado de member_id a assigned_to según el esquema Élite
+          nest_id: profile.nest_id, // CRÍTICO: Vinculación al Nido
+          created_by: user?.id,
+          start_time: fullStartTime,
+          end_time: endTime,
+          category: 'general',
+          reminder_setting: reminder,
+          is_private: isPrivate // NUEVO
+        }]);
+
+      if (error) throw error;
+
+      triggerHaptic('medium');
+      toast({ title: "Sincronía completada", description: "El evento ya está en el Nido." });
       setOpen(false);
+      resetForm();
       onEventAdded();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
+  };
+
+  const resetForm = () => {
+    setTitle("");
+    setMemberId("");
+    setDate("");
+    setTime("");
+    setIsPrivate(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild onClick={() => triggerHaptic('soft')}>
         {children || (
-          <Button size="sm" className="rounded-full bg-slate-800 hover:bg-slate-700 shadow-lg">
-            <Plus className="w-4 h-4 mr-1" /> Añadir Evento
+          <Button size="lg" className="rounded-[2rem] bg-slate-900 hover:bg-sky-600 shadow-2xl transition-all duration-500 gap-2 px-8">
+            <Plus className="w-5 h-5" /> 
+            <span className="font-black text-[10px] tracking-[0.2em] uppercase">Añadir Evento</span>
           </Button>
         )}
       </DialogTrigger>
 
-      <DialogContent className="max-w-[90vw] sm:max-w-[440px] border-none bg-white/95 backdrop-blur-2xl shadow-2xl rounded-[3.5rem] p-10 outline-none overflow-hidden font-sans">
+      <DialogContent className="max-w-[95vw] sm:max-w-[480px] border-none bg-white/80 backdrop-blur-[40px] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.2)] rounded-[4rem] p-10 outline-none overflow-hidden">
         
-        <DialogClose className="absolute right-8 top-8 p-2 rounded-2xl bg-slate-100 text-slate-400 hover:text-slate-800 transition-all active:scale-90 z-50">
+        <DialogClose className="absolute right-10 top-10 p-3 rounded-2xl bg-white/50 text-slate-400 hover:text-slate-900 transition-all active:scale-90 z-50">
           <X size={20} strokeWidth={3} />
         </DialogClose>
 
-        <DialogHeader className="mb-8">
-          <DialogTitle className="text-4xl font-black text-slate-800 tracking-tighter font-nunito leading-tight">Nuevo Evento</DialogTitle>
-          <p className="text-[10px] font-black text-sky-500 uppercase tracking-[0.4em] mt-2">Sincronía KidUs</p>
+        <DialogHeader className="mb-10">
+          <div className="flex items-center gap-3 mb-4">
+             <div className="p-2 bg-sky-500/10 rounded-lg">
+                <Sparkles size={16} className="text-sky-500" />
+             </div>
+             <p className="text-[10px] font-black text-sky-500 uppercase tracking-[0.4em]">Nueva Entrada</p>
+          </div>
+          <DialogTitle className="text-5xl font-black text-slate-900 tracking-tighter leading-none">Crea Sincronía</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* TÍTULO - Más grande y central */}
           <Input 
-            placeholder="¿Qué hay que hacer?" 
+            placeholder="¿Qué planes hay?" 
             value={title} 
             onChange={(e) => setTitle(e.target.value)} 
-            className="h-16 rounded-[1.8rem] border-none bg-slate-100/50 px-8 font-black text-slate-800 placeholder:text-slate-300 focus:ring-4 focus:ring-sky-500/10 transition-all text-lg text-center" 
+            className="h-20 rounded-[2rem] border-none bg-white/60 px-8 font-black text-slate-900 placeholder:text-slate-300 focus:ring-4 focus:ring-sky-500/10 transition-all text-2xl text-center" 
           />
           
           <select 
-            className="w-full h-16 rounded-[1.8rem] border-none bg-slate-100/50 px-6 font-black text-slate-600 focus:ring-4 focus:ring-sky-500/10 transition-all cursor-pointer appearance-none text-center"
+            className="w-full h-16 rounded-[1.8rem] border-none bg-white/60 px-6 font-black text-slate-600 focus:ring-4 focus:ring-sky-500/10 transition-all cursor-pointer appearance-none text-center"
             value={memberId}
             onChange={(e) => setMemberId(e.target.value)}
           >
-            <option value="">¿Para quién?</option>
+            <option value="">¿A quién asignamos?</option>
             {members.map(m => (
               <option key={m.id} value={m.id}>{m.display_name}</option>
             ))}
           </select>
 
-          <div className="flex gap-3">
-            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-16 rounded-[1.8rem] border-none bg-slate-100/50 px-4 font-black text-slate-600 focus:ring-4 focus:ring-sky-500/10" />
-            <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="h-16 rounded-[1.8rem] border-none bg-slate-100/50 px-4 font-black text-slate-600 focus:ring-4 focus:ring-sky-500/10" />
+          <div className="flex gap-4">
+            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-16 rounded-[1.8rem] border-none bg-white/60 px-4 font-black text-slate-600" />
+            <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="h-16 rounded-[1.8rem] border-none bg-white/60 px-4 font-black text-slate-600" />
           </div>
 
-          {/* CONFIGURADOR DE RECORDATORIO ESTÉTICO */}
-          <div className="p-6 bg-slate-50 rounded-[2.5rem] space-y-4">
-            <div className="flex items-center gap-2 justify-center">
-              <Bell size={14} className="text-sky-500" />
-              <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Aviso previo</span>
+          <div className="grid grid-cols-2 gap-4">
+            {/* RECORDATORIO */}
+            <div className="p-4 bg-slate-900/5 rounded-[2rem] flex flex-col items-center justify-center gap-3">
+              <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Aviso</span>
+              <div className="flex gap-1">
+                {['1h', '24h'].map((opt) => (
+                  <button
+                    key={opt}
+                    onClick={() => { triggerHaptic('soft'); setReminder(opt); }}
+                    className={`px-4 py-2 rounded-xl text-[10px] font-black transition-all ${reminder === opt ? 'bg-slate-900 text-white' : 'bg-white text-slate-400'}`}
+                  >
+                    {opt}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="flex gap-2">
-              {['30m', '1h', '24h'].map((opt) => (
-                <button
-                  key={opt}
-                  type="button"
-                  onClick={() => { triggerHaptic('soft'); setReminder(opt); }}
-                  className={`flex-1 py-3 rounded-2xl text-[10px] font-black transition-all ${reminder === opt ? 'bg-slate-800 text-white shadow-lg scale-105' : 'bg-white text-slate-400 hover:bg-white/80'}`}
-                >
-                  {opt}
-                </button>
-              ))}
-            </div>
-          </div>
 
-          <div className="flex flex-col gap-3 pt-4">
-            <Button 
-              onClick={handleSave} 
-              disabled={loading} 
-              className="w-full h-20 rounded-[2.5rem] bg-slate-800 hover:bg-slate-900 text-white font-black text-sm tracking-[0.2em] shadow-xl active:scale-95 transition-all duration-400 uppercase"
+            {/* MODO PRIVADO */}
+            <button
+              onClick={() => { triggerHaptic('soft'); setIsPrivate(!isPrivate); }}
+              className={`p-4 rounded-[2rem] flex flex-col items-center justify-center gap-3 transition-all duration-500 ${isPrivate ? 'bg-orange-500 text-white shadow-lg shadow-orange-200' : 'bg-slate-900/5 text-slate-400'}`}
             >
-              {loading ? <Loader2 className="animate-spin" /> : "Añadir al Nido"}
-            </Button>
-
-            <DialogClose asChild>
-              <Button 
-                variant="ghost" 
-                type="button"
-                onClick={() => triggerHaptic('soft')}
-                className="w-full h-14 rounded-[2rem] font-black text-slate-400 uppercase tracking-widest text-[9px] hover:bg-transparent"
-              >
-                Volver a la Agenda
-              </Button>
-            </DialogClose>
+              <span className="text-[9px] font-black uppercase tracking-widest opacity-60">Privacidad</span>
+              <div className="flex items-center gap-2">
+                {isPrivate ? <Lock size={14} /> : <Eye size={14} />}
+                <span className="text-[10px] font-black uppercase">{isPrivate ? "Privado" : "Público"}</span>
+              </div>
+            </button>
           </div>
+
+          <Button 
+            onClick={handleSave} 
+            disabled={loading} 
+            className="w-full h-24 rounded-[2.8rem] bg-slate-900 hover:bg-sky-500 text-white font-black text-lg tracking-[0.1em] shadow-2xl active:scale-[0.97] transition-all duration-500 mt-4 group"
+          >
+            {loading ? <Loader2 className="animate-spin" /> : (
+              <div className="flex items-center gap-3">
+                AÑADIR AL NIDO
+                <ChevronRight className="group-hover:translate-x-2 transition-transform" />
+              </div>
+            )}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
