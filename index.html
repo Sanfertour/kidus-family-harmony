@@ -7,40 +7,49 @@
       content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1, user-scalable=no" 
     />
     
-    <title>KidUs - Tu Guía de Paz Familiar</title>
-    <meta name="description" content="Sincroniza tu Nido y transforma el caos en calma. Gestión inteligente para la Tribu." />
-    <meta name="author" content="KidUs" />
-
+    <title>KidUs - Gestión Familiar Élite</title>
+    <meta name="description" content="Sincroniza tu Nido. Gestión inteligente para Guías." />
+    
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     
-    <meta name="theme-color" content="#F97316" />
+    <meta name="theme-color" content="#F8FAFC" />
 
-    <meta property="og:title" content="KidUs - Equipo en Calma" />
-    <meta property="og:description" content="La herramienta definitiva para la sincronización de Guías y la protección de los Peques." />
-    <meta property="og:type" content="website" />
+    <meta property="og:title" content="KidUs - Sincronía Familiar" />
     <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
-
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@KidUsApp" />
-    <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800;900&display=swap" rel="stylesheet">
     
     <link rel="icon" type="image/png" href="/favicon.ico" />
 
     <style>
-      /* Prevención de comportamientos extraños en scroll de Nido */
+      :root {
+        --sat: env(safe-area-inset-top);
+        --sar: env(safe-area-inset-right);
+        --sab: env(safe-area-inset-bottom);
+        --sal: env(safe-area-inset-left);
+      }
+
       html, body {
         height: 100%;
         margin: 0;
         padding: 0;
-        overflow: hidden;
-        background-color: #F8FAFC; /* Slate 50 */
+        /* Evita el scroll elástico que rompe la sensación de app nativa */
+        overflow: hidden; 
+        background-color: #F8FAFC; 
+        font-family: 'Nunito', sans-serif;
         -webkit-tap-highlight-color: transparent;
+        /* Suavizado de fuentes para pantallas retina */
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      #root {
+        height: 100%;
+        width: 100%;
       }
     </style>
 
@@ -51,17 +60,11 @@
         OneSignal.init({
           appId: "810a2f7e-f786-42b0-af39-1cc848d55248",
           allowLocalhostAsSecureOrigin: true,
-          serviceWorkerParam: { scope: "/" },
-          serviceWorkerPath: "OneSignalSDKWorker.js",
         });
 
-        // Toque Pro: Escuchador de eventos para asegurar la sincronía de la Tribu
         OneSignal.Notifications.addEventListener("permissionChange", function(permission) {
           if (permission) {
-            console.log("🌿 KidUs: La Tribu ha sincronizado las notificaciones.");
-            // Aquí podrías disparar el navigator.vibrate([20, 30, 20]) si quisieras
-          } else {
-            console.warn("⚠️ KidUs: El Nido está operando sin notificaciones activas.");
+            console.log("🌿 KidUs: Sincronía de notificaciones activada.");
           }
         });
       });
