@@ -1,14 +1,16 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { motion, AnimatePresence } from "framer-motion";
-import { Camera, Plus, Users } from "lucide-react";
+import { Camera, Plus } from "lucide-react";
+import { Auth } from "@supabase/auth-ui-react";
+import { ThemeSupa } from "@supabase/auth-ui-shared";
 
 // Componentes del Ecosistema KidUs
 import Header from "@/components/Header";
 import { DashboardView } from "@/components/DashboardView";
 import { AgendaView } from "@/components/AgendaView";
 import { SettingsView } from "@/components/SettingsView";
-import { VaultView } from "@/components/VaultView"; // IMPORTANTE: Asegúrate de que este archivo exista
+import { VaultView } from "@/components/VaultView";
 import { BottomNav } from "@/components/BottomNav";
 import { ManualEventDrawer } from "@/components/ManualEventDrawer";
 
@@ -17,10 +19,13 @@ import { triggerHaptic } from "@/utils/haptics";
 import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
+  // --- ESTADO DE SESIÓN ---
+  const [session, setSession] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  
   // --- ESTADO GLOBAL ---
   const [activeTab, setActiveTab] = useState("home");
   const [familyMembers, setFamilyMembers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [myNestId, setMyNestId] = useState("");
   const [nextEventTitle, setNextEventTitle] = useState("");
   
@@ -34,22 +39,26 @@ const Index = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  // --- CICLO DE VIDA ---
+  // --- CONTROL DE AUTENTICACIÓN ---
   useEffect(() => {
-    const initApp = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          await fetchAllData();
-        } else {
-          setLoading(false);
-        }
-      } catch (error) {
-        console.error("Error inicializando sesión:", error);
+    // 1. Obtener sesión inicial
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session) fetchAllData();
+      else setLoading(false);
+    });
+
+    // 2. Escuchar cambios (Login/Logout)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session) fetchAllData();
+      else {
         setLoading(false);
+        setMyNestId("");
       }
-    };
-    initApp();
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const fetchAllData = async () => {
@@ -65,6 +74,7 @@ const Index = () => {
       
       if (profileError) throw profileError;
       
+      // Si el usuario existe pero no tiene nest_id, es un usuario nuevo "huérfano"
       if (profile?.nest_id) {
         setMyNestId(profile.nest_id);
         
@@ -89,43 +99,30 @@ const Index = () => {
     }
   };
 
+  // --- LÓGICA DE IA (Se mantiene igual) ---
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    
     triggerHaptic('medium');
     setIsAiProcessing(true);
-    setAiMessage("Leyendo circular...");
-
     try {
       const fileName = `${myNestId || 'unassigned'}/${Date.now()}-${file.name}`;
-      const { error: uploadError } = await supabase.storage
-        .from('event-attachments')
-        .upload(fileName, file);
-      
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('event-attachments')
-        .getPublicUrl(fileName);
-      
-      const { data: aiResult, error: aiError } = await supabase.functions.invoke('process-image-ai', { 
+      await supabase.storage.from('event-attachments').upload(fileName, file);
+      const { data: { publicUrl } } = supabase.storage.from('event-attachments').getPublicUrl(fileName);
+      const { data: aiResult } = await supabase.functions.invoke('process-image-ai', { 
         body: { imageUrl: publicUrl, nest_id: myNestId } 
       });
-
-      if (aiError) throw aiError;
-
       setScannedData(aiResult);
       setIsAiProcessing(false);
       setIsDrawerOpen(true);
       triggerHaptic('success');
-      
     } catch (error) {
       setIsAiProcessing(false);
-      toast({ title: "Radar offline", description: "La IA no pudo procesar la imagen.", variant: "destructive" });
+      toast({ title: "Radar offline", variant: "destructive" });
     }
   };
 
+  // --- PANTALLA DE CARGA ---
   if (loading) {
     return (
       <div className="min-h-screen w-full flex flex-col items-center justify-center bg-white space-y-4">
@@ -135,6 +132,30 @@ const Index = () => {
     );
   }
 
+  // --- PANTALLA DE AUTH (Si no hay sesión) ---
+  if (!session) {
+    return (
+      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-slate-50 p-6">
+        <div className="w-full max-w-md bg-white p-10 rounded-[3.5rem] shadow-brisa border border-white">
+          <div className="text-center mb-10">
+            <h1 className="text-5xl font-black text-slate-900 tracking-tighter">KidUs</h1>
+            <p className="text-sky-500 font-black text-[10px] uppercase tracking-[0.4em] mt-2">Gestión Familiar Élite</p>
+          </div>
+          <Auth 
+            supabaseClient={supabase} 
+            appearance={{ 
+              theme: ThemeSupa,
+              variables: { default: { colors: { brand: '#0ea5e9', brandAccent: '#0284c7' } } }
+            }}
+            providers={[]}
+            localization={{ variables: { sign_up: { email_label: 'Email del Guía', password_label: 'Contraseña segura' } } }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // --- UI PRINCIPAL (Solo si hay sesión) ---
   return (
     <div className="relative min-h-screen w-full bg-slate-50/50">
       <Header />
@@ -146,6 +167,7 @@ const Index = () => {
               membersCount={familyMembers.length} 
               onNavigate={setActiveTab}
               nextEvent={nextEventTitle}
+              nestId={myNestId} // Pasamos el nestId para saber si hay que mostrar "Crear Nido"
             />
           )}
 
@@ -155,9 +177,7 @@ const Index = () => {
             </motion.div>
           )}
 
-          {activeTab === "vault" && (
-            <VaultView nestId={myNestId} />
-          )}
+          {activeTab === "vault" && <VaultView nestId={myNestId} />}
 
           {activeTab === "settings" && (
             <SettingsView 
@@ -190,26 +210,13 @@ const Index = () => {
         </div>
         <button 
           onClick={() => { triggerHaptic('soft'); setIsFabOpen(!isFabOpen); }} 
-          className={`w-24 h-24 rounded-[3rem] flex items-center justify-center text-white shadow-2xl transition-all duration-500 ${isFabOpen ? 'rotate-[135deg] bg-slate-900' : 'bg-sky-500'}`}
+          className={`w-24 h-24 rounded-[3rem] flex items-center justify-center text-white shadow-2xl transition-all duration-500 ${isFabOpen ? 'rotate-[135deg] bg-slate-900' : 'bg-sky-500 shadow-sky-200'}`}
         >
           <Plus size={44} strokeWidth={3} />
         </button>
       </div>
 
       <input type="file" ref={fileInputRef} className="hidden" accept="image/*" capture="environment" onChange={handleFileChange} />
-
-      <AnimatePresence>
-        {isAiProcessing && (
-          <div className="fixed inset-0 z-[300] flex items-center justify-center bg-white/60 backdrop-blur-2xl">
-             <div className="flex flex-col items-center gap-10 p-16 bg-white rounded-[5rem] shadow-2xl border border-white">
-              <div className="relative w-32 h-32 bg-sky-50 rounded-[3rem] flex items-center justify-center text-sky-500 animate-pulse">
-                <Camera size={48} />
-              </div>
-              <p className="text-sky-500 font-black text-[10px] uppercase tracking-[0.6em]">{aiMessage}</p>
-            </div>
-          </div>
-        )}
-      </AnimatePresence>
 
       <ManualEventDrawer 
         isOpen={isDrawerOpen} 
