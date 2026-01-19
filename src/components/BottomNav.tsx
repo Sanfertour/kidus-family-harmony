@@ -1,16 +1,20 @@
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion"; // Importado AnimatePresence
 import { Home, Calendar, Users, FileText, Settings } from "lucide-react";
-import { triggerHaptic } from "@/utils/haptics"; // Unificamos con tu utilidad
+import { triggerHaptic } from "@/utils/haptics";
 
 const navItems = [
   { id: "home", icon: Home, label: "Nido" },
-  { id: "agenda", icon: Calendar, label: "Sincro" }, // Cambiado a 'agenda' para coincidir con Index
-  { id: "family", icon: Users, label: "Tribu" },    // Cambiado a 'family' para coincidir con Index
-  { id: "vault", icon: FileText, label: "Bóveda" },
+  { id: "agenda", icon: Calendar, label: "Sincro" },
+  { id: "vault", icon: FileText, label: "Bóveda" }, // Cambiado para que Index lo reconozca
   { id: "settings", icon: Settings, label: "Radar" },
 ];
 
-export const BottomNav = ({ activeTab, onTabChange }: { activeTab: string, onTabChange: (id: string) => void }) => {
+interface BottomNavProps {
+  activeTab: string;
+  onTabChange: (id: string) => void;
+}
+
+export const BottomNav = ({ activeTab, onTabChange }: BottomNavProps) => {
   return (
     <motion.nav
       className="fixed bottom-0 left-0 right-0 h-32 bg-white/70 backdrop-blur-[40px] border-t border-white/50 px-8 flex items-center justify-around z-50 pb-8 shadow-[0_-15px_50px_rgba(0,0,0,0.03)] rounded-t-[3.5rem]"
@@ -50,7 +54,9 @@ export const BottomNav = ({ activeTab, onTabChange }: { activeTab: string, onTab
                 scale: isActive ? 1.2 : 1,
                 y: isActive ? -4 : 0 
               }}
-              className={`p-1 transition-colors duration-300 ${isActive ? "text-sky-500" : "text-slate-400 group-hover:text-slate-600"}`}
+              className={`p-1 transition-colors duration-300 ${
+                isActive ? "text-sky-500" : "text-slate-400 group-hover:text-slate-600"
+              }`}
             >
               <Icon 
                 size={26} 
@@ -58,7 +64,6 @@ export const BottomNav = ({ activeTab, onTabChange }: { activeTab: string, onTab
               />
             </motion.div>
             
-            {/* Texto de la Tribu / Radar */}
             <span className={`text-[9px] font-black uppercase tracking-[0.3em] transition-all duration-300 ${
               isActive ? "text-slate-900 opacity-100" : "text-slate-400 opacity-60"
             }`}>
