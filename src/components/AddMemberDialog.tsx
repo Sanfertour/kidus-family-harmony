@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useNestStore } from "@/store/useNestStore"; // Importamos el cerebro del Nido
 import {
   Dialog,
   DialogContent,
@@ -19,13 +20,7 @@ import {
   UserPlus,
   X
 } from "lucide-react";
-
-const triggerHaptic = (type: 'soft' | 'success') => {
-  if (typeof navigator !== "undefined" && navigator.vibrate) {
-    if (type === 'soft') navigator.vibrate(10);
-    else if (type === 'success') navigator.vibrate([20, 30, 20]);
-  }
-};
+import { triggerHaptic } from "@/utils/haptics";
 
 const TRIBU_COLORS = [
   { name: 'Sky', hex: '#0EA5E9', bg: 'bg-[#0EA5E9]', hover: 'hover:bg-[#0EA5E9]/90', shadow: 'shadow-sky-200/50' },
@@ -40,30 +35,28 @@ export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.R
   const [role, setRole] = useState("dependent");
   const [selectedColor, setSelectedColor] = useState(TRIBU_COLORS[0]);
   const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false); // Control manual del Dialog
+  
+  const { nestId, fetchSession } = useNestStore(); // Obtenemos el nestId del Store
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim() || !nestId) {
+        toast({ title: "Falta información", description: "Asegúrate de tener un nombre y estar vinculado a un Nido.", variant: "destructive" });
+        return;
+    }
+    
     setLoading(true);
     triggerHaptic('success');
     
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Sin sesión activa");
-
-      const { data: myProfile } = await supabase
-        .from('profiles')
-        .select('nest_id')
-        .eq('id', user.id)
-        .single();
-
+      // Inserción directa usando el nestId del Store global
       const { error } = await supabase.from('profiles').insert({
         display_name: name,
-        nest_id: myProfile?.nest_id,
-        role: role, 
+        nest_id: nestId,
+        role: role as 'autonomous' | 'dependent', 
         avatar_url: selectedColor.hex,
-        updated_at: new Date().toISOString()
       });
 
       if (error) throw error;
@@ -74,31 +67,34 @@ export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.R
       });
       
       setName("");
+      setOpen(false); // Cerramos el modal al éxito
+      
+      // Actualizamos tanto el callback como el store global
+      await fetchSession();
       onMemberAdded();
+      
     } catch (error: any) {
-      toast({ title: "Error de sincronía", variant: "destructive" });
+      console.error("Error al integrar miembro:", error);
+      toast({ title: "Error de sincronía", description: "No pudimos añadir al integrante. Revisa tu conexión.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Dialog>
-      <DialogTrigger asChild onClick={() => triggerHaptic('soft')}>{children}</DialogTrigger>
+    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if(v) triggerHaptic('soft'); }}>
+      <DialogTrigger asChild>{children}</DialogTrigger>
       
-      <DialogContent className="max-w-[90vw] sm:max-w-[440px] border-none bg-slate-50/95 backdrop-blur-3xl shadow-[0_32px_64px_-15px_rgba(0,0,0,0.1)] rounded-[4rem] p-10 outline-none overflow-hidden font-sans ring-1 ring-white/50">
+      <DialogContent className="max-w-[90vw] sm:max-w-[440px] border-none bg-slate-50/95 backdrop-blur-3xl shadow-brisa rounded-[4rem] p-10 outline-none overflow-hidden font-sans ring-1 ring-white/50">
         
-        {/* BOTÓN DE CIERRE ZEN (MODIFICADO) */}
         <DialogClose className="absolute right-10 top-10 p-3 rounded-[1.5rem] bg-white/80 text-slate-400 hover:text-slate-800 transition-all active:scale-90 z-50 shadow-sm border border-slate-100">
           <X size={18} strokeWidth={3} />
         </DialogClose>
 
-        {/* Línea de color dinámica superior */}
         <div className={`absolute top-0 left-0 w-full h-3 ${selectedColor.bg} opacity-80 transition-colors duration-700`} />
 
         <DialogHeader className="space-y-8 pt-6">
           <div className="flex justify-center">
-            {/* Cambiado de motion.div a div estándar para evitar errores de pantalla blanca */}
             <div className={`w-28 h-28 rounded-[3.2rem] ${selectedColor.bg} ${selectedColor.shadow} shadow-2xl flex items-center justify-center text-white text-5xl font-black transition-all duration-700`}>
               {name ? name.charAt(0).toUpperCase() : <UserPlus size={44} strokeWidth={2.5} className="opacity-80" />}
             </div>
@@ -166,19 +162,8 @@ export const AddMemberDialog = ({ children, onMemberAdded }: { children: React.R
               disabled={loading || !name} 
               className={`w-full h-24 rounded-[3rem] ${selectedColor.bg} ${selectedColor.hover} text-white font-black text-base tracking-[0.2em] shadow-2xl active:scale-95 transition-all duration-500 uppercase`}
             >
-              {loading ? <Loader2 className="animate-spin" /> : "Integrar al Nido"}
+              {loading ? <Loader2 className="animate-spin" size={24} /> : "Integrar al Nido"}
             </Button>
-
-            <DialogClose asChild>
-              <Button 
-                variant="ghost" 
-                type="button"
-                onClick={() => triggerHaptic('soft')}
-                className="w-full h-16 rounded-[2.5rem] font-black text-slate-400 uppercase tracking-widest text-[10px] hover:bg-transparent hover:text-slate-600 transition-all active:scale-95"
-              >
-                Volver a la Agenda
-              </Button>
-            </DialogClose>
           </div>
         </form>
       </DialogContent>
