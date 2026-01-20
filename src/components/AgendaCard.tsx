@@ -12,8 +12,19 @@ interface AgendaCardProps {
 }
 
 export const AgendaCard = ({ event, isCreator, hasConflict, onClick }: AgendaCardProps) => {
+  // Lógica de Privacidad KidUs
   const isLocked = event.is_private && !isCreator;
   const memberColor = event.profiles?.avatar_url || "#0EA5E9";
+
+  const handleInteraction = () => {
+    if (isLocked) {
+      triggerHaptic('warning');
+      // No ejecutamos onClick si está bloqueado
+      return;
+    }
+    triggerHaptic('soft');
+    onClick();
+  };
 
   return (
     <motion.div
@@ -21,21 +32,14 @@ export const AgendaCard = ({ event, isCreator, hasConflict, onClick }: AgendaCar
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
-      onClick={() => {
-        if (!isLocked) {
-            triggerHaptic('soft');
-            onClick();
-        } else {
-            triggerHaptic('warning');
-        }
-      }}
-      className={`relative overflow-hidden p-6 rounded-[2.8rem] border transition-all duration-500 active:scale-[0.97] ${
+      onClick={handleInteraction}
+      className={`relative overflow-hidden p-6 rounded-[2.8rem] border transition-all duration-500 ${
         isLocked 
-        ? "bg-slate-100/60 border-slate-200/50 grayscale" 
-        : "bg-white border-white shadow-brisa hover:shadow-xl"
+        ? "bg-slate-50/80 border-slate-200/50 cursor-not-allowed" 
+        : "bg-white border-white shadow-[0_20px_40px_-15px_rgba(0,0,0,0.03)] hover:shadow-xl active:scale-[0.98] cursor-pointer"
       }`}
     >
-      {/* Alerta de Solape */}
+      {/* Alerta de Solape (Solo visible para eventos no bloqueados) */}
       {hasConflict && !isLocked && (
         <div className="absolute top-0 right-10 bg-rose-500 text-white text-[8px] font-black px-4 py-1.5 rounded-b-xl flex items-center gap-1.5 shadow-lg shadow-rose-100 animate-pulse z-10">
           <AlertTriangle size={10} /> SOLAPE
@@ -64,16 +68,20 @@ export const AgendaCard = ({ event, isCreator, hasConflict, onClick }: AgendaCar
             }`}>
               {isLocked ? "Privado" : event.category || "Tribu"}
             </span>
-            {isLocked ? <Lock size={12} className="text-slate-400" /> : event.is_private && <ShieldCheck size={14} className="text-sky-500" />}
+            {isLocked ? (
+              <Lock size={12} className="text-slate-400" />
+            ) : (
+              event.is_private && <ShieldCheck size={14} className="text-sky-500" />
+            )}
           </div>
 
           <h4 className={`text-2xl font-black tracking-tighter leading-none transition-all duration-500 ${
-            isLocked ? "text-slate-300 blur-sm select-none" : "text-slate-800"
+            isLocked ? "text-slate-300 blur-[2px] select-none" : "text-slate-800"
           }`}>
             {isLocked ? "Ocupado" : event.title}
           </h4>
 
-          {!isLocked && (
+          {!isLocked ? (
             <>
               {event.description && (
                 <p className="text-slate-400 text-xs font-medium mt-2 line-clamp-1 italic tracking-tight">
@@ -98,11 +106,15 @@ export const AgendaCard = ({ event, isCreator, hasConflict, onClick }: AgendaCar
                 </div>
               </div>
             </>
+          ) : (
+            <p className="text-slate-300 text-[10px] font-bold mt-2 uppercase tracking-widest">
+              Contenido Protegido
+            </p>
           )}
         </div>
       </div>
 
-      {/* Glow ambiental de color de miembro */}
+      {/* Glow ambiental sutil */}
       {!isLocked && (
         <div 
           className="absolute -right-12 -bottom-12 w-32 h-32 opacity-[0.04] blur-[40px] rounded-full pointer-events-none"
