@@ -8,30 +8,34 @@
     --sky-blue: 14 165 233;
   }
 
-  html, body {
-    height: 100%;
-    margin: 0;
-    padding: 0;
-    overscroll-behavior-y: contain; 
-    @apply bg-slate-50; /* Color de fondo base */
+  html {
+    /* Permitimos que el scroll fluya */
+    height: -webkit-fill-available;
+    scroll-behavior: smooth;
   }
 
   body {
-    @apply text-slate-800 antialiased;
+    @apply text-slate-800 antialiased bg-slate-50;
     font-family: 'Nunito', sans-serif;
     -webkit-tap-highlight-color: transparent;
+    /* CAMBIO CLAVE: min-height en lugar de height fixed */
+    min-height: 100vh;
+    min-height: 100dvh;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto; /* Permitimos scroll vertical */
+    overflow-x: hidden; /* Evitamos rebote horizontal */
   }
 
   #root {
     min-height: 100dvh;
-    position: relative;
     display: flex;
-    flex-col: column;
+    flex-direction: column;
+    position: relative;
   }
 }
 
 @layer components {
-  /* Panel de Cristal Brisa */
   .glass-panel {
     background: rgba(255, 255, 255, 0.5) !important;
     backdrop-filter: blur(24px) saturate(180%);
@@ -51,7 +55,6 @@
 }
 
 @layer utilities {
-  /* EFECTO LÍQUIDO KIDUS */
   .bg-liquid-tribe {
     background: repeating-linear-gradient(
       165deg,
@@ -64,10 +67,9 @@
     animation: liquid-flow 15s linear infinite;
   }
 
-  /* Capas viscosas para el fondo */
   .animate-liquid-fast {
     animation: liquid-morph 12s cubic-bezier(0.7, 0, 0.3, 1) infinite;
-    filter: blur(40px); /* Aumentado para mayor suavidad */
+    filter: blur(40px);
     will-change: transform, border-radius;
     opacity: 0.15;
   }
@@ -92,4 +94,7 @@
   .text-brisa {
     @apply uppercase tracking-[0.4em] font-black text-[10px];
   }
+
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }
