@@ -37,7 +37,7 @@ const Index = () => {
         
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="relative z-10 text-center w-full max-w-sm">
           <img 
-            src="https://raw.githubusercontent.com/Sanfertour/kidus-family-harmony/main/src/assets/IMG_20260120_141931.jpg" 
+            src="https://raw.githubusercontent.com/Sanfertour/kidus-family-harmony/main/src/assets/IMG_20260120_144903.jpg" 
             className="w-40 h-40 mx-auto mb-8 object-contain rounded-[3rem] shadow-2xl shadow-sky-100"
             alt="Logo"
           />
