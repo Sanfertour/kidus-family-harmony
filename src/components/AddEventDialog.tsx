@@ -3,177 +3,157 @@ import { supabase } from "@/lib/supabase";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, X, Loader2, Lock, Eye, Sparkles, ChevronRight } from "lucide-react";
+import { Plus, X, Loader2, Lock, Eye, Sparkles, ChevronRight, Baby, ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { triggerHaptic } from "@/utils/haptics";
-import { useNestStore } from "@/store/useNestStore"; // Importación esencial
+import { useNestStore } from "@/store/useNestStore";
 
 export const AddEventDialog = ({ members, onEventAdded, children }: { members: any[], onEventAdded: () => void, children?: React.ReactNode }) => {
-  // --- CAPA DE DATOS (Store Global) ---
   const { nestId, profile } = useNestStore();
   
   const [title, setTitle] = useState("");
-  const [memberId, setMemberId] = useState("");
+  const [protagonistaId, setProtagonistaId] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
-  const [reminder, setReminder] = useState(1440); // 1440 min = 24h (según tu SQL default)
   const [isPrivate, setIsPrivate] = useState(false);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
 
   const handleSave = async () => {
-    // Validación de Verdad Única
-    if (!nestId || !profile) {
-      toast({ title: "Error de Sincronía", description: "No se detecta tu Nido.", variant: "destructive" });
-      return;
-    }
-
-    if (!title || !memberId || !date || !time) {
+    if (!nestId || !title || !protagonistaId || !date || !time) {
       triggerHaptic('warning');
-      toast({ title: "Faltan datos", description: "El Nido necesita saber qué, quién y cuándo.", variant: "destructive" });
+      toast({ title: "Datos incompletos", description: "El Nido necesita saber qué, quién y cuándo.", variant: "destructive" });
       return;
     }
     
     setLoading(true);
 
     try {
-      const fullStartTime = `${date}T${time}:00`;
+      const startDateTime = new Date(`${date}T${time}:00`);
+      const endDateTime = new Date(startDateTime.getTime() + 60 * 60 * 1000);
 
-      // Inserción limpia usando el esquema corregido
       const { error } = await supabase
         .from('events')
         .insert([{ 
           title: title.trim(), 
-          assigned_to: memberId, 
-          nest_id: nestId, 
-          created_by: profile.id,
-          start_time: fullStartTime,
-          category: 'tribu', // Valor por defecto coherente
-          reminder_minutes: reminder, // Nombre exacto de tu columna SQL
-          is_private: isPrivate 
+          nest_id: nestId,
+          assigned_to: protagonistaId,
+          created_by: profile?.id,
+          start_time: startDateTime.toISOString(),
+          end_time: endDateTime.toISOString(),
+          is_private: isPrivate,
+          category: 'sincronía'
         }]);
 
       if (error) throw error;
 
       triggerHaptic('success');
-      toast({ title: "Sincronía completada", description: "Evento integrado en la agenda familiar." });
+      toast({ title: "Sincronía Élite", description: "Evento guardado en el Nido." });
       setOpen(false);
       resetForm();
       onEventAdded();
     } catch (error: any) {
       console.error(error);
-      toast({ title: "Error", description: "No se pudo guardar el evento.", variant: "destructive" });
+      toast({ title: "Error", description: "La base de datos rechazó el evento.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
 
   const resetForm = () => {
-    setTitle("");
-    setMemberId("");
-    setDate("");
-    setTime("");
-    setIsPrivate(false);
+    setTitle(""); setProtagonistaId(""); setDate(""); setTime(""); setIsPrivate(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if(v) triggerHaptic('soft'); }}>
-      <DialogTrigger asChild>
-        {children || (
-          <Button size="lg" className="rounded-[2rem] bg-slate-900 hover:bg-sky-600 shadow-2xl transition-all duration-500 gap-2 px-8">
-            <Plus className="w-5 h-5" /> 
-            <span className="font-black text-[10px] tracking-[0.2em] uppercase">Añadir Evento</span>
-          </Button>
-        )}
-      </DialogTrigger>
+      <DialogTrigger asChild>{children}</DialogTrigger>
 
-      <DialogContent className="max-w-[95vw] sm:max-w-[480px] border-none bg-white/90 backdrop-blur-[40px] shadow-brisa rounded-[3.5rem] p-10 outline-none overflow-hidden">
+      <DialogContent className="max-w-[95vw] sm:max-w-[500px] border-none bg-slate-50 shadow-2xl rounded-[3.5rem] p-8 outline-none overflow-y-auto max-h-[90vh]">
+        <div className={`absolute top-0 left-0 w-full h-3 transition-colors duration-500 rounded-t-[3.5rem] ${isPrivate ? 'bg-orange-500' : 'bg-sky-500'}`} />
         
-        {/* Línea estética superior */}
-        <div className={`absolute top-0 left-0 w-full h-2 transition-colors duration-500 ${isPrivate ? 'bg-orange-500' : 'bg-sky-500'}`} />
-
-        <DialogClose className="absolute right-8 top-8 p-3 rounded-2xl bg-slate-100 text-slate-400 hover:text-slate-900 transition-all active:scale-90 z-50">
-          <X size={20} strokeWidth={3} />
-        </DialogClose>
-
-        <DialogHeader className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-             <Sparkles size={16} className="text-sky-500" />
-             <p className="text-[10px] font-black text-sky-500 uppercase tracking-[0.4em]">Nueva Entrada</p>
+        <DialogHeader className="mb-6 pt-4">
+          <div className="flex items-center gap-2 mb-1">
+             <Sparkles size={14} className="text-sky-500" />
+             <p className="text-[10px] font-black text-sky-500 uppercase tracking-[0.3em]">Nueva Actividad</p>
           </div>
-          <DialogTitle className="text-4xl font-black text-slate-900 tracking-tighter leading-tight italic">Crea Sincronía</DialogTitle>
+          <DialogTitle className="text-4xl font-black text-slate-900 tracking-tighter italic leading-none">Agendar Nido</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6">
           <Input 
-            placeholder="¿Qué planes hay?" 
+            placeholder="¿Qué evento es?" 
             value={title} 
             onChange={(e) => setTitle(e.target.value)} 
-            className="h-16 rounded-[2rem] border-none bg-slate-50 px-8 font-black text-slate-900 placeholder:text-slate-300 focus:ring-4 focus:ring-sky-500/10 transition-all text-xl text-center shadow-inner" 
+            className="h-16 rounded-[2rem] border-none bg-white px-8 font-black text-slate-900 text-xl shadow-sm focus:ring-2 focus:ring-sky-500/20" 
           />
-          
-          <div className="space-y-2">
-            <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-4">Asignar a</label>
-            <select 
-              className="w-full h-16 rounded-[1.8rem] border-none bg-slate-50 px-6 font-black text-slate-600 focus:ring-4 focus:ring-sky-500/10 transition-all cursor-pointer appearance-none text-center shadow-inner"
-              value={memberId}
-              onChange={(e) => { triggerHaptic('soft'); setMemberId(e.target.value); }}
-            >
-              <option value="">Selecciona un miembro</option>
-              {members.map(m => (
-                <option key={m.id} value={m.id}>{m.name}</option> // Cambiado m.display_name -> m.name
+
+          <div className="space-y-3">
+            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-4 flex items-center gap-2">
+              <Baby size={12} /> Asignar Protagonista
+            </label>
+            <div className="flex gap-3 overflow-x-auto pb-4 no-scrollbar px-1">
+              {members.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => { triggerHaptic('soft'); setProtagonistaId(m.id); }}
+                  className={`flex-shrink-0 min-w-[110px] p-5 rounded-[2.5rem] border-4 transition-all flex flex-col items-center gap-2 ${
+                    protagonistaId === m.id 
+                    ? "bg-slate-900 border-sky-400 scale-105 shadow-xl" 
+                    : "bg-white border-transparent text-slate-400 opacity-60"
+                  }`}
+                >
+                  <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white font-black text-xs shadow-lg" style={{ backgroundColor: m.color || '#0EA5E9' }}>
+                    {m.name.charAt(0)}
+                  </div>
+                  <span className={`text-[10px] font-black uppercase tracking-tighter ${protagonistaId === m.id ? "text-white" : "text-slate-600"}`}>
+                    {m.name.split(' ')[0]}
+                  </span>
+                </button>
               ))}
-            </select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-16 rounded-[1.8rem] border-none bg-slate-50 px-4 font-black text-slate-600 shadow-inner" />
-            <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="h-16 rounded-[1.8rem] border-none bg-slate-50 px-4 font-black text-slate-600 shadow-inner" />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            {/* RECORDATORIO */}
-            <div className="p-4 bg-slate-50 rounded-[2rem] flex flex-col items-center justify-center gap-3 shadow-inner">
-              <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Aviso</span>
-              <div className="flex gap-2">
-                {[60, 1440].map((mins) => (
-                  <button
-                    key={mins}
-                    onClick={() => { triggerHaptic('soft'); setReminder(mins); }}
-                    className={`px-4 py-2 rounded-xl text-[10px] font-black transition-all ${reminder === mins ? 'bg-slate-900 text-white shadow-lg' : 'bg-white text-slate-400'}`}
-                  >
-                    {mins === 60 ? '1h' : '24h'}
-                  </button>
-                ))}
-              </div>
             </div>
-
-            {/* MODO PRIVADO */}
-            <button
-              onClick={() => { triggerHaptic('soft'); setIsPrivate(!isPrivate); }}
-              className={`p-4 rounded-[2rem] flex flex-col items-center justify-center gap-3 transition-all duration-500 shadow-inner ${isPrivate ? 'bg-orange-500 text-white shadow-orange-100' : 'bg-slate-50 text-slate-400'}`}
-            >
-              <span className="text-[9px] font-black uppercase tracking-widest opacity-60">Privacidad</span>
-              <div className="flex items-center gap-2">
-                {isPrivate ? <Lock size={14} /> : <Eye size={14} />}
-                <span className="text-[10px] font-black uppercase">{isPrivate ? "Privado" : "Público"}</span>
-              </div>
-            </button>
           </div>
 
-          <Button 
-            onClick={handleSave} 
-            disabled={loading} 
-            className="w-full h-20 rounded-[2.5rem] bg-slate-900 hover:bg-sky-500 text-white font-black text-lg tracking-[0.2em] shadow-2xl active:scale-[0.97] transition-all duration-500 mt-2 group"
-          >
-            {loading ? <Loader2 className="animate-spin" /> : (
-              <div className="flex items-center gap-3">
-                SINCRONIZAR
-                <ChevronRight className="group-hover:translate-x-2 transition-transform" size={20} />
-              </div>
-            )}
-          </Button>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-4">Fecha</label>
+              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-14 rounded-[1.5rem] border-none bg-white px-4 font-black text-slate-700 shadow-sm" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-4">Hora</label>
+              <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="h-14 rounded-[1.5rem] border-none bg-white px-4 font-black text-slate-700 shadow-sm" />
+            </div>
+          </div>
+
+          <div className="pt-4 space-y-4">
+            <button 
+                type="button"
+                onClick={() => { triggerHaptic('soft'); setIsPrivate(!isPrivate); }}
+                className={`w-full flex items-center justify-between px-6 py-5 rounded-[2rem] transition-all border-2 ${isPrivate ? 'bg-orange-50 border-orange-200' : 'bg-white border-transparent shadow-sm'}`}
+            >
+                <div className="flex items-center gap-3">
+                    {isPrivate ? <Lock className="text-orange-500" size={20} /> : <Eye className="text-sky-500" size={20} />}
+                    <div className="text-left">
+                        <p className={`text-[10px] font-black uppercase tracking-widest ${isPrivate ? 'text-orange-600' : 'text-slate-600'}`}>
+                            {isPrivate ? "Modo Privado Activo" : "Visibilidad Abierta"}
+                        </p>
+                        <p className="text-[9px] text-slate-400 font-medium">Solo tú verás el contenido</p>
+                    </div>
+                </div>
+                <div className={`w-12 h-6 rounded-full relative transition-colors ${isPrivate ? 'bg-orange-500' : 'bg-slate-200'}`}>
+                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${isPrivate ? 'left-7' : 'left-1'}`} />
+                </div>
+            </button>
+
+            <Button 
+              onClick={handleSave} 
+              disabled={loading} 
+              className="w-full h-20 rounded-[2.5rem] bg-slate-900 hover:bg-sky-500 text-white font-black text-sm tracking-[0.2em] shadow-2xl active:scale-[0.97] transition-all duration-500"
+            >
+              {loading ? <Loader2 className="animate-spin" /> : "SINCRONIZAR EVENTO"}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
