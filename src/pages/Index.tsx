@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
-import { Camera, Plus, Chrome, Loader2 } from "lucide-react";
+import { Plus, Chrome, Loader2 } from "lucide-react";
 import { useNestStore } from "@/store/useNestStore";
 
-// Componentes
+// Componentes con carga segura
 import Header from "@/components/Header";
 import { DashboardView } from "@/components/DashboardView";
 import { AgendaView } from "@/components/AgendaView";
@@ -13,7 +13,6 @@ import { VaultView } from "@/components/VaultView";
 import { BottomNav } from "@/components/BottomNav";
 import { ManualEventDrawer } from "@/components/ManualEventDrawer";
 
-// Utilidades
 import { triggerHaptic } from "@/utils/haptics";
 import { useToast } from "@/hooks/use-toast";
 
@@ -23,32 +22,28 @@ const Index = () => {
   
   const [members, setMembers] = useState<any[]>([]); 
   const [nextEventTitle, setNextEventTitle] = useState("");
-  const [isFabOpen, setIsFabOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isAiProcessing, setIsAiProcessing] = useState(false);
-  const [scannedData, setScannedData] = useState<any>(null);
-  const [dataLoading, setDataLoading] = useState(false);
   
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  // --- SINCRONIZACIÓN DE DATOS DEL NIDO ---
+  // 1. EFECTO DE CARGA DE DATOS (Con protección de NestId)
   useEffect(() => {
     if (nestId) {
-      setDataLoading(true);
-      Promise.all([fetchNextEvent(), fetchTribu()])
-        .finally(() => setDataLoading(false));
-      
-      const memberChannel = supabase.channel('tribu-updates')
+      console.log("Nido detectado:", nestId);
+      fetchTribu();
+      fetchNextEvent();
+
+      const channel = supabase.channel('realtime-tribu')
         .on('postgres_changes', { 
           event: '*', 
           schema: 'public', 
-          table: 'profiles', // Cambiado a profiles para que coincida con lo que editamos en Settings
+          table: 'profiles', 
           filter: `nest_id=eq.${nestId}` 
         }, () => fetchTribu())
         .subscribe();
 
-      return () => { supabase.removeChannel(memberChannel); };
+      return () => { supabase.removeChannel(channel); };
     }
   }, [nestId]);
 
@@ -58,14 +53,10 @@ const Index = () => {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('nest_id', nestId)
-        .order('display_name', { ascending: true });
-      
+        .eq('nest_id', nestId);
       if (error) throw error;
       setMembers(data || []);
-    } catch (error) {
-      console.error("Error cargando la tribu:", error);
-    }
+    } catch (e) { console.error("Error Tribu:", e); }
   };
 
   const fetchNextEvent = async () => {
@@ -80,82 +71,70 @@ const Index = () => {
         .limit(1)
         .maybeSingle();
       setNextEventTitle(data?.title || "");
-    } catch (error) { console.error("Error eventos:", error); }
+    } catch (e) { console.error("Error Eventos:", e); }
   };
 
   const handleLogin = async () => {
     triggerHaptic('medium');
-    const { error } = await supabase.auth.signInWithOAuth({
+    await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { 
-        redirectTo: window.location.origin,
-        queryParams: { prompt: 'select_account' }
-      }
+      options: { redirectTo: window.location.origin }
     });
-    if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
   };
 
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || !nestId) return;
-    setIsAiProcessing(true);
-    // ... (Tu lógica de carga de archivos e IA se mantiene igual)
-  };
+  // --- RENDERIZADO SEGURO ---
 
-  // --- RENDERIZADO DE SEGURIDAD ---
+  // Si está cargando la sesión, mostramos un spinner elegante
+  if (authLoading) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-slate-50">
+        <Loader2 className="animate-spin text-sky-500" size={32} />
+      </div>
+    );
+  }
 
-  if (authLoading) return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <Loader2 className="animate-spin text-sky-500" size={40} />
-    </div>
-  );
-
+  // Si no hay perfil, pantalla de Login
   if (!profile) {
     return (
-      <div className="min-h-[100dvh] w-full flex flex-col items-center justify-center p-6 bg-slate-50 relative overflow-hidden">
-        <div className="absolute top-[-10%] left-[-20%] w-[150%] h-[60%] bg-sky-400/10 blur-[120px] rounded-full pointer-events-none" />
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-sm bg-white/70 backdrop-blur-3xl border border-white/40 p-10 rounded-[3.5rem] shadow-brisa text-center relative z-10">
-          <div className="w-20 h-20 bg-sky-500 rounded-[2.5rem] flex items-center justify-center text-white mx-auto mb-8 shadow-haptic">
-            <Plus size={40} strokeWidth={3} />
-          </div>
-          <h1 className="text-4xl font-black text-slate-900 tracking-tighter mb-4 italic">KidUs</h1>
-          <p className="text-slate-500 font-medium mb-10 leading-relaxed">Sincronía familiar de élite. <br/> Diseñada para Guías.</p>
-          <button onClick={handleLogin} className="w-full h-20 bg-slate-900 text-white rounded-[2rem] font-black tracking-widest transition-all active:scale-95 flex items-center justify-center gap-3 shadow-2xl group">
-            <Chrome size={20} className="group-hover:rotate-12 transition-transform" /> ENTRAR CON GOOGLE
-          </button>
+      <div className="h-screen w-full flex flex-col items-center justify-center p-6 bg-slate-50">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center">
+           <div className="w-20 h-20 bg-sky-500 rounded-[2.5rem] flex items-center justify-center text-white mx-auto mb-6 shadow-xl">
+             <Plus size={40} strokeWidth={3} />
+           </div>
+           <h1 className="text-4xl font-black text-slate-900 mb-2 italic">KidUs</h1>
+           <p className="text-slate-500 mb-8">Gestión Familiar de Élite</p>
+           <button onClick={handleLogin} className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black flex items-center gap-3">
+             <Chrome size={20} /> ENTRAR CON GOOGLE
+           </button>
         </motion.div>
       </div>
     );
   }
 
+  // PANTALLA PRINCIPAL (Solo se renderiza si hay profile)
   return (
-    <div className="relative min-h-[100dvh] w-full bg-slate-50/50">
+    <div className="min-h-screen bg-slate-50/50">
       <Header />
       
-      <main className="container mx-auto px-6 pt-10 max-w-md relative z-10 pb-48">
+      <main className="container mx-auto px-6 pt-6 max-w-md pb-32">
         <AnimatePresence mode="wait">
           {activeTab === "home" && (
-            <motion.div key="home" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+            <motion.div key="h" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <DashboardView 
                 membersCount={members?.length || 0} 
                 onNavigate={setActiveTab} 
                 nextEvent={nextEventTitle} 
                 nestId={nestId} 
-                members={members || []} // Protección vital
+                members={members || []} 
               />
             </motion.div>
           )}
           
-          {activeTab === "agenda" && (
-            <motion.div key="agenda" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.02 }}>
-              <AgendaView />
-            </motion.div>
-          )}
-          
-          {activeTab === "vault" && <VaultView nestId={nestId || ""} />}
+          {activeTab === "agenda" && <AgendaView key="a" />}
           
           {activeTab === "settings" && (
             <SettingsView 
+              key="s"
               nestId={nestId} 
               members={members || []} 
               onRefresh={() => { fetchSession(); fetchTribu(); }} 
@@ -164,27 +143,17 @@ const Index = () => {
         </AnimatePresence>
       </main>
 
-      <BottomNav activeTab={activeTab} onTabChange={(tab) => { triggerHaptic('soft'); setActiveTab(tab); }} />
-
-      {/* FAB y Drawers (se mantienen igual)... */}
-      {nestId && (
-        <div className="fixed bottom-32 right-8 z-[110]">
-          <button onClick={() => { triggerHaptic('medium'); setIsFabOpen(!isFabOpen); }} className={`w-20 h-20 rounded-[2.5rem] flex items-center justify-center text-white shadow-2xl transition-all duration-500 ${isFabOpen ? 'rotate-[135deg] bg-slate-900' : 'bg-sky-500 shadow-sky-200'}`}>
-            <Plus size={36} strokeWidth={3} />
-          </button>
-        </div>
-      )}
-
+      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+      
+      {/* Drawer de eventos con protección de array */}
       <ManualEventDrawer 
         isOpen={isDrawerOpen} 
-        onClose={() => { setIsDrawerOpen(false); setScannedData(null); }} 
+        onClose={() => setIsDrawerOpen(false)} 
         members={members || []} 
         onEventAdded={() => { fetchNextEvent(); setActiveTab("agenda"); }} 
-        initialData={scannedData} 
       />
     </div>
   );
 };
 
 export default Index;
-        
