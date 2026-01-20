@@ -19,8 +19,10 @@ import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("home");
-  const { profile, nestId, familyMembers, fetchSession, loading } = useNestStore();
+  const { profile, nestId, fetchSession, loading } = useNestStore();
   
+  // --- ESTADOS DE LA TRIBU Y EVENTOS ---
+  const [members, setMembers] = useState<any[]>([]); 
   const [nextEventTitle, setNextEventTitle] = useState("");
   const [isFabOpen, setIsFabOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -30,23 +32,40 @@ const Index = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  // --- LÓGICA DE LOGIN ---
-  const handleLogin = async () => {
-    triggerHaptic('medium');
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { 
-        redirectTo: window.location.origin,
-        queryParams: { prompt: 'select_account' } // Fuerza a elegir cuenta para evitar loops
-      }
-    });
-    if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
-  };
-
-  // Solo buscamos eventos si hay un nido vinculado
+  // --- SINCRONIZACIÓN DE DATOS DEL NIDO ---
   useEffect(() => {
-    if (nestId) fetchNextEvent();
+    if (nestId) {
+      fetchNextEvent();
+      fetchTribu();
+      
+      // Suscripción Realtime para la Tribu (por si otro guía añade a alguien)
+      const memberChannel = supabase.channel('tribu-updates')
+        .on('postgres_changes', { 
+          event: '*', 
+          schema: 'public', 
+          table: 'members', 
+          filter: `nest_id=eq.${nestId}` 
+        }, () => fetchTribu())
+        .subscribe();
+
+      return () => { supabase.removeChannel(memberChannel); };
+    }
   }, [nestId]);
+
+  const fetchTribu = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('members')
+        .select('*')
+        .eq('nest_id', nestId)
+        .order('name', { ascending: true });
+      
+      if (error) throw error;
+      setMembers(data || []);
+    } catch (error) {
+      console.error("Error cargando la tribu:", error);
+    }
+  };
 
   const fetchNextEvent = async () => {
     try {
@@ -59,7 +78,21 @@ const Index = () => {
         .limit(1)
         .maybeSingle();
       if (data) setNextEventTitle(data.title);
+      else setNextEventTitle("");
     } catch (error) { console.error("Error eventos:", error); }
+  };
+
+  // --- LÓGICA DE AUTH ---
+  const handleLogin = async () => {
+    triggerHaptic('medium');
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { 
+        redirectTo: window.location.origin,
+        queryParams: { prompt: 'select_account' }
+      }
+    });
+    if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
   };
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -70,7 +103,6 @@ const Index = () => {
     setIsAiProcessing(true);
     
     try {
-      // Usamos el ID del nido para organizar el storage
       const fileName = `${nestId}/${Date.now()}-${file.name}`;
       const { error: uploadError } = await supabase.storage
         .from('event-attachments')
@@ -80,7 +112,6 @@ const Index = () => {
 
       const { data: { publicUrl } } = supabase.storage.from('event-attachments').getPublicUrl(fileName);
       
-      // Llamada a tu Edge Function de IA
       const { data: aiResult, error: aiError } = await supabase.functions.invoke('process-image-ai', { 
         body: { imageUrl: publicUrl, nest_id: nestId } 
       });
@@ -95,16 +126,13 @@ const Index = () => {
     } finally { setIsAiProcessing(false); }
   };
 
-  // --- RENDERIZADO CONDICIONAL ---
+  // --- RENDERIZADO ---
 
-  // 1. Si está cargando el store, no mostramos nada (el App.tsx ya muestra el splash)
   if (loading) return null;
 
-  // 2. Si NO hay perfil, mostramos la Landing de Acceso
   if (!profile) {
     return (
       <div className="min-h-[100dvh] w-full flex flex-col items-center justify-center p-6 bg-slate-50 relative overflow-hidden">
-        {/* Atmósfera Brisa */}
         <div className="absolute top-[-10%] left-[-20%] w-[150%] h-[60%] bg-sky-400/10 blur-[120px] rounded-full pointer-events-none" />
         
         <motion.div 
@@ -130,7 +158,6 @@ const Index = () => {
     );
   }
 
-  // 3. Si hay perfil, mostramos el Dashboard Principal
   return (
     <div className="relative min-h-[100dvh] w-full bg-transparent">
       <Header />
@@ -140,7 +167,7 @@ const Index = () => {
           {activeTab === "home" && (
             <motion.div key="home" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
               <DashboardView 
-                membersCount={familyMembers.length} 
+                membersCount={members.length} 
                 onNavigate={setActiveTab} 
                 nextEvent={nextEventTitle} 
                 nestId={nestId || ""} 
@@ -159,8 +186,8 @@ const Index = () => {
           {activeTab === "settings" && (
             <SettingsView 
               nestId={nestId || ""} 
-              members={familyMembers} 
-              onRefresh={fetchSession} 
+              members={members} 
+              onRefresh={() => { fetchSession(); fetchTribu(); }} 
               onClose={() => setActiveTab("home")} 
             />
           )}
@@ -169,7 +196,7 @@ const Index = () => {
 
       <BottomNav activeTab={activeTab} onTabChange={(tab) => { triggerHaptic('soft'); setActiveTab(tab); }} />
 
-      {/* FAB ACCIONES - Solo visible si hay nido */}
+      {/* FAB ACCIONES */}
       {nestId && (
         <div className="fixed bottom-32 right-8 z-[110]">
           <div className={`flex flex-col gap-4 mb-6 transition-all duration-500 ${isFabOpen ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-10 scale-50 pointer-events-none'}`}>
@@ -194,7 +221,7 @@ const Index = () => {
       <ManualEventDrawer 
         isOpen={isDrawerOpen} 
         onClose={() => { setIsDrawerOpen(false); setScannedData(null); }} 
-        members={familyMembers} 
+        members={members} 
         onEventAdded={() => { fetchNextEvent(); setActiveTab("agenda"); }} 
         initialData={scannedData} 
       />
