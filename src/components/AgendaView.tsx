@@ -137,4 +137,3 @@ const Loader2 = ({ size, className }: { size: number, className: string }) => (
     <Sparkles size={size} />
   </motion.div>
 );
-                              
