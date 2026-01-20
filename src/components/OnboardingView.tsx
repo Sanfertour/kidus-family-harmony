@@ -14,7 +14,6 @@ export const OnboardingView = () => {
   const { fetchSession } = useNestStore();
   const { toast } = useToast();
 
-  // --- FUNCIÓN: FUNDAR NIDO (CREATE) ---
   const handleCreateNest = async () => {
     if (!inputValue.trim()) return;
     setIsLoading(true);
@@ -22,12 +21,11 @@ export const OnboardingView = () => {
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) throw new Error("No hay sesión activa");
+      if (!session?.user) throw new Error("Sesión expirada");
 
-      // Generar código estilo KidUs: KID-XXXXX (Verdad Única)
       const generatedCode = `KID-${Math.random().toString(36).toUpperCase().substring(2, 7)}`;
 
-      // 1. Insertar en la tabla 'nests' (Usando nest_code para coincidir con el Backend)
+      // 1. Insertar Nido con nest_code (SQL Sync)
       const { data: newNest, error: nestError } = await supabase
         .from('nests')
         .insert([{ 
@@ -39,35 +37,25 @@ export const OnboardingView = () => {
 
       if (nestError) throw nestError;
 
-      // 2. Vincular el perfil del Guía al nuevo nido (nest_id)
+      // 2. Vincular Guía con nest_id y rol 'autonomous'
       const { error: profileError } = await supabase
         .from('profiles')
-        .update({ 
-          nest_id: newNest.id, 
-          role: 'autonomous' 
-        })
+        .update({ nest_id: newNest.id, role: 'autonomous' })
         .eq('id', session.user.id);
 
       if (profileError) throw profileError;
 
       triggerHaptic('success');
-      toast({ 
-        title: "¡Nido Fundado!", 
-        description: `Código de sincronía: ${generatedCode}`,
-      });
-
-      // Forzar actualización del Store para saltar al Dashboard
-      await fetchSession(); 
+      toast({ title: "¡Nido Fundado!", description: `Código: ${generatedCode}` });
+      await fetchSession(); // Salto al Dashboard
 
     } catch (error: any) {
-      console.error("Error fundando nido:", error);
-      toast({ title: "Error de Backend", description: error.message, variant: "destructive" });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
   };
 
-  // --- FUNCIÓN: UNIRSE A NIDO (JOIN) ---
   const handleJoinNest = async () => {
     if (!inputValue.trim()) return;
     setIsLoading(true);
@@ -75,35 +63,28 @@ export const OnboardingView = () => {
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) throw new Error("Sesión no válida");
       
-      // 1. Buscar el nido por el nest_code
       const { data: nest, error: nestError } = await supabase
         .from('nests')
         .select('id, name')
-        .eq('nest_code', inputValue.trim().toUpperCase())
+        .eq('nest_code', inputValue.trim().toUpperCase()) // SQL Sync
         .maybeSingle();
 
-      if (!nest) throw new Error("El código KID no existe. Verifica con el otro Guía.");
+      if (!nest) throw new Error("Código de Nido no encontrado");
 
-      // 2. Vincular usuario al nido encontrado
       const { error: profileError } = await supabase
         .from('profiles')
-        .update({ 
-          nest_id: nest.id, 
-          role: 'autonomous' 
-        })
-        .eq('id', session.user.id);
+        .update({ nest_id: nest.id, role: 'autonomous' })
+        .eq('id', session?.user.id);
 
       if (profileError) throw profileError;
 
       triggerHaptic('success');
       toast({ title: "Sincronía completada", description: `Te has unido a: ${nest.name}` });
-      
       await fetchSession();
 
     } catch (error: any) {
-      toast({ title: "Error al unirse", description: error.message, variant: "destructive" });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -111,7 +92,6 @@ export const OnboardingView = () => {
 
   return (
     <div className="min-h-[100dvh] w-full flex flex-col items-center justify-center p-6 bg-slate-50 relative overflow-hidden">
-      {/* Background Decor Estética Brisa */}
       <div className="absolute top-[-10%] right-[-10%] w-[80%] h-[40%] bg-sky-400/10 blur-[100px] rounded-full animate-pulse" />
       
       <AnimatePresence mode="wait">
@@ -123,7 +103,7 @@ export const OnboardingView = () => {
           >
             <div className="text-center mb-10">
               <h2 className="text-4xl font-black text-slate-900 tracking-tighter mb-2 italic">KidUs</h2>
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-sky-500">Co-paternidad de Élite</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-sky-500">Gestión Familiar de Élite</p>
             </div>
 
             <button 
@@ -162,24 +142,21 @@ export const OnboardingView = () => {
           >
             <button 
               onClick={() => { triggerHaptic('soft'); setMode('selection'); setInputValue(""); }}
-              className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-8 flex items-center gap-2 hover:text-slate-600 transition-colors"
+              className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-8 flex items-center gap-2"
             >
               ← Volver
             </button>
 
-            <h3 className="text-2xl font-black text-slate-900 mb-2 tracking-tight">
+            <h3 className="text-2xl font-black text-slate-900 mb-2">
               {mode === 'create' ? 'Nombre del Nido' : 'Sincronizar Código'}
             </h3>
-            <p className="text-xs text-slate-400 mb-8 font-medium">
-              {mode === 'create' ? 'Identifica tu espacio familiar (Ej: Casa Madrid)' : 'Introduce el código KID proporcionado por el otro Guía'}
-            </p>
 
             <input 
               autoFocus
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               placeholder={mode === 'create' ? "Ej: Casa García" : "KID-XXXXX"}
-              className="w-full h-16 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] px-6 font-bold text-slate-800 focus:outline-none focus:border-sky-500 focus:bg-white mb-8 transition-all placeholder:text-slate-300"
+              className="w-full h-16 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] px-6 font-bold text-slate-800 focus:outline-none focus:border-sky-500 focus:bg-white mb-8 transition-all"
             />
 
             <button 
