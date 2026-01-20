@@ -3,7 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, X, Loader2, Lock, Eye, Sparkles, ChevronRight, Baby, ShieldCheck } from "lucide-react";
+import { Plus, X, Loader2, Lock, Eye, Sparkles, ChevronRight, Baby, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { triggerHaptic } from "@/utils/haptics";
 import { useNestStore } from "@/store/useNestStore";
@@ -90,26 +90,34 @@ export const AddEventDialog = ({ members, onEventAdded, children }: { members: a
 
           <div className="space-y-3">
             <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-4 flex items-center gap-2">
-              <Baby size={12} /> Asignar Protagonista
+              <Baby size={12} /> Seleccionar Miembro
             </label>
-            <div className="flex gap-3 overflow-x-auto pb-4 no-scrollbar px-1">
+            <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar px-1">
               {members.map((m) => (
                 <button
                   key={m.id}
                   type="button"
                   onClick={() => { triggerHaptic('soft'); setProtagonistaId(m.id); }}
-                  className={`flex-shrink-0 min-w-[110px] p-5 rounded-[2.5rem] border-4 transition-all flex flex-col items-center gap-2 ${
+                  className={`flex-shrink-0 min-w-[100px] p-5 rounded-[2.5rem] border-4 transition-all flex flex-col items-center gap-3 ${
                     protagonistaId === m.id 
                     ? "bg-slate-900 border-sky-400 scale-105 shadow-xl" 
                     : "bg-white border-transparent text-slate-400 opacity-60"
                   }`}
                 >
-                  <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white font-black text-xs shadow-lg" style={{ backgroundColor: m.color || '#0EA5E9' }}>
-                    {m.name.charAt(0)}
+                  <div 
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black text-lg shadow-lg"
+                    style={{ backgroundColor: m.color || m.avatar_url || '#0EA5E9' }}
+                  >
+                    {m.name ? m.name.charAt(0).toUpperCase() : <User size={20} />}
                   </div>
-                  <span className={`text-[10px] font-black uppercase tracking-tighter ${protagonistaId === m.id ? "text-white" : "text-slate-600"}`}>
-                    {m.name.split(' ')[0]}
-                  </span>
+                  <div className="text-center">
+                    <p className={`text-[10px] font-black uppercase tracking-tighter ${protagonistaId === m.id ? "text-white" : "text-slate-800"}`}>
+                      {m.name || "Sin nombre"}
+                    </p>
+                    <p className={`text-[8px] font-bold opacity-60 ${protagonistaId === m.id ? "text-sky-300" : "text-slate-400"}`}>
+                      {m.role === 'adult' ? 'GUÍA' : 'TRIBU'}
+                    </p>
+                  </div>
                 </button>
               ))}
             </div>
@@ -127,25 +135,6 @@ export const AddEventDialog = ({ members, onEventAdded, children }: { members: a
           </div>
 
           <div className="pt-4 space-y-4">
-            <button 
-                type="button"
-                onClick={() => { triggerHaptic('soft'); setIsPrivate(!isPrivate); }}
-                className={`w-full flex items-center justify-between px-6 py-5 rounded-[2rem] transition-all border-2 ${isPrivate ? 'bg-orange-50 border-orange-200' : 'bg-white border-transparent shadow-sm'}`}
-            >
-                <div className="flex items-center gap-3">
-                    {isPrivate ? <Lock className="text-orange-500" size={20} /> : <Eye className="text-sky-500" size={20} />}
-                    <div className="text-left">
-                        <p className={`text-[10px] font-black uppercase tracking-widest ${isPrivate ? 'text-orange-600' : 'text-slate-600'}`}>
-                            {isPrivate ? "Modo Privado Activo" : "Visibilidad Abierta"}
-                        </p>
-                        <p className="text-[9px] text-slate-400 font-medium">Solo tú verás el contenido</p>
-                    </div>
-                </div>
-                <div className={`w-12 h-6 rounded-full relative transition-colors ${isPrivate ? 'bg-orange-500' : 'bg-slate-200'}`}>
-                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${isPrivate ? 'left-7' : 'left-1'}`} />
-                </div>
-            </button>
-
             <Button 
               onClick={handleSave} 
               disabled={loading} 
