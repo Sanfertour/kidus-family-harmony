@@ -5,45 +5,42 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
-import { useNestStore } from "@/store/useNestStore"; // Importante: Usamos el cerebro de la app
+import { useNestStore } from "@/store/useNestStore";
 
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-import { OnboardingView } from "./components/OnboardingView"; // El nuevo componente
+import { OnboardingView } from "./components/OnboardingView";
 
 const queryClient = new QueryClient();
 
 const App = () => {
   const [session, setSession] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  
-  // Extraemos lo necesario del Store global
-  const { profile, fetchSession, nestId } = useNestStore();
+  // Eliminamos el 'loading' local de App para usar el del Store
+  const { fetchSession, nestId, loading: storeLoading } = useNestStore();
 
   useEffect(() => {
-    // 1. Inicialización y escucha de Auth
-    const initialize = async () => {
+    // 1. Verificar sesión inicial
+    const initAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
       if (session) await fetchSession();
-      setLoading(false);
     };
+    initAuth();
 
-    initialize();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setSession(session);
-      if (session) {
+    // 2. Escuchar cambios de Auth
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, currentSession) => {
+      setSession(currentSession);
+      if (currentSession) {
         await fetchSession();
       }
-      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, [fetchSession]);
 
-  // UI de Sincronización "Brisa"
-  if (loading) {
+  // UI de Sincronización "Brisa" 
+  // Ahora solo depende de storeLoading para ser 100% preciso
+  if (storeLoading) {
     return (
       <div className="min-h-screen w-full bg-slate-50 flex items-center justify-center">
         <div className="flex flex-col items-center">
@@ -68,11 +65,8 @@ const App = () => {
         <Sonner position="top-right" expand={false} richColors />
         
         <div className="relative min-h-screen w-full bg-slate-50 overflow-x-hidden">
-          
-          {/* ATMÓSFERA VISUAL KIDUS */}
           <div className="fixed inset-0 pointer-events-none z-0">
-            <div className="absolute -top-[10%] -left-[10%] w-[600px] h-[600px] bg-sky-400/10 blur-[100px] animate-pulse" />
-            <div className="absolute -bottom-[10%] -right-[10%] w-[500px] h-[500px] bg-orange-400/5 blur-[100px]" />
+            <div className="absolute -top-[10%] -left-[10%] w-[600px] h-[600px] bg-sky-400/10 blur-[100px]" />
           </div>
 
           <div className="relative z-10 w-full"> 
@@ -82,11 +76,13 @@ const App = () => {
                   path="/" 
                   element={
                     !session ? (
-                      <Index /> // Pantalla de Login
-                    ) : (nestId && /^[0-9a-fA-F-]{36}$/.test(nestId)) ? (
-                      <Index /> // Dashboard Principal (Si hay UUID válido)
+                      <Index /> 
+                    ) : (nestId && nestId.length > 10) ? ( 
+                      // Si hay un ID de nido (UUID), vamos al Dashboard
+                      <Index />
                     ) : (
-                      <OnboardingView /> // Pantalla para crear/unirse al nido
+                      // Si no hay nido, forzamos Onboarding
+                      <OnboardingView />
                     )
                   } 
                 />
