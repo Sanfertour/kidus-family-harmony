@@ -9,77 +9,74 @@
   }
 
   html, body {
-    height: auto; 
-    min-height: 100%;
+    height: 100%;
     margin: 0;
     padding: 0;
     overscroll-behavior-y: contain; 
-    overflow-y: auto !important;
-    scroll-behavior: smooth;
-    @apply bg-slate-50;
+    @apply bg-slate-50; /* Color de fondo base */
   }
 
   body {
     @apply text-slate-800 antialiased;
     font-family: 'Nunito', sans-serif;
-    position: relative; 
     -webkit-tap-highlight-color: transparent;
   }
 
   #root {
-    min-height: 100vh;
-    @apply relative flex flex-col;
+    min-height: 100dvh;
+    position: relative;
+    display: flex;
+    flex-col: column;
   }
 }
 
 @layer components {
+  /* Panel de Cristal Brisa */
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.5) !important;
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 3.5rem;
+    box-shadow: 0 20px 40px -15px rgba(0,0,0,0.05);
+  }
+
   .glass-card {
-    @apply backdrop-blur-3xl bg-white/40 border border-white/60 shadow-xl;
-    border-radius: 3.5rem; 
-    transition: all 400ms cubic-bezier(0.23, 1, 0.32, 1);
+    @apply glass-panel transition-all duration-500;
   }
 
   .glass-card:active {
-    @apply scale-[0.96] brightness-95;
-  }
-
-  .fab-main-button {
-    @apply flex items-center justify-center border-none cursor-pointer shadow-2xl;
-    width: 72px;
-    height: 72px;
-    border-radius: 2.2rem;
-    background: linear-gradient(135deg, #0EA5E9, #F97316);
-    transition: all 500ms cubic-bezier(0.68, -0.6, 0.32, 1.6);
-    @apply text-white;
+    @apply scale-[0.97] brightness-95;
   }
 }
 
 @layer utilities {
-  /* 3. MULTI-FRANJAS LÍQUIDAS (Efecto Cebra KidUs) */
+  /* EFECTO LÍQUIDO KIDUS */
   .bg-liquid-tribe {
-    /* Usamos repeating-linear-gradient para forzar múltiples franjas estrechas */
     background: repeating-linear-gradient(
       165deg,
       #0EA5E9 0px,
-      #0EA5E9 40px,   /* Ancho de la franja azul */
-      #F97316 40px,
-      #F97316 80px    /* Ancho de la franja naranja */
+      #0EA5E9 60px,
+      #F97316 60px,
+      #F97316 120px
     );
-    background-size: 200% 200%; 
-    animation: liquid-flow 20s linear infinite;
+    background-size: 200% 200%;
+    animation: liquid-flow 15s linear infinite;
   }
 
-  /* 4. ANIMACIONES VISCOSAS CON NITIDEZ (Blur reducido al mínimo) */
+  /* Capas viscosas para el fondo */
   .animate-liquid-fast {
-    animation: liquid-morph 10s cubic-bezier(0.7, 0, 0.3, 1) infinite;
-    filter: blur(12px); /* Blur muy bajo para que se vean las franjas */
+    animation: liquid-morph 12s cubic-bezier(0.7, 0, 0.3, 1) infinite;
+    filter: blur(40px); /* Aumentado para mayor suavidad */
     will-change: transform, border-radius;
+    opacity: 0.15;
   }
 
   .animate-liquid-slow {
-    animation: liquid-morph 25s cubic-bezier(0.4, 0, 0.2, 1) infinite reverse;
-    filter: blur(18px); /* Blur sutil */
+    animation: liquid-morph 20s cubic-bezier(0.4, 0, 0.2, 1) infinite reverse;
+    filter: blur(60px);
     will-change: transform, border-radius;
+    opacity: 0.1;
   }
 
   @keyframes liquid-flow {
@@ -88,28 +85,11 @@
   }
 
   @keyframes liquid-morph {
-    0%, 100% { 
-      border-radius: 42% 58% 70% 30% / 45% 45% 55% 55%; 
-      transform: translate(0, 0) scale(1.1) rotate(0deg); 
-    }
-    33% { 
-      border-radius: 70% 30% 46% 54% / 30% 29% 71% 70%; 
-      transform: translate(5%, -5%) scale(1.4) rotate(15deg); 
-    }
-    66% { 
-      border-radius: 100% 60% 60% 100% / 100% 100% 60% 60%; 
-      transform: translate(-3%, 8%) scale(1.2) rotate(-10deg); 
-    }
-  }
-
-  .no-scrollbar::-webkit-scrollbar { display: none; }
-  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-  .shadow-haptic {
-    box-shadow: 0 25px 50px -12px rgba(14, 165, 233, 0.4);
+    0%, 100% { border-radius: 42% 58% 70% 30% / 45% 45% 55% 55%; transform: scale(1); }
+    50% { border-radius: 70% 30% 46% 54% / 30% 29% 71% 70%; transform: scale(1.2) rotate(5deg); }
   }
 
   .text-brisa {
-    @apply uppercase tracking-[0.5em] font-black text-[10px];
+    @apply uppercase tracking-[0.4em] font-black text-[10px];
   }
 }
