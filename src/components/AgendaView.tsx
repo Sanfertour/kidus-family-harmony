@@ -1,255 +1,176 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useNestStore } from '@/store/useNestStore'; // Integración con el Cerebro Global
+import { supabase } from '@/lib/supabase';
 import { 
   Bell, AlertTriangle, ChevronRight, ChevronLeft, 
-  Sparkles, Clock, Star, Loader2, Edit3, Settings2 
+  Sparkles, Clock, Lock, Loader2, Calendar as CalendarIcon,
+  Circle
 } from 'lucide-react';
 import { 
   format, startOfWeek, addDays, isSameDay, 
-  addWeeks, subWeeks, isToday 
+  addWeeks, subWeeks, isToday, parseISO 
 } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useToast } from '@/hooks/use-toast';
-import { NotificationsDrawer } from './NotificationsDrawer';
 import { triggerHaptic } from "@/utils/haptics";
-
-type ReminderLeadTime = '30m' | '1h' | '24h' | 'none';
+import { useToast } from '@/hooks/use-toast';
 
 export const AgendaView = () => {
-  // --- STORE & STATE ---
-  const { nestId, profile } = useNestStore();
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [conflicts, setConflicts] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [currentWeekStart, setCurrentWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
-  const [isNotifOpen, setIsNotifOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [editingEventId, setEditingEventId] = useState<string | null>(null);
+  const [myProfile, setMyProfile] = useState<any>(null);
+  const [nestId, setNestId] = useState<string | null>(null);
 
   const { toast } = useToast();
 
-  // --- LÓGICA DE DATOS ---
-  const fetchAgendaData = async () => {
-    if (!nestId) return;
-    
-    try {
-      // 1. Cargar Eventos con relación al perfil
-      const { data: eventsData } = await supabase
-        .from('events')
-        .select(`*, profiles (display_name, avatar_url, id)`) // Simplificado según tu esquema
-        .eq('nest_id', nestId)
-        .order('start_time', { ascending: true });
-
-      if (eventsData) {
-        setEvents(eventsData);
-        // Lógica de detección de colisiones (Conflictos en la Tribu)
-        const conflictIds = eventsData.filter((e1, i) => 
-          eventsData.some((e2, j) => 
-            i !== j && 
-            isSameDay(new Date(e1.start_time), new Date(e2.start_time)) &&
-            Math.abs(new Date(e1.start_time).getTime() - new Date(e2.start_time).getTime()) < 3600000
-          )
-        ).map(e => e.id);
-        setConflicts(conflictIds);
-      }
-
-      // 2. Notificaciones pendientes
-      const { count } = await supabase
-        .from('notifications')
-        .select('*', { count: 'exact', head: true })
-        .eq('receiver_id', profile?.id)
-        .eq('is_read', false);
-      
-      setUnreadCount(count || 0);
-    } catch (e) {
-      console.error("Error en sincronía de agenda:", e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // --- REALTIME ---
   useEffect(() => {
-    fetchAgendaData();
+    const init = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+        setMyProfile(profile);
+        setNestId(profile.nest_id);
+      }
+    };
+    init();
+  }, []);
 
-    if (!nestId) return;
-
-    const channel = supabase.channel(`agenda-${nestId}`)
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'events', 
-        filter: `nest_id=eq.${nestId}` 
-      }, () => fetchAgendaData())
+  useEffect(() => {
+    if (nestId) fetchEvents();
+    
+    // Realtime: Sincronía instantánea del Nido
+    const channel = supabase.channel(`nest-${nestId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'events', filter: `nest_id=eq.${nestId}` }, 
+      () => fetchEvents())
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [nestId, selectedDate]); // Recarga si cambia el nido o la fecha de enfoque
+  }, [nestId]);
 
-  const updateReminder = async (eventId: string, time: ReminderLeadTime) => {
-    triggerHaptic('success');
-    const { error } = await supabase
+  const fetchEvents = async () => {
+    if (!nestId) return;
+    const { data } = await supabase
       .from('events')
-      .update({ reminder_setting: time })
-      .eq('id', eventId);
+      .select(`*, profiles:assigned_to (display_name, avatar_url, id)`)
+      .eq('nest_id', nestId)
+      .order('start_time', { ascending: true });
     
-    if (!error) {
-      toast({ title: "Sincronía Editada", description: `Aviso para la tribu: ${time}.` });
-      setEditingEventId(null);
-      fetchAgendaData();
-    }
+    setEvents(data || []);
+    setLoading(false);
   };
 
   const weekDays = [...Array(7)].map((_, i) => addDays(currentWeekStart, i));
 
   if (loading) return (
-    <div className="min-h-[60vh] flex flex-col items-center justify-center bg-transparent gap-4">
-      <Loader2 className="w-12 h-12 text-sky-500 animate-spin" />
-      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Leyendo el tiempo...</p>
+    <div className="h-[60vh] flex flex-col items-center justify-center gap-4">
+      <div className="relative">
+        <Loader2 className="w-12 h-12 text-sky-500 animate-spin" />
+        <div className="absolute inset-0 bg-sky-500/20 blur-xl animate-pulse rounded-full" />
+      </div>
+      <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">Sincronizando Tiempo...</p>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-transparent pb-32 font-sans selection:bg-sky-100 overflow-x-hidden">
-      
-      {/* HEADER ZEN */}
-      <header className="pt-10 pb-12 px-2">
-        <div className="flex justify-between items-start">
-          <div className="space-y-2">
-            <h2 className="text-6xl font-black text-slate-900 tracking-tighter leading-none">Agenda</h2>
-            <div className="flex items-center gap-3">
-              <span className="h-1 w-8 bg-orange-500 rounded-full" />
-              <p className="text-[9px] font-black text-sky-500 uppercase tracking-[0.4em]">Sincronía Realtime</p>
-            </div>
-          </div>
-
-          <button 
-            onClick={() => { triggerHaptic('soft'); setIsNotifOpen(true); }}
-            className="relative w-16 h-16 rounded-[2rem] bg-slate-900 text-white flex items-center justify-center shadow-xl active:scale-95 transition-all"
-          >
-            <Bell size={24} strokeWidth={2.5} />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-6 h-6 bg-orange-500 text-white rounded-full border-4 border-slate-50 flex items-center justify-center text-[10px] font-black">
-                {unreadCount}
-              </span>
-            )}
-          </button>
+    <div className="min-h-screen pb-40 px-4 pt-4">
+      {/* HEADER COMPACTO */}
+      <header className="flex justify-between items-end mb-8 px-2">
+        <div>
+          <p className="text-[10px] font-black text-sky-500 uppercase tracking-[0.4em] mb-1">
+            {format(selectedDate, "eeee, d 'de' MMMM", { locale: es })}
+          </p>
+          <h2 className="text-4xl font-black text-slate-900 tracking-tighter">Agenda</h2>
+        </div>
+        <div className="flex gap-2">
+           <button onClick={() => { triggerHaptic('soft'); setCurrentWeekStart(subWeeks(currentWeekStart, 1)); }} className="p-3 rounded-2xl bg-white shadow-sm border border-slate-100 active:scale-90 transition-all"><ChevronLeft size={20}/></button>
+           <button onClick={() => { triggerHaptic('soft'); setCurrentWeekStart(addWeeks(currentWeekStart, 1)); }} className="p-3 rounded-2xl bg-white shadow-sm border border-slate-100 active:scale-90 transition-all"><ChevronRight size={20}/></button>
         </div>
       </header>
 
-      {/* CALENDARIO GLASSMORPHISM */}
-      <section className="mb-10">
-        <div className="bg-white/40 backdrop-blur-3xl p-6 rounded-[3rem] border border-white/60 shadow-brisa">
-          <div className="flex justify-between items-center px-4 mb-6">
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
-              {format(currentWeekStart, 'MMMM yyyy', { locale: es })}
-            </span>
-            <div className="flex gap-2">
-              <button onClick={() => setCurrentWeekStart(subWeeks(currentWeekStart, 1))} className="p-2 text-slate-400"><ChevronLeft size={18}/></button>
-              <button onClick={() => setCurrentWeekStart(addWeeks(currentWeekStart, 1))} className="p-2 text-slate-400"><ChevronRight size={18}/></button>
-            </div>
-          </div>
-          <div className="flex justify-between">
-            {weekDays.map((day, i) => {
-              const active = isSameDay(day, selectedDate);
-              return (
-                <button
-                  key={i}
-                  onClick={() => { triggerHaptic('soft'); setSelectedDate(day); }}
-                  className={`w-[13%] py-5 rounded-[1.8rem] flex flex-col items-center transition-all ${active ? 'bg-slate-900 text-white shadow-xl -translate-y-2' : 'text-slate-400 hover:bg-white/50'}`}
-                >
-                  <span className="text-[7px] font-black uppercase mb-1">{format(day, 'EEE', { locale: es })}</span>
-                  <span className="text-lg font-black">{format(day, 'd')}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </section>
+      {/* SELECTOR DE DÍA (Horizontal Scroll/Snap) */}
+      <nav className="flex justify-between gap-2 mb-10 overflow-x-auto pb-4 no-scrollbar">
+        {weekDays.map((day, i) => {
+          const isSelected = isSameDay(day, selectedDate);
+          const hasEvents = events.some(e => isSameDay(parseISO(e.start_time), day));
+          
+          return (
+            <motion.button
+              key={i}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => { triggerHaptic('soft'); setSelectedDate(day); }}
+              className={`flex-shrink-0 w-[13%] min-w-[50px] py-4 rounded-[2rem] flex flex-col items-center transition-all duration-300 ${isSelected ? 'bg-slate-900 text-white shadow-2xl shadow-slate-300 -translate-y-2' : 'bg-white/50 text-slate-400'}`}
+            >
+              <span className="text-[8px] font-black uppercase mb-1">{format(day, 'EEE', { locale: es })}</span>
+              <span className="text-base font-black">{format(day, 'd')}</span>
+              {hasEvents && !isSelected && <div className="w-1 h-1 bg-sky-400 rounded-full mt-1" />}
+            </motion.button>
+          );
+        })}
+      </nav>
 
-      {/* LISTA DE EVENTOS */}
-      <main className="space-y-6">
-        <AnimatePresence mode="popLayout">
-          {events.filter(e => isSameDay(new Date(e.start_time), selectedDate)).length === 0 ? (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-20 text-center space-y-4">
-              <Sparkles size={48} className="mx-auto text-slate-200" />
-              <p className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-400">Paz en el Nido</p>
+      {/* FEED DE EVENTOS */}
+      <main className="space-y-4">
+        <AnimatePresence mode="wait">
+          {events.filter(e => isSameDay(parseISO(e.start_time), selectedDate)).length === 0 ? (
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+              className="py-20 flex flex-col items-center justify-center opacity-30 text-center"
+            >
+              <Sparkles size={40} className="mb-4 text-slate-400" />
+              <p className="text-[10px] font-black uppercase tracking-[0.3em]">Nido en calma</p>
             </motion.div>
           ) : (
-            events.filter(e => isSameDay(new Date(e.start_time), selectedDate)).map((event) => (
-              <motion.div 
-                layout
-                key={event.id}
-                onClick={() => { triggerHaptic('soft'); setEditingEventId(editingEventId === event.id ? null : event.id); }}
-                className="p-8 rounded-[3rem] bg-white border border-white shadow-sm hover:shadow-xl transition-all cursor-pointer relative overflow-hidden"
-              >
-                {conflicts.includes(event.id) && (
-                  <div className="absolute top-0 right-10 bg-rose-500 text-white text-[8px] font-black px-4 py-2 rounded-b-xl flex items-center gap-2">
-                    <AlertTriangle size={10} /> SOLAPE
-                  </div>
-                )}
-                
-                <div className="flex justify-between items-start mb-6">
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-sky-500">
-                      <Clock size={14} strokeWidth={3} />
-                      <span className="text-xs font-black tracking-widest">{format(new Date(event.start_time), "HH:mm")}</span>
-                    </div>
-                    <h4 className="text-3xl font-black text-slate-800 tracking-tighter">{event.title}</h4>
-                  </div>
-                </div>
+            events.filter(e => isSameDay(parseISO(e.start_time), selectedDate)).map((event, idx) => {
+              const isCreator = event.created_by === myProfile?.id;
+              const isLocked = event.is_private && !isCreator;
 
-                {/* Edición de Avisos */}
-                <AnimatePresence>
-                  {editingEventId === event.id && (
-                    <motion.div 
-                      initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-                      className="pt-4 mt-4 border-t border-slate-50"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div className="flex gap-2">
-                        {(['30m', '1h', '24h', 'none'] as ReminderLeadTime[]).map((time) => (
-                          <button
-                            key={time}
-                            onClick={() => updateReminder(event.id, time)}
-                            className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase ${event.reminder_setting === time ? 'bg-sky-500 text-white' : 'bg-slate-100 text-slate-400'}`}
-                          >
-                            {time}
-                          </button>
-                        ))}
+              return (
+                <motion.div
+                  key={event.id}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: idx * 0.05 }}
+                  className={`relative group p-6 rounded-[2.5rem] border transition-all ${isLocked ? 'bg-slate-100/50 border-slate-200' : 'bg-white border-white shadow-brisa'}`}
+                >
+                  <div className="flex gap-4">
+                    {/* Línea de tiempo compacta */}
+                    <div className="flex flex-col items-center pt-1">
+                      <span className="text-[11px] font-black text-slate-900">{format(parseISO(event.start_time), "HH:mm")}</span>
+                      <div className="w-[2px] flex-1 bg-slate-100 my-2 rounded-full" />
+                    </div>
+
+                    <div className="flex-1">
+                      <div className="flex justify-between items-start mb-1">
+                        <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-md ${isLocked ? 'bg-slate-200 text-slate-400' : 'bg-sky-50 text-sky-500'}`}>
+                          {isLocked ? 'Privado' : event.category || 'Tribu'}
+                        </span>
+                        {isLocked && <Lock size={12} className="text-slate-300" />}
                       </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
 
-                <div className="flex items-center justify-between mt-6 pt-6 border-t border-slate-50">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-xs font-black text-slate-400 border border-white overflow-hidden">
-                       {event.profiles?.avatar_url?.startsWith('#') ? (
-                         <div className="w-full h-full" style={{ backgroundColor: event.profiles.avatar_url }} />
-                       ) : (
-                         <img src={event.profiles?.avatar_url} className="w-full h-full object-cover" />
-                       )}
+                      <h4 className={`text-xl font-black tracking-tight leading-tight ${isLocked ? 'text-slate-300 blur-[2px] select-none' : 'text-slate-800'}`}>
+                        {isLocked ? "Evento Confidencial" : event.title}
+                      </h4>
+
+                      {!isLocked && (
+                        <div className="mt-4 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                             <div className="w-6 h-6 rounded-full bg-slate-100 border border-white overflow-hidden">
+                                {event.profiles?.avatar_url && <img src={event.profiles.avatar_url} className="w-full h-full object-cover" />}
+                             </div>
+                             <span className="text-[10px] font-bold text-slate-400">{event.profiles?.display_name || "Toda la tribu"}</span>
+                          </div>
+                          <ChevronRight size={16} className="text-slate-200" />
+                        </div>
+                      )}
                     </div>
-                    <span className="text-xs font-black text-slate-600">{event.profiles?.display_name}</span>
                   </div>
-                  <ChevronRight size={20} className="text-slate-300" />
-                </div>
-              </motion.div>
-            ))
+                </motion.div>
+              );
+            })
           )}
         </AnimatePresence>
       </main>
-
-      <NotificationsDrawer 
-        isOpen={isNotifOpen} 
-        onClose={() => { setIsNotifOpen(false); fetchAgendaData(); }} 
-        nestId={nestId || ""} 
-      />
     </div>
   );
 };
-                                                 
