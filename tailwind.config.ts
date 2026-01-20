@@ -8,37 +8,35 @@ export default {
     "./app/**/*.{ts,tsx}",
     "./src/**/*.{ts,tsx}",
   ],
-  prefix: "",
   theme: {
     container: {
       center: true,
-      padding: "2rem",
+      padding: {
+        DEFAULT: '1.5rem',
+        sm: '2rem',
+      },
       screens: {
         "2xl": "1400px",
       },
     },
     extend: {
       fontFamily: {
-        // Tipografía Nunito: Amable pero profesional en peso 900
         sans: ['Nunito', 'system-ui', 'sans-serif'],
-        nunito: ['Nunito', 'sans-serif'],
       },
       colors: {
-        // Configuración de bordes para Glassmorphism real
         border: "rgba(255, 255, 255, 0.2)", 
         input: "rgba(255, 255, 255, 0.3)",
         ring: "#0EA5E9",
-        background: "#F8FAFC", // Slate 50: Aire y calma
-        foreground: "#1E293B", // Slate 800: Legibilidad máxima
+        background: "#F8FAFC", 
+        foreground: "#1E293B", 
         primary: {
-          DEFAULT: "#0EA5E9", // Sky Blue (El cielo del Nido)
+          DEFAULT: "#0EA5E9",
           foreground: "#FFFFFF",
         },
         secondary: {
-          DEFAULT: "#F97316", // Vital Orange (La energía de la Tribu)
+          DEFAULT: "#F97316",
           foreground: "#FFFFFF",
         },
-        // Paleta KidUs Pro para Categorías y Bóveda
         kidus: {
           sky: "#0EA5E9",
           vital: "#F97316",
@@ -46,82 +44,35 @@ export default {
           mint: "#10B981", 
           slate: "#F8FAFC",
         },
-        // Colores dinámicos para identificar miembros de la Tribu
-        tribu: {
-          1: "#0EA5E9",
-          2: "#F97316",
-          3: "#8B5CF6",
-          4: "#10B981",
-          5: "#EC4899",
-          6: "#F59E0B",
-        },
       },
       borderRadius: {
-        "2xl": "1rem",     
-        "3xl": "1.5rem",
-        "4xl": "2rem",
-        "5xl": "2.5rem",   
-        "6xl": "3rem",
-        "7xl": "3.5rem", // Estándar KidUs: Bordes ultra-redondeados
+        "3.5rem": "3.5rem", // Estándar de Identidad KidUs
+        "7xl": "3.5rem",   
       },
       boxShadow: {
-        // Sombras difusas para que los elementos "floten" sobre el fondo Slate
-        'brisa': '0 8px 32px rgba(15, 23, 42, 0.04)',
-        'haptic': '0 20px 40px rgba(14, 165, 233, 0.12)',
-        'tribu-card': '0 25px 50px -12px rgba(15, 23, 42, 0.08)',
+        'brisa': '0 20px 40px -10px rgba(15, 23, 42, 0.05)',
+        'haptic': '0 15px 35px -5px rgba(14, 165, 233, 0.15)',
         'glass': 'inset 0 0 0 1px rgba(255, 255, 255, 0.4)',
       },
       backgroundImage: {
-        // Gradientes para profundidad visual
-        'glass-gradient': 'linear-gradient(135deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.2))',
-        'nido-mesh': 'radial-gradient(at 0% 0%, rgba(14, 165, 233, 0.15) 0, transparent 50%), radial-gradient(at 100% 100%, rgba(249, 115, 22, 0.1) 0, transparent 50%)',
-      },
-      zIndex: {
-        'nav': '100',
-        'fab': '110',
-        'drawer': '150',
-        'ia-overlay': '300',
+        'nido-mesh': 'radial-gradient(at 0% 0%, rgba(14, 165, 233, 0.1) 0, transparent 50%), radial-gradient(at 100% 100%, rgba(249, 115, 22, 0.05) 0, transparent 50%)',
       },
       keyframes: {
-        // Física orgánica de Apple para fondos dinámicos
         "wave-apple": {
           "0%, 100%": { 
             transform: "translate(0px, 0px) scale(1)",
             borderRadius: "35% 65% 70% 30% / 30% 40% 60% 70%" 
           },
-          "33%": { 
-            transform: "translate(2% , 4%) scale(1.03)",
+          "50%": { 
+            transform: "translate(3% , 5%) scale(1.05)",
             borderRadius: "50% 50% 35% 65% / 55% 55% 45% 45%" 
           },
-          "66%": { 
-            transform: "translate(-1%, 6%) scale(0.97)",
-            borderRadius: "65% 35% 55% 45% / 40% 35% 65% 60%" 
-          },
-        },
-        "float": {
-          "0%, 100%": { transform: "translateY(0)" },
-          "50%": { transform: "translateY(-12px)" },
-        },
-        "accordion-down": {
-          from: { height: "0" },
-          to: { height: "var(--radix-accordion-content-height)" },
-        },
-        "accordion-up": {
-          from: { height: "var(--radix-accordion-content-height)" },
-          to: { height: "0" },
         },
       },
       animation: {
-        "wave-slow": "wave-apple 22s ease-in-out infinite",
-        "wave-medium": "wave-apple 16s ease-in-out infinite reverse",
-        "float": "float 7s ease-in-out infinite",
-        "accordion-down": "accordion-down 0.2s ease-out",
-        "accordion-up": "accordion-up 0.2s ease-out",
+        "wave-slow": "wave-apple 25s ease-in-out infinite",
+        "wave-medium": "wave-apple 18s ease-in-out infinite reverse",
       },
-      backdropBlur: {
-        '2xl': '40px',
-        '3xl': '60px',
-      }
     },
   },
   plugins: [
