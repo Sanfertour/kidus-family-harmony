@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { Camera, Loader2, Sparkles, FileText } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { Camera, Loader2, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { motion } from 'framer-motion';
 
 export const ImageScanner = ({ onScanComplete }: { onScanComplete: (data: any) => void }) => {
   const [isUploading, setIsUploading] = useState(false);
@@ -14,75 +15,80 @@ export const ImageScanner = ({ onScanComplete }: { onScanComplete: (data: any) =
     setIsUploading(true);
     const fileExt = file.name.split('.').pop();
     const fileName = `${Math.random()}.${fileExt}`;
-    const filePath = `${fileName}`;
+    const filePath = `scans/${fileName}`;
 
     try {
-      // 1. Subir imagen a Supabase Storage
+      // 1. Subida al Storage (bucket 'event-attachments')
       const { error: uploadError } = await supabase.storage
         .from('event-attachments')
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
-      // 2. Obtener URL pública
-      const { data: { publicUrl } } = supabase.storage
-        .from('event-attachments')
-        .getPublicUrl(filePath);
-
+      // 2. Llamada a tu Edge Function process-image-ai
       toast({
-        title: "Imagen recibida",
-        description: "Analizando contenido con IA...",
+        title: "Imagen en el Nido",
+        description: "La IA está leyendo la circular...",
       });
 
-      // 3. AQUÍ LLAMAREMOS A LA EDGE FUNCTION (Próximo paso)
-      // Por ahora, simulamos una respuesta para probar la UI
-      console.log("URL de imagen lista para IA:", publicUrl);
-      
-      // Simulación de delay de IA
-      setTimeout(() => {
-        setIsUploading(false);
-        onScanComplete({
-          title: "Análisis pendiente de Edge Function",
-          date: new Date().toISOString().split('T')[0],
-        });
-      }, 2000);
+      const { data, error: aiError } = await supabase.functions.invoke('process-image-ai', {
+        body: { filePath } // Pasamos la ruta del archivo para que la función lo lea
+      });
 
-    } catch (error) {
+      if (aiError) throw aiError;
+
+      // 3. Éxito: Pasamos los datos extraídos (título, fecha, etc.) al Index
+      onScanComplete(data);
+      
+    } catch (error: any) {
+      console.error("Error en escaneo:", error);
       toast({
-        title: "Error de subida",
+        title: "Error de lectura",
+        description: "No pudimos extraer datos de la imagen.",
         variant: "destructive",
       });
+    } finally {
       setIsUploading(false);
     }
   };
 
   return (
-    <div className="relative">
+    <div className="relative w-full">
       <input
         type="file"
         accept="image/*"
+        capture="environment" 
         onChange={handleUpload}
         className="hidden"
         id="scanner-input"
         disabled={isUploading}
       />
-      <label
+      <motion.label
+        whileTap={{ scale: 0.95 }}
         htmlFor="scanner-input"
-        className={`flex items-center gap-3 px-6 py-4 rounded-[2rem] border-2 border-dashed transition-all cursor-pointer active:scale-95 ${
+        className={`flex items-center justify-center gap-4 w-full py-6 rounded-[2.5rem] border-2 transition-all duration-500 cursor-pointer ${
           isUploading 
-          ? 'bg-slate-50 border-slate-200 text-slate-400' 
-          : 'bg-[#F8FAFC] border-[#0EA5E9]/30 text-[#0EA5E9] hover:bg-[#0EA5E9]/5'
+          ? 'bg-slate-100 border-slate-200 text-slate-400' 
+          : 'bg-white border-sky-100 text-sky-600 shadow-xl shadow-sky-100/50'
         }`}
       >
-        {isUploading ? (
-          <Loader2 className="animate-spin" size={20} />
-        ) : (
-          <Sparkles size={20} className="animate-pulse" />
-        )}
-        <span className="text-sm font-black uppercase tracking-widest">
-          {isUploading ? 'Escaneando...' : 'Escanear con IA'}
-        </span>
-      </label>
+        <div className={`p-3 rounded-2xl ${isUploading ? 'bg-slate-200' : 'bg-sky-50'}`}>
+          {isUploading ? (
+            <Loader2 className="animate-spin text-sky-500" size={24} />
+          ) : (
+            <Camera size={24} className="text-sky-500" />
+          )}
+        </div>
+        <div className="flex flex-col">
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
+            {isUploading ? 'Procesando...' : 'Inteligencia'}
+          </span>
+          <span className="text-lg font-black text-slate-800 -mt-1">
+            Escanear Circular
+          </span>
+        </div>
+        {!isUploading && <Sparkles size={18} className="ml-2 text-sky-400 animate-pulse" />}
+      </motion.label>
     </div>
   );
 };
