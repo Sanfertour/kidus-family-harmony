@@ -1,3 +1,16 @@
+import { create } from 'zustand';
+import { supabase } from '@/lib/supabase';
+
+interface NestState {
+  profile: any | null;
+  nestId: string | null;
+  familyMembers: any[];
+  loading: boolean;
+  fetchSession: () => Promise<void>;
+  setNestId: (id: string) => void;
+  signOut: () => Promise<void>;
+}
+
 export const useNestStore = create<NestState>((set, get) => ({
   profile: null,
   nestId: null,
@@ -7,10 +20,11 @@ export const useNestStore = create<NestState>((set, get) => ({
   fetchSession: async () => {
     set({ loading: true });
     
-    // Obtenemos la sesión actual de forma inmediata
+    // 1. Obtener sesión actual
     const { data: { session } } = await supabase.auth.getSession();
     
-    const loadProfileData = async (userId: string) => {
+    const loadData = async (userId: string) => {
+      // 2. Obtener Perfil
       const { data: profile } = await supabase
         .from('profiles')
         .select('*')
@@ -18,7 +32,7 @@ export const useNestStore = create<NestState>((set, get) => ({
         .maybeSingle();
 
       if (profile) {
-        // CARGA DE MIEMBROS: Punto 1 corregido (Filtro por nest_id)
+        // 3. Obtener Miembros del Nido automáticamente
         const { data: members } = await supabase
           .from('profiles')
           .select('*')
@@ -37,19 +51,28 @@ export const useNestStore = create<NestState>((set, get) => ({
     };
 
     if (session?.user) {
-      await loadProfileData(session.user.id);
+      await loadData(session.user.id);
     } else {
-      set({ loading: false, profile: null, nestId: null, familyMembers: [] });
+      set({ profile: null, nestId: null, familyMembers: [], loading: false });
     }
 
-    // Mantenemos el listener para cambios de sesión
+    // Listener para cambios de estado
     supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
-        await loadProfileData(session.user.id);
+        await loadData(session.user.id);
       } else {
         set({ profile: null, nestId: null, familyMembers: [], loading: false });
       }
     });
   },
-  // ... resto de funciones (setNestId, signOut) se mantienen igual
+
+  setNestId: (id: string) => set({ nestId: id }),
+
+  signOut: async () => {
+    set({ loading: true });
+    await supabase.auth.signOut();
+    set({ profile: null, nestId: null, familyMembers: [], loading: false });
+    localStorage.clear();
+    window.location.href = '/';
+  },
 }));
