@@ -3,82 +3,46 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
+import { useNestStore } from "@/store/useNestStore"; // Importante: Usamos el cerebro de la app
 
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-import { NestOnboarding } from "./components/NestOnboarding";
+import { OnboardingView } from "./components/OnboardingView"; // El nuevo componente
 
 const queryClient = new QueryClient();
 
 const App = () => {
   const [session, setSession] = useState<any>(null);
-  const [hasNest, setHasNest] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Extraemos lo necesario del Store global
+  const { profile, fetchSession, nestId } = useNestStore();
 
   useEffect(() => {
-    // 1. Inicialización de Auth y verificación de estado
-    const initializeAuth = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        setSession(session);
-        
-        if (session) {
-          await checkNestStatus(session.user.id);
-        } else {
-          setLoading(false);
-        }
-      } catch (error) {
-        console.error("Error inicializando auth:", error);
-        setLoading(false);
-      }
+    // 1. Inicialización y escucha de Auth
+    const initialize = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setSession(session);
+      if (session) await fetchSession();
+      setLoading(false);
     };
 
-    initializeAuth();
+    initialize();
 
-    // 2. Escuchar cambios de autenticación en tiempo real
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
       if (session) {
-        setLoading(true); // Re-activamos loading al cambiar de usuario
-        await checkNestStatus(session.user.id);
-      } else {
-        setHasNest(null);
-        setLoading(false);
+        await fetchSession();
       }
+      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [fetchSession]);
 
-  const checkNestStatus = async (userId: string) => {
-    try {
-      // Usamos maybeSingle() para que no lance error 406 si no encuentra el perfil
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('nest_id')
-        .eq('id', userId)
-        .maybeSingle();
-      
-      if (error) throw error;
-
-      // Validación de Seguridad: Comprobar que nest_id es un UUID válido y no un texto KID-XXXXX
-      const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-      const isValidUuid = data?.nest_id && uuidRegex.test(data.nest_id);
-
-      console.log("Estado del Nido:", isValidUuid ? "Vinculado (UUID)" : "No vinculado");
-      setHasNest(!!isValidUuid);
-    } catch (err) {
-      console.error("Error verificando Nido:", err);
-      setHasNest(false);
-    } finally {
-      // Garantizamos que el estado de carga termine pase lo que pase
-      setLoading(false);
-    }
-  };
-
-  // UI de Sincronización con estética "Brisa"
+  // UI de Sincronización "Brisa"
   if (loading) {
     return (
       <div className="min-h-screen w-full bg-slate-50 flex items-center justify-center">
@@ -86,10 +50,10 @@ const App = () => {
           <div className="relative mb-6">
             <div className="w-16 h-16 bg-sky-400/20 rounded-full blur-2xl animate-pulse" />
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-2 h-2 bg-sky-500 rounded-full animate-ping" />
+              <div className="w-2.5 h-2.5 bg-sky-500 rounded-full animate-ping" />
             </div>
           </div>
-          <span className="text-[10px] font-black tracking-[0.6em] text-slate-400 uppercase animate-pulse">
+          <span className="text-[10px] font-black tracking-[0.6em] text-slate-400 uppercase">
             Sincronía KidUs
           </span>
         </div>
@@ -103,12 +67,12 @@ const App = () => {
         <Toaster />
         <Sonner position="top-right" expand={false} richColors />
         
-        <div className="relative min-h-screen w-full bg-slate-50 selection:bg-[#0EA5E9]/20 overflow-x-hidden">
+        <div className="relative min-h-screen w-full bg-slate-50 overflow-x-hidden">
           
           {/* ATMÓSFERA VISUAL KIDUS */}
-          <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-            <div className="absolute -top-[15%] -left-[10%] w-[800px] h-[800px] bg-sky-400/20 blur-[120px] animate-wave-slow opacity-60" />
-            <div className="absolute -bottom-[15%] -right-[10%] w-[700px] h-[700px] bg-orange-400/10 blur-[100px] animate-wave-medium opacity-50" />
+          <div className="fixed inset-0 pointer-events-none z-0">
+            <div className="absolute -top-[10%] -left-[10%] w-[600px] h-[600px] bg-sky-400/10 blur-[100px] animate-pulse" />
+            <div className="absolute -bottom-[10%] -right-[10%] w-[500px] h-[500px] bg-orange-400/5 blur-[100px]" />
           </div>
 
           <div className="relative z-10 w-full"> 
@@ -118,11 +82,11 @@ const App = () => {
                   path="/" 
                   element={
                     !session ? (
-                      <Index /> 
-                    ) : hasNest ? (
-                      <Index />
+                      <Index /> // Pantalla de Login
+                    ) : (nestId && /^[0-9a-fA-F-]{36}$/.test(nestId)) ? (
+                      <Index /> // Dashboard Principal (Si hay UUID válido)
                     ) : (
-                      <NestOnboarding onComplete={() => setHasNest(true)} />
+                      <OnboardingView /> // Pantalla para crear/unirse al nido
                     )
                   } 
                 />
@@ -131,7 +95,6 @@ const App = () => {
             </BrowserRouter>
           </div>
         </div>
-
       </TooltipProvider>
     </QueryClientProvider>
   );
