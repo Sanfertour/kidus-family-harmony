@@ -20,20 +20,20 @@ export const useNestStore = create<NestState>((set, get) => ({
   fetchSession: async () => {
     set({ loading: true });
     
-    // 1. Obtener sesión actual
+    // Obtenemos sesión activa de Supabase
     const { data: { session } } = await supabase.auth.getSession();
     
-    const loadData = async (userId: string) => {
-      // 2. Obtener Perfil
-      const { data: profile } = await supabase
+    const loadProfileAndTribe = async (userId: string) => {
+      // 1. Cargamos el perfil del usuario
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .maybeSingle();
+        .single();
 
       if (profile) {
-        // 3. Obtener Miembros del Nido automáticamente
-        const { data: members } = await supabase
+        // 2. Cargamos todos los miembros que compartan el mismo nest_id
+        const { data: members, error: membersError } = await supabase
           .from('profiles')
           .select('*')
           .eq('nest_id', profile.nest_id)
@@ -45,21 +45,23 @@ export const useNestStore = create<NestState>((set, get) => ({
           familyMembers: members || [], 
           loading: false 
         });
+        console.log("✅ Sincronía de Nido activa:", profile.nest_id);
       } else {
+        console.warn("⚠️ No se encontró perfil para el usuario");
         set({ loading: false });
       }
     };
 
     if (session?.user) {
-      await loadData(session.user.id);
+      await loadProfileAndTribe(session.user.id);
     } else {
       set({ profile: null, nestId: null, familyMembers: [], loading: false });
     }
 
-    // Listener para cambios de estado
+    // Listener para cambios en la autenticación (Login/Logout)
     supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
-        await loadData(session.user.id);
+        await loadProfileAndTribe(session.user.id);
       } else {
         set({ profile: null, nestId: null, familyMembers: [], loading: false });
       }
