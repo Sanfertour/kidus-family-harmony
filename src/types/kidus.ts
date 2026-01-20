@@ -1,63 +1,66 @@
-// KidUs Core Types - Optimización "El Nido"
+/**
+ * PILARES KIDUS:
+ * 1. Cerebro Compartido: Tipado estricto para evitar fallos de lógica.
+ * 2. Autonomía: Soporte nativo para is_private.
+ * 3. Alerta Naranja: Sistema de conflictos integrado.
+ */
+
+export type KidUsCategory = "school" | "activity" | "medical" | "family" | "work" | "meal";
+export type UserRole = "autonomous" | "dependent"; // Guía o Tribu
 
 export interface NestMember {
   id: string;
-  name: string;
-  role: "adult" | "child";
-  color: string;
-  avatar?: string;
-  school?: string;
-  grade?: string;
-  class?: string;
-  custodyDays?: number[]; 
+  display_name: string;
+  role: UserRole;
+  avatar_url?: string;
+  color?: string; // Color asignado para la UI (Estética Brisa)
+  nest_id: string;
 }
 
-export interface EventData {
+// Interfaz para la lógica de negocio en el Frontend
+export interface KidUsEvent {
   id: string;
+  nest_id: string;
   title: string;
-  date: string;
-  startTime: string;
-  endTime: string;
+  description?: string;
+  start_time: string; // ISO String
+  end_time?: string;   // ISO String
   location?: string;
-  // Interesado (Sujeto): Define el color de la tarjeta
-  memberId: string;
-  memberName: string;
-  memberColor: string;
-  // Tipo de evento (Incluye 'meal' para automatización de menús)
-  type: "school" | "activity" | "medical" | "family" | "work" | "meal";
-  // Responsable (Logística): El adulto que gestiona
-  assignedToId?: string;
-  assignedToName?: string;
-  notes?: string;
-  // Alerta Naranja: Detección de colisiones
-  hasConflict?: boolean;
-  conflictWith?: string[];
-  // Modo Privado/Sorpresa: Oculta detalles al resto
-  isPrivate?: boolean;
+  category: KidUsCategory;
+  
+  // LOGÍSTICA
+  created_by: string;    // ID del Guía que lo creó
+  assigned_to?: string;  // ID del miembro de la Tribu o Guía responsable
+  
+  // ESTADOS
+  is_private: boolean;   // Si es true, otros Guías solo ven "Ocupado"
+  
+  // UI Y DINÁMICAS (Propiedades calculadas en el Front)
+  has_conflict?: boolean; 
+  conflict_with?: string[]; 
 }
 
-// Estructura para la Alerta Naranja
+// --- MAPEO DE BASE DE DATOS (SUPABASE) ---
+// Úsalo para los tipos de retorno de las queries de Supabase
+export interface DbEvent {
+  id: string;
+  nest_id: string;
+  created_by: string;
+  title: string;
+  description: string | null;
+  start_time: string;
+  end_time: string | null;
+  location: string | null;
+  category: KidUsCategory;
+  assigned_to: string | null;
+  is_private: boolean;
+  created_at: string;
+}
+
+// Estructura para la Alerta Naranja (Detección de colisiones)
 export interface ConflictInfo {
   eventId: string;
   conflictingEventIds: string[];
   message: string;
   isPrivateConflict: boolean; // Indica si el choque es con un evento oculto
-}
-
-// --- Tipos de Base de Datos (Mapeo directo a Supabase) ---
-
-export interface DbEvent {
-  id: string;
-  nest_id: string;
-  title: string;
-  date: string;
-  start_time: string;
-  end_time: string;
-  location?: string;
-  member_id: string; // Interesado
-  assigned_to_id?: string; // Responsable
-  type: "school" | "activity" | "medical" | "family" | "work" | "meal";
-  notes?: string;
-  is_private: boolean;
-  created_at: string;
 }
