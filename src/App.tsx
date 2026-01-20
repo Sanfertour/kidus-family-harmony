@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { useNestStore } from "@/store/useNestStore";
 
@@ -26,27 +26,27 @@ const App = () => {
       if (currentSession) {
         await fetchSession();
       } else {
-        // Si no hay sesión, liberamos el loading para mostrar la Landing/Login
-        useNestStore.setState({ loading: false, profile: null, nestId: null });
+        // Liberamos el splash screen si no hay nadie logueado
+        useNestStore.setState({ loading: false });
       }
     };
 
     initAuth();
 
-    // 2. Escuchar cambios de estado (Login/Logout) en tiempo real
+    // 2. Escucha de cambios de estado real-time
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, currentSession) => {
       setSession(currentSession);
       if (currentSession) {
         await fetchSession();
       } else {
-        useNestStore.setState({ loading: false, profile: null, nestId: null });
+        useNestStore.setState({ profile: null, nestId: null, loading: false });
       }
     });
 
     return () => subscription.unsubscribe();
   }, [fetchSession]);
 
-  // Pantalla de Sincronía KidUs (Estética Brisa)
+  // Pantalla de Sincronía KidUs (Splash Screen)
   if (storeLoading) {
     return (
       <div className="min-h-[100dvh] w-full bg-slate-50 flex items-center justify-center overflow-hidden">
@@ -73,11 +73,10 @@ const App = () => {
         
         <div className="relative min-h-[100dvh] w-full bg-slate-50 overflow-x-hidden selection:bg-sky-100">
           
-          {/* ATMÓSFERA VISUAL DINÁMICA */}
+          {/* ATMÓSFERA VISUAL BRISA */}
           <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
             <div className="absolute -top-[10%] -left-[10%] w-[120%] h-[120%] bg-nido-mesh opacity-60" />
-            <div className="absolute top-[20%] right-[-10%] w-[500px] h-[500px] bg-sky-400/10 blur-[120px] animate-wave-slow" />
-            <div className="absolute bottom-[10%] left-[-10%] w-[400px] h-[400px] bg-orange-400/5 blur-[100px] animate-wave-medium" />
+            <div className="absolute top-[20%] right-[-10%] w-[500px] h-[500px] bg-sky-400/10 blur-[120px]" />
           </div>
 
           <div className="relative z-10 w-full h-full"> 
@@ -87,11 +86,11 @@ const App = () => {
                   path="/" 
                   element={
                     !session ? (
-                      <Index /> // Landing con Login
-                    ) : (nestId && nestId.length > 20) ? (
-                      <Index /> // Dashboard Principal
+                      <Index /> // Pantalla de Login
+                    ) : nestId ? (
+                      <Index /> // Dashboard (ya tiene nido)
                     ) : (
-                      <OnboardingView /> // Forzar creación de Nido
+                      <OnboardingView /> // Forzar creación de Nido si nestId es null o undefined
                     )
                   } 
                 />
