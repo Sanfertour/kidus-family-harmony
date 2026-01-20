@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
-import { Chrome } from "lucide-react";
+import { Chrome, Plus } from "lucide-react";
 import { useNestStore } from "@/store/useNestStore";
 
 import Header from "@/components/Header";
@@ -12,21 +12,48 @@ import { VaultView } from "@/components/VaultView";
 import { BottomNav } from "@/components/BottomNav";
 import { triggerHaptic } from "@/utils/haptics";
 
+// Nuevos componentes de gestión de eventos
+import { ManualEventDrawer } from "@/components/ManualEventDrawer";
+import { ImageScanner } from "@/components/ImageScanner";
+
 const Index = () => {
   const [activeTab, setActiveTab] = useState("home");
   const { profile, nestId, familyMembers } = useNestStore();
   const [nextEventTitle, setNextEventTitle] = useState("");
 
+  // --- CAPA DE ESTADOS PARA EVENTOS ---
+  const [isManualDrawerOpen, setIsManualDrawerOpen] = useState(false);
+  const [aiExtractedData, setAiExtractedData] = useState<any>(null);
+
   useEffect(() => {
     if (nestId) {
       const fetchNext = async () => {
-        const { data } = await supabase.from('events').select('title').eq('nest_id', nestId)
-          .gte('start_time', new Date().toISOString()).order('start_time', { ascending: true }).limit(1).maybeSingle();
+        const { data } = await supabase
+          .from('events')
+          .select('title')
+          .eq('nest_id', nestId)
+          .gte('start_time', new Date().toISOString())
+          .order('start_time', { ascending: true })
+          .limit(1)
+          .maybeSingle();
         setNextEventTitle(data?.title || "");
       };
       fetchNext();
     }
   }, [nestId]);
+
+  // Puente: Al terminar el escaneo, inyectamos datos y abrimos el manual
+  const handleScanComplete = (data: any) => {
+    triggerHaptic('success');
+    setAiExtractedData(data);
+    setIsManualDrawerOpen(true);
+  };
+
+  const handleManualOpen = () => {
+    triggerHaptic('soft');
+    setAiExtractedData(null); // Reset para que el formulario salga limpio
+    setIsManualDrawerOpen(true);
+  };
 
   if (!profile) {
     return (
@@ -56,17 +83,36 @@ const Index = () => {
 
   return (
     <div className="relative min-h-screen w-full bg-slate-50/50">
+      {/* Fondo Dinámico Brisa */}
       <div className="fixed inset-0 z-0 pointer-events-none">
         <div className="absolute top-[-20%] left-[-10%] w-[100%] h-[100%] bg-sky-400 animate-liquid-fast opacity-[0.1]" />
       </div>
 
       <div className="relative z-10 flex flex-col min-h-screen">
         <Header />
+        
         <main className="flex-1 container mx-auto px-6 pt-6 max-w-md pb-48">
+          {/* BARRA DE HERRAMIENTAS IA (Solo en Home o Agenda) */}
+          {(activeTab === "home" || activeTab === "agenda") && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }} 
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-8"
+            >
+              <ImageScanner onScanComplete={handleScanComplete} />
+            </motion.div>
+          )}
+
           <AnimatePresence mode="wait">
             {activeTab === "home" && (
               <motion.div key="h" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-                <DashboardView onNavigate={setActiveTab} nextEvent={nextEventTitle} nestId={nestId} members={familyMembers} membersCount={familyMembers.length} />
+                <DashboardView 
+                  onNavigate={setActiveTab} 
+                  nextEvent={nextEventTitle} 
+                  nestId={nestId} 
+                  members={familyMembers} 
+                  membersCount={familyMembers.length} 
+                />
               </motion.div>
             )}
             {activeTab === "agenda" && <AgendaView key="a" />}
@@ -74,6 +120,32 @@ const Index = () => {
             {activeTab === "settings" && <SettingsView key="s" nestId={nestId} members={familyMembers} onRefresh={() => useNestStore.getState().fetchSession()} />}
           </AnimatePresence>
         </main>
+
+        {/* FAB: Botón de Acción Principal (Flotante) */}
+        <div className="fixed bottom-28 right-6 z-50">
+          <button 
+            onClick={handleManualOpen}
+            className="w-16 h-16 bg-slate-900 text-white rounded-full shadow-2xl flex items-center justify-center active:scale-90 transition-all border-4 border-white"
+          >
+            <Plus size={32} strokeWidth={3} />
+          </button>
+        </div>
+
+        {/* DRAWER ÚNICO DE EVENTOS */}
+        <ManualEventDrawer 
+          isOpen={isManualDrawerOpen}
+          onClose={() => {
+            setIsManualDrawerOpen(false);
+            setAiExtractedData(null);
+          }}
+          initialData={aiExtractedData}
+          members={familyMembers}
+          onEventAdded={() => {
+            // Aquí puedes forzar un refresco de la lista de eventos
+            useNestStore.getState().fetchSession(); 
+          }}
+        />
+
         <BottomNav activeTab={activeTab} onTabChange={(tab) => { triggerHaptic('soft'); setActiveTab(tab); }} />
       </div>
     </div>
@@ -81,3 +153,4 @@ const Index = () => {
 };
 
 export default Index;
+                              
