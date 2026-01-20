@@ -15,16 +15,23 @@ const queryClient = new QueryClient();
 
 const App = () => {
   const [session, setSession] = useState<any>(null);
-  // Eliminamos el 'loading' local de App para usar el del Store
   const { fetchSession, nestId, loading: storeLoading } = useNestStore();
 
   useEffect(() => {
-    // 1. Verificar sesión inicial
+    // 1. Inicialización de Auth
     const initAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      if (session) await fetchSession();
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      setSession(currentSession);
+      
+      if (currentSession) {
+        await fetchSession();
+      } else {
+        // MUY IMPORTANTE: Si no hay sesión, tenemos que avisar al Store 
+        // para que deje de mostrar la pantalla de carga.
+        useNestStore.setState({ loading: false });
+      }
     };
+
     initAuth();
 
     // 2. Escuchar cambios de Auth
@@ -32,14 +39,15 @@ const App = () => {
       setSession(currentSession);
       if (currentSession) {
         await fetchSession();
+      } else {
+        useNestStore.setState({ loading: false, profile: null, nestId: null });
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [fetchSession]);
+  }, [fetchSession]); // fetchSession es estable gracias a Zustand, no causará bucle
 
-  // UI de Sincronización "Brisa" 
-  // Ahora solo depende de storeLoading para ser 100% preciso
+  // UI de Sincronización "Brisa"
   if (storeLoading) {
     return (
       <div className="min-h-screen w-full bg-slate-50 flex items-center justify-center">
@@ -65,6 +73,7 @@ const App = () => {
         <Sonner position="top-right" expand={false} richColors />
         
         <div className="relative min-h-screen w-full bg-slate-50 overflow-x-hidden">
+          {/* ATMÓSFERA VISUAL */}
           <div className="fixed inset-0 pointer-events-none z-0">
             <div className="absolute -top-[10%] -left-[10%] w-[600px] h-[600px] bg-sky-400/10 blur-[100px]" />
           </div>
@@ -76,13 +85,11 @@ const App = () => {
                   path="/" 
                   element={
                     !session ? (
-                      <Index /> 
-                    ) : (nestId && nestId.length > 10) ? ( 
-                      // Si hay un ID de nido (UUID), vamos al Dashboard
-                      <Index />
+                      <Index /> // Pantalla de Login (Landing)
+                    ) : (nestId && nestId.length > 10) ? (
+                      <Index /> // Dashboard (Ya tiene nido)
                     ) : (
-                      // Si no hay nido, forzamos Onboarding
-                      <OnboardingView />
+                      <OnboardingView /> // Forzar creación de nido
                     )
                   } 
                 />
