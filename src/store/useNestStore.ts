@@ -11,14 +11,14 @@ interface NestState {
   signOut: () => Promise<void>;
 }
 
-export const useNestStore = create<NestState>((set) => ({
+export const useNestStore = create<NestState>((set, get) => ({
   profile: null,
   nestId: null,
   familyMembers: [],
   loading: true,
 
   fetchSession: async () => {
-    // Iniciamos la sincronía
+    // Evitamos dobles llamadas innecesarias si ya está cargando
     set({ loading: true });
     
     try {
@@ -26,12 +26,13 @@ export const useNestStore = create<NestState>((set) => ({
       
       if (authError) throw authError;
 
+      // Si no hay sesión, reseteamos todo y liberamos la UI
       if (!session?.user) {
         set({ profile: null, nestId: null, familyMembers: [], loading: false });
         return;
       }
 
-      // 1. Obtener Perfil
+      // 1. Obtener Perfil (Gracias al Trigger SQL, esto debería existir)
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('*')
@@ -40,36 +41,39 @@ export const useNestStore = create<NestState>((set) => ({
 
       if (profileError) throw profileError;
 
-      // 2. Si no hay perfil aún (usuario nuevo), limpiamos y soltamos el loading
+      // 2. Manejo de Usuario Nuevo (Sin perfil en DB todavía)
       if (!profile) {
-        set({ profile: null, nestId: null, familyMembers: [], loading: false });
+        console.warn("⚠️ Perfil no encontrado. Reintenta o verifica Trigger SQL.");
+        set({ profile: null, nestId: null, loading: false });
         return;
       }
 
-      // 3. Si hay perfil, actualizamos datos básicos inmediatamente
-      set({ 
-        profile, 
-        nestId: profile.nest_id,
-      });
-
-      // 4. Si tiene nido, cargamos la Tribu (Miembros)
+      // 3. Carga de datos del Nido
+      let members: any[] = [];
       if (profile.nest_id) {
-        const { data: members, error: membersError } = await supabase
+        const { data, error: membersError } = await supabase
           .from('profiles')
           .select('*')
           .eq('nest_id', profile.nest_id)
           .order('role', { ascending: true });
         
-        if (!membersError) {
-          set({ familyMembers: members || [] });
-        }
+        if (!membersError) members = data || [];
       }
+
+      // 4. ACTUALIZACIÓN ÚNICA (Para evitar múltiples re-renders)
+      set({ 
+        profile, 
+        nestId: profile.nest_id || null,
+        familyMembers: members,
+        loading: false 
+      });
 
     } catch (error) {
       console.error("🚨 Error Crítico en NestStore:", error);
+      set({ loading: false, profile: null, nestId: null });
     } finally {
-      // Pase lo que pase, el loading DEBE terminar aquí para liberar la UI
-      set({ loading: false });
+      // Doble check de seguridad para liberar la pantalla de Sincronía
+      setTimeout(() => set({ loading: false }), 100); 
     }
   },
 
@@ -78,8 +82,12 @@ export const useNestStore = create<NestState>((set) => ({
   signOut: async () => {
     try {
       await supabase.auth.signOut();
-    } finally {
       set({ profile: null, nestId: null, familyMembers: [], loading: false });
+      // Limpieza total para evitar fugas de memoria
+      localStorage.clear();
+      window.location.href = '/'; 
+    } catch (error) {
+      console.error("Error al cerrar sesión", error);
     }
   },
 }));
