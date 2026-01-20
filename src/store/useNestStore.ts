@@ -1,73 +1,65 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
+import { NestMember, UserRole } from '@/types/kidus';
 
 interface NestState {
-  profile: any | null;
+  profile: NestMember | null;
   nestId: string | null;
-  familyMembers: any[];
+  familyMembers: NestMember[];
   loading: boolean;
   fetchSession: () => Promise<void>;
-  setNestId: (id: string) => void;
   signOut: () => Promise<void>;
 }
 
-export const useNestStore = create<NestState>((set) => ({
+export const useNestStore = create<NestState>((set, get) => ({
   profile: null,
   nestId: null,
   familyMembers: [],
   loading: true,
 
   fetchSession: async () => {
-    set({ loading: true });
-    
-    // Obtenemos la sesión de auth
+    // Si ya estamos cargando, no duplicamos esfuerzo
     const { data: { session } } = await supabase.auth.getSession();
     
-    const loadTribeData = async (userId: string) => {
-      // 1. Cargamos el perfil del Guía
-      const { data: profile } = await supabase
+    if (!session?.user) {
+      set({ profile: null, nestId: null, familyMembers: [], loading: false });
+      return;
+    }
+
+    try {
+      // 1. Cargamos el perfil (Mapeando a los nombres de columna del SQL)
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('*')
-        .eq('id', userId)
+        .select('id, display_name, role, avatar_url, nest_id')
+        .eq('id', session.user.id)
         .maybeSingle();
 
-      if (profile && profile.nest_id) {
-        // 2. Cargamos a todos los miembros del Nido (La Tribu)
-        const { data: members } = await supabase
+      if (profileError) throw profileError;
+
+      if (profileData && profileData.nest_id) {
+        // 2. Cargamos a toda la Tribu del Nido
+        const { data: members, error: membersError } = await supabase
           .from('profiles')
-          .select('*')
-          .eq('nest_id', profile.nest_id)
+          .select('id, display_name, role, avatar_url, nest_id')
+          .eq('nest_id', profileData.nest_id)
           .order('role', { ascending: true });
 
+        if (membersError) throw membersError;
+
         set({ 
-          profile, 
-          nestId: profile.nest_id, 
-          familyMembers: members || [], 
+          profile: profileData as NestMember, 
+          nestId: profileData.nest_id, 
+          familyMembers: (members || []) as NestMember[], 
           loading: false 
         });
       } else {
-        // Si no hay perfil o nest_id, dejamos de cargar
-        set({ profile: profile || null, loading: false });
+        set({ profile: (profileData as NestMember) || null, nestId: null, loading: false });
       }
-    };
-
-    if (session?.user) {
-      await loadTribeData(session.user.id);
-    } else {
-      set({ profile: null, nestId: null, familyMembers: [], loading: false });
+    } catch (error) {
+      console.error("Error en NestStore:", error);
+      set({ loading: false });
     }
-
-    // Escuchamos cambios en la sesión para mantener el frontend pegado al backend
-    supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        await loadTribeData(session.user.id);
-      } else {
-        set({ profile: null, nestId: null, familyMembers: [], loading: false });
-      }
-    });
   },
-
-  setNestId: (id: string) => set({ nestId: id }),
 
   signOut: async () => {
     set({ loading: true });
