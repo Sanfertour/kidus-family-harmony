@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 
 // URL actualizada según tu solicitud
-const LOGO_URL = "https://raw.githubusercontent.com/Sanfertour/kidus-family-harmony/main/src/assets/IMG_20260120_141931.jpg";
+const LOGO_URL = "https://raw.githubusercontent.com/Sanfertour/kidus-family-harmony/main/src/assets/IMG_20260120_144903.jpg";
 
 const triggerHaptic = (type: 'soft' | 'success' = 'soft') => {
   if (typeof navigator !== "undefined" && navigator.vibrate) {
