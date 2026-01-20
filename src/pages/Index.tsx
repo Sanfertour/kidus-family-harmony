@@ -39,67 +39,81 @@ const Index = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  // --- CONTROL DE AUTENTICACIÓN ---
+  // --- CONTROL DE AUTENTICACIÓN (Lógica Lineal) ---
   useEffect(() => {
-    // 1. Obtener sesión inicial
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session) fetchAllData();
-      else setLoading(false);
-    });
-
-    // 2. Escuchar cambios (Login/Logout)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (session) fetchAllData();
-      else {
+    const initializeApp = async () => {
+      try {
+        // 1. Obtener la sesión actual
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        setSession(currentSession);
+        
+        // 2. Si hay sesión, intentamos cargar datos pero NO bloqueamos la UI
+        if (currentSession) {
+          await fetchAllData(currentSession.user.id);
+        }
+      } catch (error) {
+        console.error("Error en la inicialización:", error);
+      } finally {
+        // 3. Pase lo que pase, quitamos el spinner para que el usuario vea algo
         setLoading(false);
-        setMyNestId("");
       }
+    };
+
+    initializeApp();
+
+    // Listener para cambios de Auth
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+      setSession(newSession);
+      if (newSession) {
+        await fetchAllData(newSession.user.id);
+      } else {
+        setMyNestId("");
+        setFamilyMembers([]);
+      }
+      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchAllData = async () => {
+  const fetchAllData = async (userId: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      
+      // Obtenemos el perfil del Guía
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('nest_id')
-        .eq('id', user.id)
+        .eq('id', userId)
         .maybeSingle();
       
       if (profileError) throw profileError;
       
-      // Si el usuario existe pero no tiene nest_id, es un usuario nuevo "huérfano"
-      if (profile?.nest_id) {
-        setMyNestId(profile.nest_id);
-        
-        const [profilesRes, eventsRes] = await Promise.all([
-          supabase.from('profiles').select('*').eq('nest_id', profile.nest_id).order('role', { ascending: true }),
-          supabase.from('events')
-            .select('title')
-            .eq('nest_id', profile.nest_id)
-            .gte('start_time', new Date().toISOString())
-            .order('start_time', { ascending: true })
-            .limit(1)
-            .maybeSingle()
-        ]);
+      // Si no tiene Nido, salimos (DashboardView manejará el estado "Sin Nido")
+      if (!profile?.nest_id) return;
 
-        if (profilesRes.data) setFamilyMembers(profilesRes.data);
-        if (eventsRes.data) setNextEventTitle(eventsRes.data.title);
-      }
+      setMyNestId(profile.nest_id);
+      
+      // Carga paralela de Tribu y Agenda
+      const [profilesRes, eventsRes] = await Promise.all([
+        supabase.from('profiles').select('*').eq('nest_id', profile.nest_id).order('role', { ascending: true }),
+        supabase.from('events')
+          .select('title')
+          .eq('nest_id', profile.nest_id)
+          .gte('start_time', new Date().toISOString())
+          .order('start_time', { ascending: true })
+          .limit(1)
+          .maybeSingle()
+      ]);
+
+      if (profilesRes.data) setFamilyMembers(profilesRes.data);
+      if (eventsRes.data) setNextEventTitle(eventsRes.data.title);
+      
     } catch (error) {
       console.error("Error en flujo de sincronía:", error);
-    } finally {
-      setLoading(false);
+      // No lanzamos error para evitar bloqueos de UI
     }
   };
 
-  // --- LÓGICA DE IA (Se mantiene igual) ---
+  // --- LÓGICA DE IA ---
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -122,7 +136,8 @@ const Index = () => {
     }
   };
 
-  // --- PANTALLA DE CARGA ---
+  // --- RENDERIZADO ---
+
   if (loading) {
     return (
       <div className="min-h-screen w-full flex flex-col items-center justify-center bg-white space-y-4">
@@ -132,7 +147,6 @@ const Index = () => {
     );
   }
 
-  // --- PANTALLA DE AUTH (Si no hay sesión) ---
   if (!session) {
     return (
       <div className="min-h-screen w-full flex flex-col items-center justify-center bg-slate-50 p-6">
@@ -155,7 +169,6 @@ const Index = () => {
     );
   }
 
-  // --- UI PRINCIPAL (Solo si hay sesión) ---
   return (
     <div className="relative min-h-screen w-full bg-slate-50/50">
       <Header />
@@ -167,7 +180,7 @@ const Index = () => {
               membersCount={familyMembers.length} 
               onNavigate={setActiveTab}
               nextEvent={nextEventTitle}
-              nestId={myNestId} // Pasamos el nestId para saber si hay que mostrar "Crear Nido"
+              nestId={myNestId}
             />
           )}
 
@@ -183,7 +196,7 @@ const Index = () => {
             <SettingsView 
               nestId={myNestId} 
               members={familyMembers} 
-              onRefresh={fetchAllData}
+              onRefresh={() => fetchAllData(session.user.id)}
               onClose={() => setActiveTab("home")}
             />
           )}
@@ -222,7 +235,7 @@ const Index = () => {
         isOpen={isDrawerOpen} 
         onClose={() => { setIsDrawerOpen(false); setScannedData(null); }} 
         members={familyMembers} 
-        onEventAdded={() => { fetchAllData(); setActiveTab("agenda"); }} 
+        onEventAdded={() => { fetchAllData(session.user.id); setActiveTab("agenda"); }} 
         initialData={scannedData} 
       />
     </div>
