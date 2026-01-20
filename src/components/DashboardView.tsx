@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabase"; // Centralizado
+import { supabase } from "@/lib/supabase"; 
 import { motion } from "framer-motion";
 import { triggerHaptic } from "@/utils/haptics";
-import { Users, Sparkles, Calendar, Share2 } from "lucide-react";
+import { Users, Sparkles, Calendar, Share2, ShieldCheck, Baby } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface DashboardProps {
@@ -10,16 +10,19 @@ interface DashboardProps {
   onNavigate: (tab: string) => void;
   nextEvent: string;
   nestId: string | null;
+  members?: any[]; // Añadimos la prop members para el conteo inteligente
 }
 
-export const DashboardView = ({ membersCount, onNavigate, nextEvent, nestId }: DashboardProps) => {
+export const DashboardView = ({ membersCount, onNavigate, nextEvent, nestId, members = [] }: DashboardProps) => {
   const { toast } = useToast();
   const [nestCode, setNestCode] = useState<string>("");
 
+  // Lógica de conteo inteligente
+  const guiasCount = members.filter(m => m.role === 'adult' || m.role === 'autonomous').length;
+  const tribuCount = members.filter(m => m.role === 'child' || m.role === 'dependent').length;
+
   useEffect(() => {
-    if (nestId) {
-      fetchNestCode();
-    }
+    if (nestId) fetchNestCode();
   }, [nestId]);
 
   const fetchNestCode = async () => {
@@ -39,7 +42,6 @@ export const DashboardView = ({ membersCount, onNavigate, nextEvent, nestId }: D
 
   return (
     <div className="space-y-6">
-      {/* CARD PRINCIPAL: ESTADO DE LA TRIBU */}
       <motion.section 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -50,15 +52,28 @@ export const DashboardView = ({ membersCount, onNavigate, nextEvent, nestId }: D
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
             <span className="text-[10px] font-black uppercase tracking-[0.3em] text-sky-500">Sincronía Activa</span>
           </div>
-          <h3 className="text-6xl font-black text-slate-900 tracking-tighter mb-2">
-            {membersCount} <span className="text-2xl text-slate-400">Guías</span>
-          </h3>
-          <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">Tribu en tiempo real</p>
+          
+          <div className="flex items-baseline gap-2 mb-1">
+            <h3 className="text-6xl font-black text-slate-900 tracking-tighter">
+              {membersCount}
+            </h3>
+            <span className="text-xl font-bold text-slate-400">Integrantes</span>
+          </div>
+
+          <div className="flex gap-4 mt-4">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-50 rounded-full border border-sky-100">
+              <ShieldCheck size={12} className="text-sky-500" />
+              <span className="text-[10px] font-black text-sky-700 uppercase">{guiasCount} {guiasCount === 1 ? 'Guía' : 'Guías'}</span>
+            </div>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 rounded-full border border-orange-100">
+              <Baby size={12} className="text-orange-500" />
+              <span className="text-[10px] font-black text-orange-700 uppercase">{tribuCount} Tribu</span>
+            </div>
+          </div>
         </div>
         <Users className="absolute right-[-5%] bottom-[-5%] text-slate-100/50 w-40 h-40 -z-0" />
       </motion.section>
 
-      {/* CARD ACCIÓN: PRÓXIMO EVENTO */}
       <motion.button 
         whileTap={{ scale: 0.98 }}
         onClick={() => { triggerHaptic('soft'); onNavigate("agenda"); }}
@@ -74,7 +89,6 @@ export const DashboardView = ({ membersCount, onNavigate, nextEvent, nestId }: D
         </h4>
       </motion.button>
 
-      {/* CÓDIGO DE INVITACIÓN (Minimalista) */}
       <div 
         onClick={copyCode}
         className="flex items-center justify-between p-6 bg-white/50 border border-white rounded-[2.5rem] cursor-pointer hover:bg-white transition-all group"
