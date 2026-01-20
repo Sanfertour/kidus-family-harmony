@@ -27,7 +27,7 @@ const App = () => {
           className="relative w-32 h-32 flex items-center justify-center"
         >
           <img 
-            src="https://raw.githubusercontent.com/Sanfertour/kidus-family-harmony/main/src/assets/IMG_20260120_141931.jpg" 
+            src="https://raw.githubusercontent.com/Sanfertour/kidus-family-harmony/main/src/assets/IMG_20260120_144903.jpg" 
             className="w-full h-full object-contain rounded-full"
             alt="KidUs Logo"
           />
