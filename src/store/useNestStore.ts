@@ -11,7 +11,7 @@ interface NestState {
   signOut: () => Promise<void>;
 }
 
-export const useNestStore = create<NestState>((set, get) => ({
+export const useNestStore = create<NestState>((set) => ({
   profile: null,
   nestId: null,
   familyMembers: [],
@@ -20,20 +20,20 @@ export const useNestStore = create<NestState>((set, get) => ({
   fetchSession: async () => {
     set({ loading: true });
     
-    // Obtenemos sesión activa de Supabase
+    // Obtenemos la sesión de auth
     const { data: { session } } = await supabase.auth.getSession();
     
-    const loadProfileAndTribe = async (userId: string) => {
-      // 1. Cargamos el perfil del usuario
-      const { data: profile, error: profileError } = await supabase
+    const loadTribeData = async (userId: string) => {
+      // 1. Cargamos el perfil del Guía
+      const { data: profile } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
-      if (profile) {
-        // 2. Cargamos todos los miembros que compartan el mismo nest_id
-        const { data: members, error: membersError } = await supabase
+      if (profile && profile.nest_id) {
+        // 2. Cargamos a todos los miembros del Nido (La Tribu)
+        const { data: members } = await supabase
           .from('profiles')
           .select('*')
           .eq('nest_id', profile.nest_id)
@@ -45,23 +45,22 @@ export const useNestStore = create<NestState>((set, get) => ({
           familyMembers: members || [], 
           loading: false 
         });
-        console.log("✅ Sincronía de Nido activa:", profile.nest_id);
       } else {
-        console.warn("⚠️ No se encontró perfil para el usuario");
-        set({ loading: false });
+        // Si no hay perfil o nest_id, dejamos de cargar
+        set({ profile: profile || null, loading: false });
       }
     };
 
     if (session?.user) {
-      await loadProfileAndTribe(session.user.id);
+      await loadTribeData(session.user.id);
     } else {
       set({ profile: null, nestId: null, familyMembers: [], loading: false });
     }
 
-    // Listener para cambios en la autenticación (Login/Logout)
+    // Escuchamos cambios en la sesión para mantener el frontend pegado al backend
     supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
-        await loadProfileAndTribe(session.user.id);
+        await loadTribeData(session.user.id);
       } else {
         set({ profile: null, nestId: null, familyMembers: [], loading: false });
       }
