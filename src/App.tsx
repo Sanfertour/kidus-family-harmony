@@ -9,12 +9,13 @@ import { OnboardingView } from "./components/OnboardingView";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 
-// Inicialización del cliente de consultas
+// Configuración del QueryClient para mantener la sincronía de datos
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
       refetchOnWindowFocus: false,
+      staleTime: 1000 * 60 * 5, // 5 minutos de caché para datos de la Tribu
     },
   },
 });
@@ -23,32 +24,50 @@ const App = () => {
   const { fetchSession, profile, nestId, loading } = useNestStore();
 
   useEffect(() => {
+    // El store debe marcar 'loading: true' al iniciar fetchSession
     fetchSession();
   }, [fetchSession]);
 
-  // Pantalla de Carga de Élite (Estética Brisa)
+  /**
+   * PROTOCOLO CERO ROTURAS: 
+   * Mientras 'loading' sea true, bloqueamos el renderizado de rutas.
+   * Esto evita que el usuario vea el Dashboard sin tener un nestId inyectado.
+   */
   if (loading) {
     return (
-      <div className="min-h-[100dvh] w-full bg-slate-50 flex flex-col items-center justify-center overflow-hidden p-6">
+      <div className="min-h-[100dvh] w-full bg-[#F8FAFC] flex flex-col items-center justify-center overflow-hidden p-6">
         <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: [0.4, 1, 0.4], scale: [0.95, 1, 0.95] }}
-          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-          className="relative w-32 h-32 flex items-center justify-center"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: [0.4, 1, 0.4], scale: [0.98, 1, 0.98] }}
+          transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+          className="relative w-28 h-28 flex items-center justify-center"
         >
+          {/* Logo con Glassmorphism suave */}
+          <div className="absolute inset-0 bg-sky-400/10 blur-3xl rounded-full" />
           <img 
             src="https://raw.githubusercontent.com/Sanfertour/kidus-family-harmony/main/src/assets/IMG_20260120_144903.jpg" 
-            className="w-full h-full object-contain rounded-[3.5rem] shadow-2xl shadow-sky-100"
+            className="w-full h-full object-contain rounded-[3.5rem] shadow-xl relative z-10"
             alt="KidUs Logo"
           />
         </motion.div>
-        <div className="mt-12 flex flex-col items-center gap-3">
-          <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 italic">Sincronía KidUs</span>
-          <div className="w-16 h-1 bg-slate-200 rounded-full overflow-hidden">
+
+        <div className="mt-16 flex flex-col items-center gap-4">
+          <motion.span 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-[11px] font-black uppercase tracking-[0.5em] text-slate-400 italic"
+          >
+            Sincronizando Nido
+          </motion.span>
+          
+          <div className="w-24 h-[3px] bg-slate-100 rounded-full overflow-hidden">
             <motion.div 
-              className="h-full bg-sky-500"
-              animate={{ x: [-64, 64] }}
-              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              className="h-full bg-gradient-to-r from-sky-400 to-orange-400"
+              animate={{ 
+                x: [-96, 96],
+                opacity: [0.5, 1, 0.5]
+              }}
+              transition={{ duration: 1.8, repeat: Infinity, ease: "linear" }}
             />
           </div>
         </div>
@@ -61,10 +80,10 @@ const App = () => {
       <BrowserRouter>
         <AnimatePresence mode="wait">
           <Routes>
-            {/* LÓGICA DE ENRUTAMIENTO LOGÍSTICO:
-                1. Sin Sesión -> Index (Login)
-                2. Con Sesión pero sin Nido -> Onboarding (Crear/Unirse)
-                3. Con Sesión y Nido -> Index (Dashboard Principal)
+            {/* FLUJO DE ACCESO KIDUS:
+                1. ¿Hay Perfil? No -> Login (Index)
+                2. ¿Hay Perfil pero no Nido? -> Onboarding obligatoire
+                3. ¿Hay Perfil y Nido? -> Dashboard (Index)
             */}
             <Route 
               path="/" 
@@ -79,7 +98,7 @@ const App = () => {
               } 
             />
 
-            {/* Ruta protegida de Onboarding */}
+            {/* Protección de ruta Onboarding: Solo para Guías sin Nido */}
             <Route 
               path="/onboarding" 
               element={
@@ -95,6 +114,7 @@ const App = () => {
           </Routes>
         </AnimatePresence>
       </BrowserRouter>
+      {/* Feedback visual y háptico gestionado por los Toasters */}
       <Toaster />
       <Sonner position="top-center" richColors closeButton />
     </QueryClientProvider>
