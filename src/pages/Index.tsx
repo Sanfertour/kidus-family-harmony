@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Chrome, Loader2 } from "lucide-react";
 import { useNestStore } from "@/store/useNestStore";
 
-// Componentes
+// Componentes con carga segura
 import Header from "@/components/Header";
 import { DashboardView } from "@/components/DashboardView";
 import { AgendaView } from "@/components/AgendaView";
@@ -25,22 +25,21 @@ const Index = () => {
   
   const { toast } = useToast();
 
-  // 1. INICIALIZACIÓN Y SEGURIDAD
+  // 1. INICIALIZACIÓN Y SEGURIDAD (Interruptor de desbloqueo)
   useEffect(() => {
     fetchSession();
 
-    // Interruptor de seguridad: Si en 6s sigue cargando, algo fue mal con la red
+    // Interruptor de seguridad: Si en 6s sigue cargando, liberamos la UI
     const timer = setTimeout(() => {
       if (authLoading) {
-        console.warn("Sincronización lenta detectada. Forzando entrada.");
-        // El store se autogestiona con el timeout que pusimos, pero esto asegura la UI
+        console.warn("Sincronización lenta detectada. Forzando desbloqueo visual.");
       }
     }, 6000);
 
     return () => clearTimeout(timer);
   }, []);
 
-  // 2. CARGA DE EVENTOS (La tribu ya viene del Store)
+  // 2. SINCRONIZACIÓN DE EVENTOS
   useEffect(() => {
     if (nestId) {
       fetchNextEvent();
@@ -78,10 +77,10 @@ const Index = () => {
   return (
     <div className="relative min-h-[100dvh] w-full bg-slate-50 overflow-hidden">
       
-      {/* CAPA DE ONDAS (Siempre visible, incluso en carga) */}
-      <div className="fixed inset-0 z-0 pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[70%] h-[70%] bg-sky-400/10 blur-[120px] rounded-full animate-pulse" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[80%] h-[80%] bg-orange-200/10 blur-[120px] rounded-full animate-pulse" style={{ animationDelay: '2s' }} />
+      {/* CAPA DE ONDAS LÍQUIDAS KIDUS (Siempre presente en el fondo) */}
+      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-[-20%] left-[-10%] w-[100%] h-[100%] bg-sky-400 animate-liquid-fast opacity-[0.15]" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[100%] h-[100%] bg-orange-400 animate-liquid-slow opacity-[0.1]" />
       </div>
 
       <AnimatePresence mode="wait">
@@ -89,27 +88,27 @@ const Index = () => {
           <motion.div 
             key="loader"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="relative z-50 h-screen w-full flex flex-col items-center justify-center bg-white/20 backdrop-blur-md"
+            className="relative z-50 h-[100dvh] w-full flex flex-col items-center justify-center bg-white/20 backdrop-blur-md"
           >
-            <Loader2 className="animate-spin text-sky-500 mb-4" size={40} />
-            <p className="text-[10px] font-black uppercase tracking-[0.5em] text-sky-600">Sincronizando Nido</p>
+            <Loader2 className="animate-spin text-sky-500 mb-4" size={32} />
+            <p className="text-brisa text-sky-600">Sincronizando</p>
           </motion.div>
         ) : !profile ? (
           <motion.div 
             key="login"
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-            className="relative z-50 h-screen w-full flex flex-col items-center justify-center p-6"
+            className="relative z-50 h-[100dvh] w-full flex flex-col items-center justify-center p-6"
           >
-            <div className="w-24 h-24 bg-sky-500 rounded-[2.8rem] flex items-center justify-center text-white mb-8 shadow-2xl shadow-sky-200">
-              <Plus size={48} strokeWidth={3} />
+            <div className="w-20 h-20 bg-sky-500 rounded-[2.5rem] flex items-center justify-center text-white mx-auto mb-8 shadow-haptic shadow-sky-200">
+              <Plus size={40} strokeWidth={3} />
             </div>
-            <h1 className="text-5xl font-black text-slate-900 mb-2 italic tracking-tighter">KidUs</h1>
-            <p className="text-slate-500 font-medium mb-12 text-center leading-relaxed italic">Gestión Familiar de Élite.<br/>Diseñada para Guías.</p>
+            <h1 className="text-4xl font-black text-slate-900 mb-2 italic tracking-tighter">KidUs</h1>
+            <p className="text-slate-500 font-medium mb-12 text-center italic">Gestión Familiar de Élite</p>
             <button 
               onClick={handleLogin} 
-              className="w-full max-w-xs h-20 bg-slate-900 text-white rounded-[2rem] font-black flex items-center justify-center gap-4 shadow-2xl active:scale-95 transition-all"
+              className="w-full max-w-sm h-20 bg-slate-900 text-white rounded-[2rem] font-black flex items-center justify-center gap-3 shadow-2xl active:scale-95 transition-all"
             >
-              <Chrome size={24} /> ENTRAR CON GOOGLE
+              <Chrome size={20} /> ENTRAR CON GOOGLE
             </button>
           </motion.div>
         ) : (
