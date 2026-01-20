@@ -1,181 +1,182 @@
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
 import { useNestStore } from "@/store/useNestStore";
+import { motion, AnimatePresence } from "framer-motion";
+import { Plus, Users, ArrowRight, Sparkles } from "lucide-react";
 import { triggerHaptic } from "@/utils/haptics";
-import { Plus, Users, ArrowRight, Sparkles, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 export const OnboardingView = () => {
-  const [step, setStep] = useState<'choice' | 'create' | 'join'>('choice');
-  const [nestName, setNestName] = useState("");
-  const [joinCode, setJoinCode] = useState("");
-  const [loading, setLoading] = useState(false);
-  const { fetchSession, profile } = useNestStore();
+  const [mode, setMode] = useState<'selection' | 'create' | 'join'>('selection');
+  const [inputValue, setInputValue] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const { fetchSession } = useNestStore();
+  const { toast } = useToast();
 
-  // Función para generar código KID-XXXXX aleatorio
-  const generateNestCode = () => {
-    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-    let code = "";
-    for (let i = 0; i < 5; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return `KID-${code}`;
-  };
-
+  // --- FUNCIÓN: FUNDAR NIDO (CREATE) ---
   const handleCreateNest = async () => {
-    if (!nestName.trim()) return;
-    setLoading(true);
-    triggerHaptic('success');
+    if (!inputValue.trim()) return;
+    setIsLoading(true);
+    triggerHaptic('medium');
 
     try {
-      const nestCode = generateNestCode();
-      
-      // 1. Crear el Nido
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("No hay sesión activa");
+
+      // Generar código estilo KidUs: KID-XXXXX
+      const generatedCode = `KID-${Math.random().toString(36).toUpperCase().substring(2, 7)}`;
+
+      // 1. Insertar en la tabla 'nests' (usando share_code como definiste)
       const { data: newNest, error: nestError } = await supabase
         .from('nests')
-        .insert({ name: nestName, nest_code: nestCode })
+        .insert([{ 
+          name: inputValue.trim(), 
+          share_code: generatedCode 
+        }])
         .select()
         .single();
 
       if (nestError) throw nestError;
 
-      // 2. Vincular al usuario actual como Guía
+      // 2. Vincular el perfil del Guía al nuevo nido
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ nest_id: newNest.id, role: 'autonomous' })
-        .eq('id', profile?.id);
+        .eq('id', user.id);
 
       if (profileError) throw profileError;
 
-      await fetchSession(); // Actualiza el estado global y nos mete en la app
-    } catch (error) {
-      console.error(error);
+      triggerHaptic('success');
+      toast({ title: "¡Nido Fundado!", description: `Tu código es ${generatedCode}` });
+      await fetchSession(); // Salto automático al Dashboard
+
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
+  // --- FUNCIÓN: UNIRSE A NIDO (JOIN) ---
   const handleJoinNest = async () => {
-    if (!joinCode.trim()) return;
-    setLoading(true);
+    if (!inputValue.trim()) return;
+    setIsLoading(true);
     triggerHaptic('medium');
 
     try {
-      // 1. Buscar el nido por código
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // 1. Buscar el nido por el share_code
       const { data: nest, error: nestError } = await supabase
         .from('nests')
-        .select('id')
-        .eq('nest_code', joinCode.toUpperCase().trim())
-        .single();
+        .select('id, name')
+        .eq('share_code', inputValue.trim().toUpperCase())
+        .maybeSingle();
 
-      if (nestError || !nest) throw new Error("Código no válido");
+      if (!nest) throw new Error("Código de Nido no encontrado");
 
-      // 2. Vincular usuario
+      // 2. Vincular usuario al nido encontrado
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ nest_id: nest.id, role: 'autonomous' })
-        .eq('id', profile?.id);
+        .eq('id', user?.id);
 
       if (profileError) throw profileError;
 
+      triggerHaptic('success');
+      toast({ title: "Sincronía completada", description: `Te has unido a: ${nest.name}` });
       await fetchSession();
-    } catch (error) {
-      alert("No encontramos ese código de Nido.");
+
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+    <div className="min-h-[100dvh] w-full flex flex-col items-center justify-center p-6 bg-slate-50 relative overflow-hidden">
+      {/* Background Decor */}
+      <div className="absolute top-[-20%] right-[-20%] w-[100%] h-[50%] bg-sky-400/10 blur-[120px] rounded-full animate-wave-slow" />
+      
       <AnimatePresence mode="wait">
-        {step === 'choice' && (
+        {mode === 'selection' && (
           <motion.div 
-            key="choice"
-            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-            className="w-full max-w-md space-y-8 text-center"
+            key="selection"
+            initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
+            className="w-full max-w-sm space-y-6 relative z-10"
           >
-            <div className="space-y-4">
-              <div className="w-20 h-20 bg-sky-500 rounded-[2.5rem] flex items-center justify-center text-white mx-auto shadow-2xl shadow-sky-200">
-                <Sparkles size={40} />
+            <div className="text-center mb-12">
+              <h2 className="text-4xl font-black text-slate-900 tracking-tighter mb-2">Tu Nido</h2>
+              <p className="text-slate-500 font-medium">Comienza la sincronía familiar</p>
+            </div>
+
+            <button 
+              onClick={() => { triggerHaptic('soft'); setMode('create'); }}
+              className="w-full p-8 bg-white/70 backdrop-blur-2xl border border-white rounded-[3rem] shadow-brisa flex flex-col items-center gap-4 transition-all active:scale-95 group hover:bg-white"
+            >
+              <div className="w-16 h-16 bg-sky-500 rounded-[1.8rem] flex items-center justify-center text-white shadow-haptic group-hover:scale-110 transition-transform">
+                <Plus size={32} strokeWidth={3} />
               </div>
-              <h1 className="text-5xl font-black text-slate-900 tracking-tighter">Bienvenido</h1>
-              <p className="text-slate-400 font-medium italic">Para empezar, necesitamos situarte en un Nido.</p>
-            </div>
+              <div className="text-center">
+                <span className="block font-black text-xl text-slate-800">Fundar Nido</span>
+                <span className="text-sm text-slate-400 font-medium">Crear un espacio nuevo</span>
+              </div>
+            </button>
 
-            <div className="grid gap-4">
-              <button 
-                onClick={() => { triggerHaptic('soft'); setStep('create'); }}
-                className="group p-8 bg-white rounded-[3rem] border-4 border-transparent hover:border-sky-100 shadow-brisa transition-all text-left flex items-center justify-between"
-              >
-                <div>
-                  <h3 className="text-xl font-black text-slate-800">Fundar un Nido</h3>
-                  <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Nuevo grupo familiar</p>
-                </div>
-                <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white group-hover:scale-110 transition-transform">
-                  <Plus size={24} />
-                </div>
-              </button>
-
-              <button 
-                onClick={() => { triggerHaptic('soft'); setStep('join'); }}
-                className="group p-8 bg-white rounded-[3rem] border-4 border-transparent hover:border-orange-100 shadow-brisa transition-all text-left flex items-center justify-between"
-              >
-                <div>
-                  <h3 className="text-xl font-black text-slate-800">Unirse a uno</h3>
-                  <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Ya tengo un código</p>
-                </div>
-                <div className="w-12 h-12 bg-orange-500 rounded-2xl flex items-center justify-center text-white group-hover:scale-110 transition-transform">
-                  <Users size={24} />
-                </div>
-              </button>
-            </div>
+            <button 
+              onClick={() => { triggerHaptic('soft'); setMode('join'); }}
+              className="w-full p-8 bg-white/70 backdrop-blur-2xl border border-white rounded-[3rem] shadow-brisa flex flex-col items-center gap-4 transition-all active:scale-95 group hover:bg-white"
+            >
+              <div className="w-16 h-16 bg-orange-500 rounded-[1.8rem] flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform">
+                <Users size={32} />
+              </div>
+              <div className="text-center">
+                <span className="block font-black text-xl text-slate-800">Unirse a Nido</span>
+                <span className="text-sm text-slate-400 font-medium">Tengo un código KID-XXXXX</span>
+              </div>
+            </button>
           </motion.div>
         )}
 
-        {(step === 'create' || step === 'join') && (
+        {(mode === 'create' || mode === 'join') && (
           <motion.div 
             key="form"
-            initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-            className="w-full max-w-md bg-white p-10 rounded-[4rem] shadow-2xl space-y-8 relative overflow-hidden"
+            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
+            className="w-full max-w-sm bg-white/80 backdrop-blur-3xl border border-white p-10 rounded-[3.5rem] shadow-brisa relative z-10"
           >
             <button 
-              onClick={() => setStep('choice')}
-              className="absolute top-8 left-8 text-slate-300 hover:text-slate-900 transition-colors font-black text-[10px] uppercase tracking-widest"
+              onClick={() => setMode('selection')}
+              className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-6 block"
             >
               ← Volver
             </button>
 
-            <div className="pt-8 space-y-2 text-center">
-              <h2 className="text-3xl font-black text-slate-900 tracking-tighter">
-                {step === 'create' ? "Nombra tu Nido" : "Introduce el Código"}
-              </h2>
-              <p className="text-sky-500 text-[10px] font-black uppercase tracking-[0.3em]">
-                {step === 'create' ? "Identidad Digital" : "Acceso Directo"}
-              </p>
-            </div>
+            <h3 className="text-2xl font-black text-slate-900 mb-6">
+              {mode === 'create' ? 'Nombre del Nido' : 'Introduce el Código'}
+            </h3>
 
             <input 
               autoFocus
-              value={step === 'create' ? nestName : joinCode}
-              onChange={(e) => step === 'create' ? setNestName(e.target.value) : setJoinCode(e.target.value)}
-              placeholder={step === 'create' ? "Ej: Los García..." : "KID-XXXXX"}
-              className="w-full h-20 bg-slate-50 rounded-[2rem] px-8 text-2xl font-black text-slate-800 placeholder:text-slate-200 focus:outline-none focus:ring-4 focus:ring-sky-500/5 transition-all text-center"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              placeholder={mode === 'create' ? "Ej: Casa García" : "KID-XXXXX"}
+              className="w-full h-16 bg-slate-100/50 border-none rounded-2xl px-6 font-bold text-slate-800 focus:ring-2 focus:ring-sky-500 mb-8 transition-all"
             />
 
-            <Button 
-              onClick={step === 'create' ? handleCreateNest : handleJoinNest}
-              disabled={loading || (step === 'create' ? !nestName : !joinCode)}
-              className="w-full h-20 rounded-[2.5rem] bg-slate-900 hover:bg-slate-800 text-white font-black tracking-widest shadow-xl active:scale-95 transition-all"
+            <button 
+              disabled={isLoading || !inputValue}
+              onClick={mode === 'create' ? handleCreateNest : handleJoinNest}
+              className="w-full h-16 bg-slate-900 text-white rounded-2xl font-black tracking-widest flex items-center justify-center gap-3 shadow-xl disabled:opacity-50 active:scale-95 transition-all"
             >
-              {loading ? <Loader2 className="animate-spin" /> : (
-                <div className="flex items-center gap-3">
-                  {step === 'create' ? "COMENZAR AVENTURA" : "VINCULAR NIDO"}
+              {isLoading ? 'SINCRONIZANDO...' : (
+                <>
+                  {mode === 'create' ? 'CONFIRMAR' : 'UNIRSE'}
                   <ArrowRight size={20} />
-                </div>
+                </>
               )}
-            </Button>
+            </button>
           </motion.div>
         )}
       </AnimatePresence>
