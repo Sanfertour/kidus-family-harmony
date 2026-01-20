@@ -1,71 +1,62 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
-import { NestMember, UserRole } from '@/types/kidus';
 
 interface NestState {
-  profile: NestMember | null;
   nestId: string | null;
-  familyMembers: NestMember[];
+  nestCode: string | null;
+  members: any[];
+  events: any[];
   loading: boolean;
-  fetchSession: () => Promise<void>;
-  signOut: () => Promise<void>;
+  
+  // Acciones
+  initializeNest: (nestId: string) => Promise<void>;
+  fetchMembers: () => Promise<void>;
+  fetchEvents: () => Promise<void>;
+  subscribeToChanges: () => void;
 }
 
 export const useNestStore = create<NestState>((set, get) => ({
-  profile: null,
   nestId: null,
-  familyMembers: [],
-  loading: true,
+  nestCode: null,
+  members: [],
+  events: [],
+  loading: false,
 
-  fetchSession: async () => {
-    // Si ya estamos cargando, no duplicamos esfuerzo
-    const { data: { session } } = await supabase.auth.getSession();
+  initializeNest: async (id) => {
+    set({ nestId: id, loading: true });
+    // Cargar código del nido
+    const { data } = await supabase.from('nests').select('nest_code').eq('id', id).single();
+    set({ nestCode: data?.nest_code || null });
     
-    if (!session?.user) {
-      set({ profile: null, nestId: null, familyMembers: [], loading: false });
-      return;
-    }
-
-    try {
-      // 1. Cargamos el perfil (Mapeando a los nombres de columna del SQL)
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, display_name, role, avatar_url, nest_id')
-        .eq('id', session.user.id)
-        .maybeSingle();
-
-      if (profileError) throw profileError;
-
-      if (profileData && profileData.nest_id) {
-        // 2. Cargamos a toda la Tribu del Nido
-        const { data: members, error: membersError } = await supabase
-          .from('profiles')
-          .select('id, display_name, role, avatar_url, nest_id')
-          .eq('nest_id', profileData.nest_id)
-          .order('role', { ascending: true });
-
-        if (membersError) throw membersError;
-
-        set({ 
-          profile: profileData as NestMember, 
-          nestId: profileData.nest_id, 
-          familyMembers: (members || []) as NestMember[], 
-          loading: false 
-        });
-      } else {
-        set({ profile: (profileData as NestMember) || null, nestId: null, loading: false });
-      }
-    } catch (error) {
-      console.error("Error en NestStore:", error);
-      set({ loading: false });
-    }
+    await get().fetchMembers();
+    await get().fetchEvents();
+    get().subscribeToChanges();
+    set({ loading: false });
   },
 
-  signOut: async () => {
-    set({ loading: true });
-    await supabase.auth.signOut();
-    set({ profile: null, nestId: null, familyMembers: [], loading: false });
-    localStorage.clear();
-    window.location.href = '/';
+  fetchMembers: async () => {
+    const { nestId } = get();
+    if (!nestId) return;
+    const { data } = await supabase.from('profiles').select('*').eq('nest_id', nestId);
+    set({ members: data || [] });
   },
+
+  fetchEvents: async () => {
+    const { nestId } = get();
+    if (!nestId) return;
+    const { data } = await supabase.from('events').select('*').eq('nest_id', nestId).order('start_time', { ascending: true });
+    set({ events: data || [] });
+  },
+
+  subscribeToChanges: () => {
+    const { nestId } = get();
+    if (!nestId) return;
+
+    // Suscripción Realtime para Miembros y Eventos
+    supabase
+      .channel('nest-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `nest_id=eq.${nestId}` }, () => get().fetchMembers())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'events', filter: `nest_id=eq.${nestId}` }, () => get().fetchEvents())
+      .subscribe();
+  }
 }));
