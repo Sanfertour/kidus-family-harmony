@@ -7,9 +7,10 @@ export const useNestStore = create<any>((set, get) => ({
   nestCode: null,
   members: [],
   events: [],
-  loading: true,
+  loading: true, // Iniciamos en true para evitar el bucle de redirección
 
   fetchSession: async () => {
+    set({ loading: true });
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -18,7 +19,6 @@ export const useNestStore = create<any>((set, get) => ({
         return;
       }
 
-      // Recuperamos el perfil vinculado al usuario de Auth
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
@@ -33,7 +33,7 @@ export const useNestStore = create<any>((set, get) => ({
           await get().initializeNest(profile.nest_id);
         }
       } else {
-        // Usuario autenticado pero sin perfil creado todavía
+        // Si hay sesión pero no hay perfil, es que el trigger SQL falló o está tardando
         set({ profile: null, nestId: null });
       }
     } catch (error) {
@@ -53,7 +53,6 @@ export const useNestStore = create<any>((set, get) => ({
         
       set({ nestCode: nestData?.nest_code || null });
       
-      // Carga paralela de datos del nido
       await Promise.all([get().fetchMembers(), get().fetchEvents()]);
       get().subscribeToChanges();
     } catch (error) {
@@ -85,23 +84,13 @@ export const useNestStore = create<any>((set, get) => ({
 
   signOut: async () => {
     await supabase.auth.signOut();
-    set({ 
-      profile: null, 
-      nestId: null, 
-      nestCode: null, 
-      members: [], 
-      events: [], 
-      loading: false 
-    });
+    set({ profile: null, nestId: null, nestCode: null, members: [], events: [], loading: false });
   },
 
   subscribeToChanges: () => {
     const { nestId } = get();
     if (!nestId) return;
-
-    // Limpiar suscripciones previas si existen
     supabase.removeAllChannels();
-
     supabase
       .channel('nest-realtime')
       .on('postgres_changes', 
