@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useNestStore } from "@/store/useNestStore";
+import { supabase } from "@/lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
@@ -15,17 +16,30 @@ const App = () => {
   const { fetchSession, profile, nestId, loading } = useNestStore();
 
   useEffect(() => {
+    // Carga inicial de sesión
     fetchSession();
+
+    // ESCUCHA ACTIVA: Detecta el login de Google al volver a la app
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+        fetchSession();
+      }
+      if (event === 'SIGNED_OUT') {
+        fetchSession(); // Esto limpiará el store
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  // Solo bloqueamos la pantalla si está cargando y NO tenemos datos del perfil
-  if (loading && !profile) {
+  // Pantalla de carga estética "Brisa"
+  if (loading) {
     return (
       <div className="min-h-[100dvh] w-full bg-[#F8FAFC] flex flex-col items-center justify-center p-6">
         <motion.div
           animate={{ scale: [0.95, 1, 0.95], opacity: [0.6, 1, 0.6] }}
           transition={{ duration: 2, repeat: Infinity }}
-          className="relative w-28 h-28 bg-white rounded-[3rem] shadow-2xl flex items-center justify-center p-4"
+          className="relative w-28 h-28 bg-white rounded-[3rem] shadow-2xl flex items-center justify-center p-4 border border-white"
         >
           <img 
             src="https://raw.githubusercontent.com/Sanfertour/kidus-family-harmony/main/src/assets/IMG_20260120_144903.jpg" 
@@ -34,8 +48,8 @@ const App = () => {
           />
         </motion.div>
         <div className="mt-8 text-center">
-          <p className="text-[10px] font-black uppercase tracking-[0.5em] text-slate-400 italic">
-            Sincronizando
+          <p className="text-[10px] font-black uppercase tracking-[0.5em] text-slate-400 italic animate-pulse">
+            Sincronizando Nido
           </p>
         </div>
       </div>
@@ -66,7 +80,7 @@ const App = () => {
         </AnimatePresence>
       </BrowserRouter>
       <Toaster />
-      <Sonner position="top-center" richColors closeButton />
+      <Toaster as Sonner position="top-center" richColors closeButton />
     </QueryClientProvider>
   );
 };
