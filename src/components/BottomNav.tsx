@@ -19,12 +19,11 @@ interface BottomNavProps {
 export const BottomNav = ({ activeTab, onTabChange }: BottomNavProps) => {
   const { fetchSession, nestId } = useNestStore();
 
-  // Validación de seguridad para el ID del Nido
   const isNestReady = /^[0-9a-fA-F-]{36}$/.test(nestId || "");
 
   const handleMemberAdded = async () => {
     triggerHaptic('success');
-    await fetchSession(); // Recarga la tribu en el Store global
+    await fetchSession(); 
   };
 
   return (
@@ -34,7 +33,6 @@ export const BottomNav = ({ activeTab, onTabChange }: BottomNavProps) => {
       animate={{ y: 0 }}
       transition={{ type: "spring", damping: 25, stiffness: 200 }}
     >
-      {/* Grupo Izquierda */}
       <div className="flex flex-1 justify-around items-center">
         {navItems.slice(0, 2).map((item) => (
           <NavButton 
@@ -46,7 +44,6 @@ export const BottomNav = ({ activeTab, onTabChange }: BottomNavProps) => {
         ))}
       </div>
 
-      {/* Botón Central: Integrar Tribu */}
       <div className="flex px-4 -translate-y-6">
         {isNestReady ? (
           <AddMemberDialog onMemberAdded={handleMemberAdded}>
@@ -64,7 +61,6 @@ export const BottomNav = ({ activeTab, onTabChange }: BottomNavProps) => {
         )}
       </div>
 
-      {/* Grupo Derecha */}
       <div className="flex flex-1 justify-around items-center">
         {navItems.slice(2, 4).map((item) => (
           <NavButton 
