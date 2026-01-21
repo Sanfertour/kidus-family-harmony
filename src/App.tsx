@@ -16,23 +16,20 @@ const App = () => {
   const { fetchSession, profile, nestId, loading } = useNestStore();
 
   useEffect(() => {
-    // Carga inicial de sesión
     fetchSession();
 
-    // ESCUCHA ACTIVA: Detecta el login de Google al volver a la app
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
         fetchSession();
       }
       if (event === 'SIGNED_OUT') {
-        fetchSession(); // Esto limpiará el store
+        fetchSession();
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  // Pantalla de carga estética "Brisa"
   if (loading) {
     return (
       <div className="min-h-[100dvh] w-full bg-[#F8FAFC] flex flex-col items-center justify-center p-6">
@@ -79,8 +76,10 @@ const App = () => {
           </Routes>
         </AnimatePresence>
       </BrowserRouter>
+      {/* Shadcn UI Toaster */}
       <Toaster />
-      <Toaster as Sonner position="top-center" richColors closeButton />
+      {/* Sonner Toaster (Corregido) */}
+      <Sonner position="top-center" richColors closeButton />
     </QueryClientProvider>
   );
 };
