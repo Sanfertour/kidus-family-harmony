@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { triggerHaptic } from "@/utils/haptics";
-import { Calendar, ShieldCheck, Baby, ArrowRight, Share2, Loader2 } from "lucide-react";
+import { Calendar, ShieldCheck, Baby, ArrowRight, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNestStore } from "@/store/useNestStore";
 import { format, isAfter, parseISO } from "date-fns";
@@ -23,13 +23,6 @@ export const DashboardView = ({ onNavigate, nestId, members }: DashboardProps) =
   const nextEvent = events
     .filter(e => isAfter(parseISO(e.start_time), new Date()))
     .sort((a, b) => parseISO(a.start_time).getTime() - parseISO(b.start_time).getTime())[0];
-
-  const handleCopyCode = () => {
-    if (!nestCode) return;
-    navigator.clipboard.writeText(nestCode);
-    triggerHaptic('success');
-    toast({ title: "Sincronía Copiada", description: "Código KID listo para compartir." });
-  };
 
   if (loading && !profile) {
     return (
