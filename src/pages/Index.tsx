@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { supabase } from "@/lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
-import { Chrome, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useNestStore } from "@/store/useNestStore";
 import Header from "@/components/Header";
 import { DashboardView } from "@/components/DashboardView";
@@ -15,13 +14,11 @@ import { ImageScanner } from "@/components/ImageScanner";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("home");
-  const { profile, nestId, members, fetchEvents } = useNestStore();
+  const { nestId, members, fetchEvents } = useNestStore();
   const [isManualDrawerOpen, setIsManualDrawerOpen] = useState(false);
 
-  const handleScanComplete = (data: any) => {
+  const handleScanComplete = () => {
     triggerHaptic('success');
-    // Para evitar errores de compilación mientras actualizamos el componente, 
-    // solo abrimos el drawer por ahora.
     setIsManualDrawerOpen(true);
   };
 
@@ -29,49 +26,6 @@ const Index = () => {
     triggerHaptic('soft');
     setIsManualDrawerOpen(true);
   };
-
-  const handleGoogleLogin = async () => {
-    triggerHaptic('medium');
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: window.location.origin,
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'select_account',
-        },
-      },
-    });
-    if (error) console.error("Error Auth:", error.message);
-  };
-
-  if (!profile) {
-    return (
-      <div className="relative min-h-screen flex flex-col items-center justify-center p-6 bg-slate-50">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }} 
-          animate={{ opacity: 1, y: 0 }} 
-          className="text-center w-full max-w-sm"
-        >
-          <img 
-            src="https://raw.githubusercontent.com/Sanfertour/kidus-family-harmony/main/src/assets/IMG_20260120_144903.jpg" 
-            className="w-40 h-40 mx-auto mb-8 rounded-[3rem] shadow-2xl object-cover" 
-            alt="KidUs" 
-          />
-          <h1 className="text-5xl font-black text-slate-900 mb-2 italic tracking-tighter leading-none">KidUs</h1>
-          <p className="text-slate-400 mb-12 font-black uppercase tracking-[0.3em] text-[10px]">Sincronía en el Nido</p>
-          
-          <button 
-            onClick={handleGoogleLogin} 
-            className="w-full h-20 bg-slate-900 text-white rounded-[2.5rem] font-black flex items-center justify-center gap-4 shadow-2xl shadow-slate-300 active:scale-95 transition-all"
-          >
-            <Chrome size={24} strokeWidth={3} />
-            <span className="tracking-widest text-sm">ENTRAR CON GOOGLE</span>
-          </button>
-        </motion.div>
-      </div>
-    );
-  }
 
   return (
     <div className="relative min-h-screen w-full bg-slate-50/50">
