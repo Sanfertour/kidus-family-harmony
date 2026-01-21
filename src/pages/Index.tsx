@@ -35,15 +35,45 @@ const Index = () => {
     setIsManualDrawerOpen(true);
   };
 
+  // Función de Login Robusta
+  const handleGoogleLogin = async () => {
+    triggerHaptic('medium');
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        // Esto soluciona el fallo en Netlify/Mobile
+        redirectTo: window.location.origin,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'select_account',
+        },
+      },
+    });
+    if (error) console.error("Error Auth:", error.message);
+  };
+
   if (!profile) {
     return (
       <div className="relative min-h-screen flex flex-col items-center justify-center p-6 bg-slate-50">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center w-full max-w-sm">
-          <img src="https://raw.githubusercontent.com/Sanfertour/kidus-family-harmony/main/src/assets/IMG_20260120_144903.jpg" className="w-40 h-40 mx-auto mb-8 rounded-[3rem] shadow-2xl object-cover" alt="KidUs" />
-          <h1 className="text-5xl font-black text-slate-900 mb-2 italic tracking-tighter">KidUs</h1>
-          <p className="text-slate-500 mb-12 font-medium italic">Esperanza en el Nido</p>
-          <button onClick={() => supabase.auth.signInWithOAuth({ provider: 'google' })} className="w-full h-20 bg-slate-900 text-white rounded-[2.5rem] font-black flex items-center justify-center gap-4 shadow-xl active:scale-95 transition-all">
-            <Chrome size={24} /> ENTRAR CON GOOGLE
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }} 
+          animate={{ opacity: 1, y: 0 }} 
+          className="text-center w-full max-w-sm"
+        >
+          <img 
+            src="https://raw.githubusercontent.com/Sanfertour/kidus-family-harmony/main/src/assets/IMG_20260120_144903.jpg" 
+            className="w-40 h-40 mx-auto mb-8 rounded-[3rem] shadow-2xl object-cover" 
+            alt="KidUs" 
+          />
+          <h1 className="text-5xl font-black text-slate-900 mb-2 italic tracking-tighter leading-none">KidUs</h1>
+          <p className="text-slate-400 mb-12 font-black uppercase tracking-[0.3em] text-[10px]">Sincronía en el Nido</p>
+          
+          <button 
+            onClick={handleGoogleLogin} 
+            className="w-full h-20 bg-slate-900 text-white rounded-[2.5rem] font-black flex items-center justify-center gap-4 shadow-2xl shadow-slate-300 active:scale-95 transition-all"
+          >
+            <Chrome size={24} strokeWidth={3} />
+            <span className="tracking-widest text-sm">ENTRAR CON GOOGLE</span>
           </button>
         </motion.div>
       </div>
@@ -60,18 +90,34 @@ const Index = () => {
           )}
           <AnimatePresence mode="wait">
             {activeTab === "home" && (
-              <motion.div key="h" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <motion.div key="h" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }}>
                 <DashboardView onNavigate={setActiveTab} nestId={nestId || ""} members={members} />
               </motion.div>
             )}
-            {activeTab === "agenda" && <motion.div key="a" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}><AgendaView /></motion.div>}
-            {activeTab === "vault" && <motion.div key="v" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}><VaultView nestId={nestId || ""} /></motion.div>}
-            {activeTab === "settings" && <motion.div key="s" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}><SettingsView /></motion.div>}
+            {activeTab === "agenda" && (
+              <motion.div key="a" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }}>
+                <AgendaView />
+              </motion.div>
+            )}
+            {activeTab === "vault" && (
+              <motion.div key="v" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }}>
+                <VaultView nestId={nestId || ""} />
+              </motion.div>
+            )}
+            {activeTab === "settings" && (
+              <motion.div key="s" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }}>
+                <SettingsView />
+              </motion.div>
+            )}
           </AnimatePresence>
         </main>
         
-        <div className="fixed bottom-28 right-6 z-50">
-          <button onClick={handleManualOpen} className="w-16 h-16 bg-slate-900 text-white rounded-full shadow-2xl flex items-center justify-center border-4 border-white active:scale-90 transition-all">
+        {/* FAB Subido para evitar colisión con BottomNav */}
+        <div className="fixed bottom-32 right-8 z-50">
+          <button 
+            onClick={handleManualOpen} 
+            className="w-16 h-16 bg-slate-900 text-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex items-center justify-center border-4 border-white active:scale-90 transition-all rotate-3 hover:rotate-0"
+          >
             <Plus size={32} strokeWidth={3} />
           </button>
         </div>
@@ -83,7 +129,10 @@ const Index = () => {
           onEventAdded={() => fetchEvents()} 
         />
 
-        <BottomNav activeTab={activeTab} onTabChange={(tab) => setActiveTab(tab)} />
+        <BottomNav activeTab={activeTab} onTabChange={(tab) => {
+          triggerHaptic('soft');
+          setActiveTab(tab);
+        }} />
       </div>
     </div>
   );
