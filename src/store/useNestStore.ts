@@ -11,8 +11,6 @@ export const useNestStore = create<any>((set, get) => ({
   initialized: false,
 
   fetchSession: async () => {
-    if (get().initialized && get().profile) return;
-
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -38,7 +36,6 @@ export const useNestStore = create<any>((set, get) => ({
     } catch (e) {
       console.error("Error en fetchSession:", e);
     } finally {
-      // Garantizamos que la app siempre despierte tras el intento
       set({ loading: false, initialized: true });
     }
   },
