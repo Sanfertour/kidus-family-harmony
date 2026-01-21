@@ -10,8 +10,10 @@ const App = () => {
   const { fetchSession, profile, nestId, loading, initialized } = useNestStore();
 
   useEffect(() => {
+    // Sincronización inicial única
     fetchSession();
-    
+
+    // Listener de estado de autenticación
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') {
         window.location.href = '/';
@@ -21,13 +23,14 @@ const App = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // RECUPERAMOS TU ESTÉTICA ORIGINAL
+  // TU ESTÉTICA ORIGINAL: Pantalla de carga con logo y tipografía KidUs
+  // Se muestra solo mientras carga la sesión inicial (initialized: false)
   if (loading && !initialized) {
     return (
       <div className="relative min-h-screen flex flex-col items-center justify-center p-6 bg-slate-50">
         <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }} 
-          animate={{ opacity: 1, scale: 1 }} 
+          initial={{ opacity: 0, y: 20 }} 
+          animate={{ opacity: 1, y: 0 }} 
           className="text-center w-full max-w-sm"
         >
           <img 
@@ -36,7 +39,9 @@ const App = () => {
             alt="KidUs" 
           />
           <h1 className="text-5xl font-black text-slate-900 mb-2 italic tracking-tighter leading-none">KidUs</h1>
-          <p className="text-slate-400 mb-12 font-black uppercase tracking-[0.3em] text-[10px] animate-pulse">Sincronizando Nido...</p>
+          <p className="text-slate-400 mb-12 font-black uppercase tracking-[0.3em] text-[10px] animate-pulse">
+            Sincronizando Nido...
+          </p>
         </motion.div>
       </div>
     );
@@ -45,18 +50,37 @@ const App = () => {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Lógica de Rutas Corregida: 
+            - Sin sesión: Index (Login)
+            - Con sesión pero sin Nido: Onboarding
+            - Con sesión y Nido: Index (Dashboard)
+        */}
         <Route 
           path="/" 
           element={
-            !profile ? <Index /> : 
-            !nestId ? <Navigate to="/onboarding" replace /> : 
-            <Index />
+            !profile ? (
+              <Index />
+            ) : !nestId ? (
+              <Navigate to="/onboarding" replace />
+            ) : (
+              <Index />
+            )
           } 
         />
+
         <Route 
           path="/onboarding" 
-          element={profile && !nestId ? <OnboardingView /> : <Navigate to="/" replace />} 
+          element={
+            profile && !nestId ? (
+              <OnboardingView />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
         />
+
+        {/* Catch-all para evitar páginas en blanco */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );
