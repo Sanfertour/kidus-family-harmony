@@ -52,12 +52,15 @@ export const FabRadial = ({ onEventAdded, members }: { onEventAdded: () => void;
         members={members} 
       />
       
-      <UploadDocumentDrawer 
-        isOpen={activeDrawer === 'ia'} 
-        onClose={() => setActiveDrawer(null)} 
-        onEventAdded={onEventAdded} 
-        members={members}
-      />
+      // Busca la línea del UploadDocumentDrawer al final del archivo y déjala así:
+<UploadDocumentDrawer 
+  isOpen={activeDrawer === 'ia'} 
+  onClose={() => setActiveDrawer(null)} 
+  onEventAdded={onEventAdded} 
+  members={members}
+  type="camera" // <--- Añade esto para cumplir con el contrato del componente
+/>
+      
     </>
   );
 };
