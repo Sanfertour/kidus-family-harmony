@@ -2,7 +2,7 @@ import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useNestStore } from "@/store/useNestStore";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Users, ArrowRight, Loader2, Sparkles } from "lucide-react";
+import { Plus, Users, Loader2, Sparkles, ArrowLeft } from "lucide-react";
 import { triggerHaptic } from "@/utils/haptics";
 import { useToast } from "@/hooks/use-toast";
 
@@ -23,11 +23,11 @@ export const OnboardingView = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) throw new Error("Sesión expirada");
 
-      const generatedCode = `KID-${Math.random().toString(36).toUpperCase().substring(2, 7)}`;
-
+      // ELIMINAMOS la generación manual del código aquí. 
+      // Dejamos que el DEFAULT generate_nest_code() de SQL haga su magia.
       const { data: newNest, error: nestError } = await supabase
         .from('nests')
-        .insert([{ name: inputValue.trim(), nest_code: generatedCode }])
+        .insert([{ name: inputValue.trim() }]) // El código se genera solo en DB
         .select()
         .single();
 
@@ -41,7 +41,11 @@ export const OnboardingView = () => {
       if (profileError) throw profileError;
 
       triggerHaptic('success');
-      toast({ title: "¡Nido Fundado!", description: `Código: ${generatedCode}` });
+      toast({ 
+        title: "¡Nido Fundado! 🌿", 
+        description: `Código generado: ${newNest.nest_code}` 
+      });
+      
       await fetchSession(); 
 
     } catch (error: any) {
@@ -59,6 +63,8 @@ export const OnboardingView = () => {
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
+      
+      // Buscamos el nido
       const { data: nest, error: nestError } = await supabase
         .from('nests')
         .select('id, name')
@@ -67,6 +73,7 @@ export const OnboardingView = () => {
 
       if (!nest) throw new Error("El código KID no existe.");
 
+      // Vinculamos
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ nest_id: nest.id, role: 'autonomous' })
@@ -87,8 +94,9 @@ export const OnboardingView = () => {
 
   return (
     <div className="min-h-[100dvh] w-full flex flex-col items-center justify-center p-6 bg-[#F8FAFC] relative overflow-hidden">
-      {/* Background Decor */}
+      {/* Background Decor (Efecto Brisa) */}
       <div className="absolute top-[-10%] right-[-10%] w-[80%] h-[40%] bg-sky-400/5 blur-[120px] rounded-full" />
+      <div className="absolute bottom-[-5%] left-[-5%] w-[60%] h-[30%] bg-indigo-400/5 blur-[100px] rounded-full" />
       
       <AnimatePresence mode="wait">
         {mode === 'selection' ? (
@@ -104,14 +112,14 @@ export const OnboardingView = () => {
 
             <button 
               onClick={() => { triggerHaptic('soft'); setMode('create'); }}
-              className="w-full p-10 bg-white border border-white rounded-[4rem] shadow-brisa flex flex-col items-center gap-4 transition-all active:scale-95 group"
+              className="w-full p-10 bg-white border border-white rounded-[4rem] shadow-[0_20px_50px_rgba(0,0,0,0.05)] flex flex-col items-center gap-4 transition-all active:scale-95 group"
             >
               <div className="w-16 h-16 bg-slate-900 rounded-[1.8rem] flex items-center justify-center text-white shadow-lg group-hover:bg-sky-500 transition-colors">
                 <Plus size={32} />
               </div>
               <div className="text-center">
                 <span className="block font-black text-2xl text-slate-800 tracking-tight">Fundar Nido</span>
-                <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.2em] mt-1">Crea un espacio nuevo</span>
+                <span className="text-[9px] text-slate-400 font-black uppercase tracking-[0.2em] mt-1 italic">Crea un espacio nuevo</span>
               </div>
             </button>
 
@@ -124,7 +132,7 @@ export const OnboardingView = () => {
               </div>
               <div className="text-center">
                 <span className="block font-black text-2xl text-white tracking-tight">Unirse a Nido</span>
-                <span className="text-[9px] text-sky-400/60 font-black uppercase tracking-[0.2em] mt-1">Tengo un código KID-ID</span>
+                <span className="text-[9px] text-sky-400/60 font-black uppercase tracking-[0.2em] mt-1 italic">Tengo un código KID-ID</span>
               </div>
             </button>
           </motion.div>
@@ -132,31 +140,31 @@ export const OnboardingView = () => {
           <motion.div 
             key="form"
             initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-            className="w-full max-w-sm bg-white p-12 rounded-[4rem] shadow-2xl relative z-10 border border-slate-50"
+            className="w-full max-w-sm bg-white p-12 rounded-[4rem] shadow-[0_40px_80px_rgba(0,0,0,0.08)] relative z-10 border border-slate-50"
           >
             <button 
               onClick={() => { triggerHaptic('soft'); setMode('selection'); setInputValue(""); }}
-              className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-10 flex items-center gap-2 hover:text-slate-600 transition-colors"
+              className="group text-[10px] font-black uppercase tracking-[0.3em] text-slate-300 mb-10 flex items-center gap-2 hover:text-slate-900 transition-all"
             >
-              ← Volver
+              <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" /> Volver
             </button>
 
-            <h3 className="text-3xl font-black text-slate-900 mb-8 italic tracking-tighter">
-              {mode === 'create' ? 'Nombre del Nido' : 'Sincronizar Código'}
+            <h3 className="text-3xl font-black text-slate-900 mb-8 italic tracking-tighter leading-tight">
+              {mode === 'create' ? 'Nombre de tu\nNido' : 'Sincronizar\nCódigo KID'}
             </h3>
 
             <input 
               autoFocus
               value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
+              onChange={(e) => setInputValue(mode === 'join' ? e.target.value.toUpperCase() : e.target.value)}
               placeholder={mode === 'create' ? "Ej: Casa Kibo" : "KID-XXXXX"}
-              className="w-full h-20 bg-slate-50 border-none rounded-[2rem] px-8 font-black text-slate-900 mb-10 focus:ring-4 focus:ring-sky-500/10 transition-all outline-none text-xl placeholder:text-slate-300"
+              className="w-full h-20 bg-slate-50 border-none rounded-[2rem] px-8 font-black text-slate-900 mb-10 focus:ring-4 focus:ring-sky-500/10 transition-all outline-none text-xl placeholder:text-slate-200"
             />
 
             <button 
               disabled={isLoading || !inputValue}
               onClick={mode === 'create' ? handleCreateNest : handleJoinNest}
-              className="w-full h-24 bg-slate-900 text-white rounded-[2.5rem] font-black tracking-[0.3em] flex items-center justify-center gap-4 shadow-xl active:scale-95 transition-all disabled:opacity-30"
+              className="w-full h-24 bg-slate-900 text-white rounded-[2.5rem] font-black tracking-[0.3em] flex items-center justify-center gap-4 shadow-xl active:scale-95 transition-all disabled:opacity-20 disabled:grayscale"
             >
               {isLoading ? <Loader2 className="animate-spin" /> : (
                 <>
