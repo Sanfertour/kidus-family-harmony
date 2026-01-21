@@ -7,25 +7,25 @@ export const useNestStore = create<any>((set, get) => ({
   nestCode: null,
   members: [],
   events: [],
-  loading: true, // Iniciamos en true para evitar el bucle de redirección
+  loading: true,
 
   fetchSession: async () => {
     set({ loading: true });
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
-      if (!session?.user) {
+      if (sessionError || !session?.user) {
         set({ profile: null, nestId: null, loading: false });
         return;
       }
 
-      const { data: profile, error } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', session.user.id)
         .maybeSingle();
       
-      if (error) throw error;
+      if (profileError) throw profileError;
 
       if (profile) {
         set({ profile, nestId: profile.nest_id });
@@ -33,13 +33,15 @@ export const useNestStore = create<any>((set, get) => ({
           await get().initializeNest(profile.nest_id);
         }
       } else {
-        // Si hay sesión pero no hay perfil, es que el trigger SQL falló o está tardando
         set({ profile: null, nestId: null });
       }
     } catch (error) {
       console.error("Error en sincronía de sesión:", error);
     } finally {
-      set({ loading: false });
+      // Pequeño margen para asegurar que el estado se asiente
+      setTimeout(() => {
+        set({ loading: false });
+      }, 500);
     }
   },
 
@@ -53,6 +55,7 @@ export const useNestStore = create<any>((set, get) => ({
         
       set({ nestCode: nestData?.nest_code || null });
       
+      // Mantenemos la carga de datos que ya tenías
       await Promise.all([get().fetchMembers(), get().fetchEvents()]);
       get().subscribeToChanges();
     } catch (error) {
