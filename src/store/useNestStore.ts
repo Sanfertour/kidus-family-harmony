@@ -12,30 +12,43 @@ export const useNestStore = create<any>((set, get) => ({
 
   fetchSession: async () => {
     try {
+      set({ loading: true });
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
+        console.log("No hay sesión activa");
         set({ profile: null, loading: false, initialized: true });
         return;
       }
 
-      const { data: profile } = await supabase
+      console.log("Sesión detectada para:", session.user.id);
+
+      const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', session.user.id)
-        .maybeSingle();
+        .single();
       
-      if (profile) {
-        set({ profile, nestId: profile.nest_id });
-        if (profile.nest_id) {
-          await get().initializeNest(profile.nest_id);
-        }
-      } else {
-        set({ profile: null, nestId: null });
+      if (error) {
+        console.error("Error al obtener perfil:", error.message);
+        // Si hay sesión pero no perfil, es que el trigger falló o RLS bloquea
+        set({ profile: null, loading: false, initialized: true });
+        return;
+      }
+
+      console.log("Perfil cargado:", profile);
+      set({ 
+        profile, 
+        nestId: profile.nest_id, 
+        loading: false, 
+        initialized: true 
+      });
+
+      if (profile.nest_id) {
+        await get().initializeNest(profile.nest_id);
       }
     } catch (e) {
-      console.error("Error en fetchSession:", e);
-    } finally {
+      console.error("Fallo crítico en fetchSession:", e);
       set({ loading: false, initialized: true });
     }
   },
@@ -46,13 +59,13 @@ export const useNestStore = create<any>((set, get) => ({
         .from('nests')
         .select('nest_code')
         .eq('id', id)
-        .maybeSingle();
+        .single();
         
       set({ nestCode: nestData?.nest_code || null });
       await Promise.all([get().fetchMembers(), get().fetchEvents()]);
-      get().subscribeToChanges();
+      console.log("Nido sincronizado correctamente");
     } catch (e) {
-      console.error("Error inicializando nido:", e);
+      console.error("Error al inicializar nido:", e);
     }
   },
 
@@ -68,20 +81,5 @@ export const useNestStore = create<any>((set, get) => ({
     if (!nestId) return;
     const { data } = await supabase.from('events').select('*').eq('nest_id', nestId);
     set({ events: data || [] });
-  },
-
-  subscribeToChanges: () => {
-    const { nestId } = get();
-    if (!nestId) return;
-    
-    supabase.channel('nest-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'events', filter: `nest_id=eq.${nestId}` }, () => get().fetchEvents())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `nest_id=eq.${nestId}` }, () => get().fetchMembers())
-      .subscribe();
-  },
-
-  signOut: async () => {
-    await supabase.auth.signOut();
-    set({ profile: null, nestId: null, nestCode: null, members: [], events: [], loading: false, initialized: false });
   }
 }));
