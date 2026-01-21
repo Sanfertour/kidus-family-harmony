@@ -1,9 +1,9 @@
 import { motion } from "framer-motion";
 import { triggerHaptic } from "@/utils/haptics";
-import { Calendar, ShieldCheck, Baby, ArrowRight, Share2, Sparkles } from "lucide-react";
+import { Calendar, ShieldCheck, Baby, ArrowRight, Share2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNestStore } from "@/store/useNestStore";
-import { format } from "date-fns";
+import { format, isAfter, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 
 interface DashboardProps {
@@ -12,20 +12,16 @@ interface DashboardProps {
 
 export const DashboardView = ({ onNavigate }: DashboardProps) => {
   const { toast } = useToast();
-  // Extraemos todo del Store. Ya no necesitamos useEffect ni llamadas directas a Supabase aquí.
-  const { members, events, nestCode, profile } = useNestStore();
+  // El Store es nuestra "Verdad Única"
+  const { members, events, nestCode, profile, loading } = useNestStore();
   
-  const safeMembers = Array.isArray(members) ? members : [];
-  const guiasCount = safeMembers.filter(m => m?.role === 'autonomous').length;
-  const tribuCount = safeMembers.filter(m => m?.role === 'dependent').length;
+  const guiasCount = members.filter(m => m.role === 'autonomous').length;
+  const tribuCount = members.filter(m => m.role === 'dependent').length;
 
-  // Lógica de "Próximo Evento" mejorada para manejar fechas inválidas
+  // Filtro de "Próxima Sincronía" optimizado
   const nextEvent = events
-    .filter(e => {
-      const eventDate = new Date(e.start_time);
-      return eventDate > new Date();
-    })
-    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())[0];
+    .filter(e => isAfter(parseISO(e.start_time), new Date()))
+    .sort((a, b) => parseISO(a.start_time).getTime() - parseISO(b.start_time).getTime())[0];
 
   const handleCopyCode = () => {
     if (!nestCode) return;
@@ -33,101 +29,126 @@ export const DashboardView = ({ onNavigate }: DashboardProps) => {
     triggerHaptic('success');
     toast({ 
       title: "Sincronía Copiada", 
-      description: "El código KID está en tu portapapeles." 
+      description: "Código KID listo para compartir.",
+      duration: 2000 
     });
   };
 
+  if (loading && !profile) {
+    return (
+      <div className="py-20 flex flex-col items-center justify-center opacity-40">
+        <Loader2 className="animate-spin text-sky-500 mb-4" size={32} />
+        <p className="text-[10px] font-black uppercase tracking-[0.3em]">Cargando Nido...</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 max-w-md mx-auto">
-      {/* SALUDO PERSONALIZADO (Gestión de Perfil) */}
-      <header className="px-2">
-        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-sky-500 mb-1">Bienvenido al Nido</p>
-        <h2 className="text-3xl font-black text-slate-900 tracking-tighter">
-          Hola, {profile?.display_name?.split(' ')[0] || 'Guía'}
-        </h2>
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 max-w-md mx-auto">
+      {/* HEADER: Saludo Elite */}
+      <header className="px-2 flex justify-between items-end">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.4em] text-sky-500 mb-1">KidUs Home</p>
+          <h2 className="text-4xl font-black text-slate-900 tracking-tighter leading-none italic">
+            Hola, {profile?.display_name?.split(' ')[0] || 'Guía'}
+          </h2>
+        </div>
+        <div className="text-right">
+          <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest block">Nido Activo</span>
+          <span className="text-xs font-bold text-slate-900">{nestCode}</span>
+        </div>
       </header>
 
-      {/* CARD PRINCIPAL: ESTADO DE LA TRIBU (Gestión de Usuarios) */}
+      {/* SECCIÓN TRIBU: Glassmorphism Profundo */}
       <motion.section 
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="glass-panel p-10 relative overflow-hidden border-none shadow-2xl bg-white/40 rounded-[3.5rem]"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative p-10 bg-white/40 backdrop-blur-3xl rounded-[4rem] border border-white/60 shadow-xl shadow-slate-200/50 overflow-hidden"
       >
+        <div className="absolute top-0 right-0 p-8 opacity-5">
+          <ShieldCheck size={120} />
+        </div>
+
         <div className="relative z-10">
-          <div className="flex items-center gap-2 mb-8">
-            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-emerald-600">Sincronía Activa</span>
+          <div className="flex items-center gap-2 mb-8 bg-emerald-500/10 w-fit px-3 py-1 rounded-full border border-emerald-500/20">
+            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-emerald-600">Sincronía Estable</span>
           </div>
           
-          <div className="flex items-baseline gap-3 mb-8">
-            <h3 className="text-7xl font-black text-slate-900 tracking-tighter leading-none">
-              {safeMembers.length}
+          <div className="flex items-baseline gap-3 mb-10">
+            <h3 className="text-8xl font-black text-slate-900 tracking-tighter leading-none italic">
+              {members.length}
             </h3>
-            <span className="text-xl font-black text-slate-900 italic tracking-tighter">Miembros</span>
+            <span className="text-2xl font-black text-slate-900 italic tracking-tighter opacity-30">Tribu</span>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-slate-900 p-6 rounded-[2.5rem] text-white shadow-xl group active:scale-95 transition-all">
-              <ShieldCheck size={18} className="mb-2 text-sky-400" />
-              <p className="text-3xl font-black">{guiasCount}</p>
-              <p className="text-[9px] font-black uppercase tracking-widest opacity-60 italic">Guías</p>
+          <div className="grid grid-cols-2 gap-5">
+            <div className="bg-slate-900 p-6 rounded-[2.8rem] text-white shadow-2xl shadow-slate-300 transition-transform active:scale-95">
+              <ShieldCheck size={20} className="mb-3 text-sky-400" />
+              <p className="text-3xl font-black tracking-tighter italic">{guiasCount}</p>
+              <p className="text-[9px] font-black uppercase tracking-widest opacity-50">Guías</p>
             </div>
-            <div className="bg-white border border-slate-100 p-6 rounded-[2.5rem] text-slate-900 shadow-sm active:scale-95 transition-all">
-              <Baby size={18} className="mb-2 text-orange-500" />
-              <p className="text-3xl font-black">{tribuCount}</p>
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 italic">Tribu</p>
+            <div className="bg-white/80 border border-slate-100 p-6 rounded-[2.8rem] text-slate-900 shadow-sm transition-transform active:scale-95">
+              <Baby size={20} className="mb-3 text-orange-500" />
+              <p className="text-3xl font-black tracking-tighter italic">{tribuCount}</p>
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Peques</p>
             </div>
           </div>
         </div>
       </motion.section>
 
-      {/* PRÓXIMA CITA: DINÁMICA (Gestión de Calendario/Eventos) */}
+      {/* AGENDA PREVIEW: Botón de Acción */}
       <motion.button 
-        whileTap={{ scale: 0.97 }}
+        whileTap={{ scale: 0.96 }}
         onClick={() => { triggerHaptic('soft'); onNavigate("agenda"); }}
-        className="w-full bg-white border border-slate-50 p-10 rounded-[4rem] text-left relative group shadow-brisa overflow-hidden"
+        className="w-full bg-white border border-white p-10 rounded-[4rem] text-left relative group shadow-xl shadow-slate-100 transition-all hover:border-sky-100"
       >
-        <div className="flex justify-between items-center mb-10">
-          <div className="w-12 h-12 bg-sky-50 rounded-2xl flex items-center justify-center text-sky-500">
-            <Calendar size={24} />
+        <div className="flex justify-between items-start mb-8">
+          <div className="w-14 h-14 bg-sky-50 rounded-[2rem] flex items-center justify-center text-sky-500 group-hover:bg-sky-500 group-hover:text-white transition-all duration-500">
+            <Calendar size={28} />
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest group-hover:text-sky-500 transition-colors">Ver Agenda</span>
-            <ArrowRight size={16} className="text-slate-300 group-hover:translate-x-1 transition-transform group-hover:text-sky-500" />
+          <div className="flex items-center gap-1.5 bg-slate-50 px-4 py-2 rounded-full border border-slate-100">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest group-hover:text-sky-600 transition-colors">Abrir Agenda</span>
+            <ArrowRight size={14} className="text-slate-300 group-hover:translate-x-1 transition-all group-hover:text-sky-500" />
           </div>
         </div>
         
-        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 italic">Próxima Sincronía</p>
+        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-3 italic">Próximo Hito</p>
         
-        <h4 className="text-3xl font-black text-slate-900 tracking-tighter leading-tight italic">
+        <div className="space-y-1">
           {nextEvent ? (
             <>
-              "{nextEvent.title}"
-              <span className="block text-sm font-bold text-sky-500 mt-2 not-italic">
-                {format(new Date(nextEvent.start_time), "EEEE d 'a las' HH:mm", { locale: es })}
-              </span>
+              <h4 className="text-3xl font-black text-slate-900 tracking-tighter leading-tight italic group-hover:text-sky-600 transition-colors">
+                "{nextEvent.title}"
+              </h4>
+              <p className="text-sm font-bold text-sky-500 uppercase tracking-tight">
+                {format(parseISO(nextEvent.start_time), "EEEE d '•' HH:mm", { locale: es })}
+              </p>
             </>
           ) : (
-            <span className="text-slate-300 italic">Paz en el Nido</span>
+            <h4 className="text-3xl font-black text-slate-200 tracking-tighter leading-tight italic">
+              Nido en Calma
+            </h4>
           )}
-        </h4>
+        </div>
       </motion.button>
 
-      {/* INVITACIÓN: COMPARTIR CÓDIGO (Sincronía de Nidos) */}
-      <div 
+      {/* INVITE: KID-CODE */}
+      <motion.div 
+        whileTap={{ scale: 0.98 }}
         onClick={handleCopyCode}
-        className="flex items-center justify-between p-8 bg-white/60 backdrop-blur-md rounded-[3rem] border border-white cursor-pointer active:scale-95 transition-all shadow-sm group hover:border-sky-200"
+        className="flex items-center justify-between p-8 bg-slate-900/5 backdrop-blur-md rounded-[3rem] border-2 border-dashed border-slate-200 cursor-pointer group transition-all hover:bg-white hover:border-sky-400 hover:border-solid shadow-sm"
       >
         <div className="flex flex-col">
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">Sincronizar Guía</span>
-          <span className="text-2xl font-black text-slate-800 tracking-[0.15em] font-mono group-hover:text-sky-600 transition-colors">
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">Añadir Guía (Código)</span>
+          <span className="text-2xl font-black text-slate-800 tracking-[0.2em] font-mono group-hover:text-sky-600 transition-colors">
             {nestCode || "KID-•••••"}
           </span>
         </div>
-        <div className="w-14 h-14 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-lg group-hover:bg-sky-500 transition-colors">
+        <div className="w-14 h-14 bg-slate-900 rounded-[1.8rem] flex items-center justify-center text-white shadow-xl group-hover:bg-sky-500 group-hover:rotate-12 transition-all">
           <Share2 size={20} />
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 };
