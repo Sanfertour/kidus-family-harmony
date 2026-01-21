@@ -2,8 +2,7 @@ import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useNestStore } from "@/store/useNestStore";
 import { 
-  X, Calendar, Clock, Tag, 
-  Lock, Globe, Loader2, Sparkles
+  X, Calendar, Lock, Globe, Loader2, Sparkles
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +33,28 @@ export const AddEventModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
 
   if (!isOpen) return null;
 
+  // Lógica de Notificación Push mediante Edge Function
+  const notifyTribu = async (eventTitle: string) => {
+    try {
+      const otherGuias = members.filter(m => m.role === 'autonomous' && m.id !== profile?.id);
+      if (otherGuias.length === 0) return;
+
+      // Llamada a tu Edge Function
+      await fetch('https://nzwctnxfwoxtamytwebj.supabase.co/functions/v1/send-push-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nest_id: nestId,
+          title: "Sincronía en el Nido 🌿",
+          body: `${profile?.display_name} ha añadido: "${eventTitle}"`,
+          data: { url: "/agenda" }
+        })
+      });
+    } catch (err) {
+      console.error("Error en notificación push:", err);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title || !formData.start_time) {
@@ -45,6 +66,7 @@ export const AddEventModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
     triggerHaptic('medium');
 
     try {
+      // 1. Inserción en Supabase
       const { error } = await supabase.from('events').insert([{
         nest_id: nestId,
         created_by: profile?.id,
@@ -58,10 +80,13 @@ export const AddEventModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
 
       if (error) throw error;
 
+      // 2. Éxito: Háptico y Notificación
       triggerHaptic('success');
+      await notifyTribu(formData.title);
+      
       toast({ title: "Sincronía creada", description: "El plan ya está en el calendario." });
       
-      await fetchEvents(); // Refrescar la agenda automáticamente
+      await fetchEvents(); 
       onClose();
       setFormData({ title: '', description: '', start_time: '', category: 'other', assigned_to: '', is_private: false });
     } catch (error: any) {
@@ -73,19 +98,23 @@ export const AddEventModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
 
   return (
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-slate-900/60 backdrop-blur-md p-0 sm:p-4 animate-in fade-in duration-300">
-      <div className="w-full max-w-lg bg-white rounded-t-[4rem] sm:rounded-[3.5rem] shadow-3xl overflow-hidden animate-in slide-in-from-bottom-20 duration-500 mb-0 sm:mb-0">
+      <div className="w-full max-w-lg bg-white rounded-t-[4rem] sm:rounded-[3.5rem] shadow-3xl overflow-hidden animate-in slide-in-from-bottom-20 duration-500 mb-0">
         
         <header className="px-10 pt-10 pb-6 flex justify-between items-center">
           <div>
             <h3 className="text-3xl font-black italic text-slate-900 tracking-tighter">Nuevo Plan</h3>
             <p className="text-[10px] font-black text-sky-500 uppercase tracking-[0.3em] mt-1">Sincronía Familiar</p>
           </div>
-          <button onClick={onClose} className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 active:scale-90 transition-all">
+          <button 
+            type="button"
+            onClick={() => { triggerHaptic('soft'); onClose(); }} 
+            className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 active:scale-90 transition-all"
+          >
             <X size={24} />
           </button>
         </header>
 
-        <form onSubmit={handleSubmit} className="px-10 pb-12 space-y-8 max-h-[75vh] overflow-y-auto no-scrollbar">
+        <form onSubmit={handleSubmit} className="px-10 pb-24 space-y-8 max-h-[75vh] overflow-y-auto no-scrollbar">
           
           {/* TÍTULO */}
           <div className="space-y-3">
@@ -98,10 +127,10 @@ export const AddEventModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
             />
           </div>
 
-          {/* SELECTOR DE TRIBU (DINÁMICO CON COLORES) */}
+          {/* ASIGNAR A LA TRIBU (USANDO COLOR) */}
           <div className="space-y-4">
             <label className="text-[10px] font-black uppercase tracking-widest text-slate-300 ml-4 italic">Asignar a la Tribu</label>
-            <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
+            <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar px-1">
               {members.map((member) => (
                 <button
                   key={member.id}
@@ -131,7 +160,8 @@ export const AddEventModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
           </div>
 
           {/* FECHA Y HORA */}
-          <div className="grid grid-cols-1 gap-4">
+          <div className="space-y-3">
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-300 ml-4 italic">¿Cuándo sucede?</label>
             <div className="relative">
               <Calendar className="absolute left-6 top-1/2 -translate-y-1/2 text-sky-500" size={20} />
               <input 
@@ -143,7 +173,7 @@ export const AddEventModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
             </div>
           </div>
 
-          {/* CATEGORÍAS TÁCTILES */}
+          {/* CATEGORÍAS */}
           <div className="grid grid-cols-2 gap-3">
             {CATEGORIES.map((cat) => (
               <button
@@ -160,7 +190,7 @@ export const AddEventModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
             ))}
           </div>
 
-          {/* MODO PRIVADO (GLASSMORPHISM) */}
+          {/* MODO PRIVADO */}
           <button 
             type="button"
             onClick={() => { triggerHaptic('soft'); setFormData({...formData, is_private: !formData.is_private}); }}
@@ -182,14 +212,23 @@ export const AddEventModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
             </div>
           </button>
 
-          <Button 
-            disabled={loading}
-            className="w-full h-20 rounded-[2.5rem] bg-slate-900 text-white font-black tracking-[0.3em] shadow-2xl hover:bg-slate-800 active:scale-95 transition-all mb-4 italic"
-          >
-            {loading ? <Loader2 className="animate-spin" /> : "VOLCAR AL CALENDARIO"}
-          </Button>
+          {/* BOTÓN SUBMIT CON MARGEN PARA EL BOTTOM NAV */}
+          <div className="pt-4 pb-10">
+            <Button 
+              disabled={loading}
+              className="w-full h-20 rounded-[2.5rem] bg-slate-900 text-white font-black tracking-[0.3em] shadow-2xl hover:bg-slate-800 active:scale-95 transition-all italic"
+            >
+              {loading ? <Loader2 className="animate-spin" /> : (
+                <div className="flex items-center gap-3">
+                  <Sparkles size={18} className="text-sky-400" />
+                  VOLCAR AL CALENDARIO
+                </div>
+              )}
+            </Button>
+          </div>
         </form>
       </div>
     </div>
   );
 };
+                  
