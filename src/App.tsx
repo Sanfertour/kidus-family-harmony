@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import { OnboardingView } from "./components/OnboardingView";
+import { AuthView } from "./components/AuthView";
 import { motion } from "framer-motion";
 
 const App = () => {
@@ -15,6 +16,9 @@ const App = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') {
         window.location.href = '/';
+      }
+      if (event === 'SIGNED_IN') {
+        fetchSession();
       }
     });
 
@@ -50,7 +54,7 @@ const App = () => {
           path="/" 
           element={
             !profile ? (
-              <Index />
+              <AuthView />
             ) : !nestId ? (
               <Navigate to="/onboarding" replace />
             ) : (
