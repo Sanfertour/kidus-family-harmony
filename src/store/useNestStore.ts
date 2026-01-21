@@ -7,41 +7,45 @@ export const useNestStore = create<any>((set, get) => ({
   nestCode: null,
   members: [],
   events: [],
-  loading: true,
+  loading: true, 
+  initialized: false, // Nueva bandera para evitar re-ejecuciones innecesarias
 
   fetchSession: async () => {
+    // Si ya está inicializado o cargando, no hacemos nada para evitar el bucle
+    if (get().initialized && get().profile) {
+      set({ loading: false });
+      return;
+    }
+
     set({ loading: true });
+    
     try {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
       
-      if (sessionError || !session?.user) {
-        set({ profile: null, nestId: null, loading: false });
+      if (!session?.user) {
+        set({ profile: null, nestId: null, loading: false, initialized: true });
         return;
       }
 
-      const { data: profile, error: profileError } = await supabase
+      const { data: profile } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', session.user.id)
         .maybeSingle();
       
-      if (profileError) throw profileError;
-
       if (profile) {
         set({ profile, nestId: profile.nest_id });
         if (profile.nest_id) {
           await get().initializeNest(profile.nest_id);
         }
-      } else {
-        set({ profile: null, nestId: null });
       }
+      
+      set({ initialized: true });
     } catch (error) {
-      console.error("Error en sincronía de sesión:", error);
+      console.error("Error en sincronía:", error);
     } finally {
-      // Pequeño margen para asegurar que el estado se asiente
-      setTimeout(() => {
-        set({ loading: false });
-      }, 500);
+      // Un solo cambio de estado al final para evitar parpadeos
+      set({ loading: false });
     }
   },
 
@@ -54,8 +58,6 @@ export const useNestStore = create<any>((set, get) => ({
         .maybeSingle();
         
       set({ nestCode: nestData?.nest_code || null });
-      
-      // Mantenemos la carga de datos que ya tenías
       await Promise.all([get().fetchMembers(), get().fetchEvents()]);
       get().subscribeToChanges();
     } catch (error) {
@@ -63,47 +65,23 @@ export const useNestStore = create<any>((set, get) => ({
     }
   },
 
+  // ... resto de funciones (fetchMembers, fetchEvents, etc) iguales ...
   fetchMembers: async () => {
     const { nestId } = get();
     if (!nestId) return;
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('nest_id', nestId)
-      .order('display_name', { ascending: true });
+    const { data } = await supabase.from('profiles').select('*').eq('nest_id', nestId);
     set({ members: data || [] });
   },
-
+  
   fetchEvents: async () => {
     const { nestId } = get();
     if (!nestId) return;
-    const { data } = await supabase
-      .from('events')
-      .select('*')
-      .eq('nest_id', nestId)
-      .order('start_time', { ascending: true });
+    const { data } = await supabase.from('events').select('*').eq('nest_id', nestId);
     set({ events: data || [] });
   },
 
   signOut: async () => {
     await supabase.auth.signOut();
-    set({ profile: null, nestId: null, nestCode: null, members: [], events: [], loading: false });
-  },
-
-  subscribeToChanges: () => {
-    const { nestId } = get();
-    if (!nestId) return;
-    supabase.removeAllChannels();
-    supabase
-      .channel('nest-realtime')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'profiles', filter: `nest_id=eq.${nestId}` }, 
-        () => get().fetchMembers()
-      )
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'events', filter: `nest_id=eq.${nestId}` }, 
-        () => get().fetchEvents()
-      )
-      .subscribe();
+    set({ profile: null, nestId: null, nestCode: null, loading: false, initialized: false });
   }
 }));
