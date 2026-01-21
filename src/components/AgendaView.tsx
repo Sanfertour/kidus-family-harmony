@@ -74,7 +74,7 @@ export const AgendaView = () => {
             return (
               <button
                 key={day.toISOString()}
-                onClick={() => { triggerHaptic('light'); setSelectedDate(day); }}
+                onClick={() => { triggerHaptic('soft'); setSelectedDate(day); }}
                 className={`flex flex-col items-center justify-center min-w-[50px] py-4 rounded-2xl transition-all ${
                   active ? 'bg-slate-900 text-white shadow-lg scale-110' : 'text-slate-400 hover:bg-slate-100'
                 }`}
