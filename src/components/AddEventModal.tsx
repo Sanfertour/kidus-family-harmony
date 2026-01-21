@@ -3,8 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { useNestStore } from "@/store/useNestStore";
 import { 
   X, Calendar, Clock, Tag, 
-  Lock, Globe, Loader2, Sparkles,
-  ChevronRight
+  Lock, Globe, Loader2, Sparkles
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +19,7 @@ const CATEGORIES = [
 ];
 
 export const AddEventModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
-  const { nestId, members, profile } = useNestStore();
+  const { nestId, members, profile, fetchEvents } = useNestStore();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
@@ -38,7 +37,7 @@ export const AddEventModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title || !formData.start_time) {
-      toast({ title: "Datos incompletos", description: "El título y la fecha son obligatorios." });
+      toast({ title: "Datos incompletos", description: "Título y fecha requeridos." });
       return;
     }
 
@@ -60,9 +59,10 @@ export const AddEventModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
       if (error) throw error;
 
       triggerHaptic('success');
-      toast({ title: "Sincronía creada", description: "El evento ya está en el calendario del Nido." });
+      toast({ title: "Sincronía creada", description: "El plan ya está en el calendario." });
+      
+      await fetchEvents(); // Refrescar la agenda automáticamente
       onClose();
-      // Reset form
       setFormData({ title: '', description: '', start_time: '', category: 'other', assigned_to: '', is_private: false });
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -72,51 +72,36 @@ export const AddEventModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="w-full max-w-lg bg-white rounded-t-[3.5rem] sm:rounded-[3.5rem] shadow-3xl overflow-hidden animate-in slide-in-from-bottom-10 duration-500">
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-slate-900/60 backdrop-blur-md p-0 sm:p-4 animate-in fade-in duration-300">
+      <div className="w-full max-w-lg bg-white rounded-t-[4rem] sm:rounded-[3.5rem] shadow-3xl overflow-hidden animate-in slide-in-from-bottom-20 duration-500 mb-0 sm:mb-0">
         
-        {/* HEADER MODAL */}
-        <header className="px-8 pt-8 pb-4 flex justify-between items-center border-b border-slate-50">
+        <header className="px-10 pt-10 pb-6 flex justify-between items-center">
           <div>
-            <h3 className="text-2xl font-black italic text-slate-900 tracking-tighter">Nuevo Plan</h3>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Añadir a la Sincronía</p>
+            <h3 className="text-3xl font-black italic text-slate-900 tracking-tighter">Nuevo Plan</h3>
+            <p className="text-[10px] font-black text-sky-500 uppercase tracking-[0.3em] mt-1">Sincronía Familiar</p>
           </div>
-          <button onClick={onClose} className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 active:scale-90 transition-all">
-            <X size={20} />
+          <button onClick={onClose} className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 active:scale-90 transition-all">
+            <X size={24} />
           </button>
         </header>
 
-        <form onSubmit={handleSubmit} className="p-8 space-y-6 max-h-[80vh] overflow-y-auto no-scrollbar">
+        <form onSubmit={handleSubmit} className="px-10 pb-12 space-y-8 max-h-[75vh] overflow-y-auto no-scrollbar">
           
           {/* TÍTULO */}
-          <div className="space-y-2">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-4">¿Qué vamos a hacer?</label>
+          <div className="space-y-3">
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-300 ml-4 italic">¿Qué hito vamos a crear?</label>
             <Input 
               value={formData.title}
               onChange={(e) => setFormData({...formData, title: e.target.value})}
-              placeholder="Ej: Dentista Peques"
-              className="h-16 rounded-2xl bg-slate-50 border-none font-bold text-lg px-6 focus:ring-4 focus:ring-sky-500/10"
+              placeholder="Ej: Recoger cartulinas"
+              className="h-16 rounded-[1.8rem] bg-slate-50 border-none font-bold text-xl px-6 focus:ring-4 focus:ring-sky-500/10 transition-all"
             />
           </div>
 
-          {/* FECHA Y HORA */}
-          <div className="space-y-2">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-4">¿Cuándo?</label>
-            <div className="relative">
-              <Calendar className="absolute left-6 top-1/2 -translate-y-1/2 text-sky-500" size={18} />
-              <input 
-                type="datetime-local"
-                value={formData.start_time}
-                onChange={(e) => setFormData({...formData, start_time: e.target.value})}
-                className="w-full h-16 rounded-2xl bg-slate-50 border-none font-bold pl-16 pr-6 focus:ring-4 focus:ring-sky-500/10 outline-none text-slate-600"
-              />
-            </div>
-          </div>
-
-          {/* ASIGNAR A MIEMBRO (Selector Dinámico) */}
-          <div className="space-y-3">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-4">¿Quién participa?</label>
-            <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar px-1">
+          {/* SELECTOR DE TRIBU (DINÁMICO CON COLORES) */}
+          <div className="space-y-4">
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-300 ml-4 italic">Asignar a la Tribu</label>
+            <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
               {members.map((member) => (
                 <button
                   key={member.id}
@@ -125,78 +110,83 @@ export const AddEventModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
                     triggerHaptic('soft');
                     setFormData({ ...formData, assigned_to: formData.assigned_to === member.id ? '' : member.id });
                   }}
-                  className={`flex-shrink-0 flex items-center gap-3 p-2 pr-4 rounded-[1.4rem] border-2 transition-all duration-300 ${
+                  className={`flex-shrink-0 flex flex-col items-center gap-2 p-4 rounded-[2.2rem] transition-all duration-300 border-2 ${
                     formData.assigned_to === member.id 
-                    ? 'border-sky-500 bg-sky-50 shadow-sm' 
-                    : 'border-transparent bg-slate-50 opacity-60'
+                    ? 'border-slate-900 bg-slate-900 text-white scale-105 shadow-xl' 
+                    : 'border-slate-50 bg-slate-50 text-slate-400 opacity-60'
                   }`}
                 >
                   <div 
-                    className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-xs font-black shadow-inner"
-                    style={{ backgroundColor: member.avatar_url || '#64748B' }}
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center text-white text-sm font-black shadow-lg"
+                    style={{ backgroundColor: member.color || '#64748B' }}
                   >
                     {member.display_name?.charAt(0).toUpperCase()}
                   </div>
-                  <span className="text-[11px] font-black text-slate-700 uppercase tracking-tighter">
-                    {member.display_name}
+                  <span className="text-[10px] font-black uppercase tracking-tighter">
+                    {member.display_name?.split(' ')[0]}
                   </span>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* CATEGORÍAS */}
-          <div className="space-y-3">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-4">Categoría</label>
-            <div className="grid grid-cols-2 gap-2">
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => { triggerHaptic('soft'); setFormData({...formData, category: cat.id}); }}
-                  className={`h-12 rounded-xl flex items-center px-4 gap-3 transition-all ${
-                    formData.category === cat.id ? 'bg-slate-900 text-white shadow-lg' : 'bg-slate-50 text-slate-400'
-                  }`}
-                >
-                  <div className={`w-2 h-2 rounded-full ${cat.color}`} />
-                  <span className="text-[10px] font-black uppercase tracking-widest">{cat.label}</span>
-                </button>
-              ))}
+          {/* FECHA Y HORA */}
+          <div className="grid grid-cols-1 gap-4">
+            <div className="relative">
+              <Calendar className="absolute left-6 top-1/2 -translate-y-1/2 text-sky-500" size={20} />
+              <input 
+                type="datetime-local"
+                value={formData.start_time}
+                onChange={(e) => setFormData({...formData, start_time: e.target.value})}
+                className="w-full h-16 rounded-[1.8rem] bg-slate-50 border-none font-bold pl-16 pr-6 outline-none focus:ring-4 focus:ring-sky-500/10 text-slate-600"
+              />
             </div>
           </div>
 
-          {/* MODO PRIVADO */}
-          <div 
+          {/* CATEGORÍAS TÁCTILES */}
+          <div className="grid grid-cols-2 gap-3">
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => { triggerHaptic('soft'); setFormData({...formData, category: cat.id}); }}
+                className={`h-14 rounded-2xl flex items-center px-4 gap-3 border-2 transition-all ${
+                  formData.category === cat.id ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-50 bg-white text-slate-400'
+                }`}
+              >
+                <div className={`w-2.5 h-2.5 rounded-full ${cat.color}`} />
+                <span className="text-[10px] font-black uppercase tracking-widest italic">{cat.label}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* MODO PRIVADO (GLASSMORPHISM) */}
+          <button 
+            type="button"
             onClick={() => { triggerHaptic('soft'); setFormData({...formData, is_private: !formData.is_private}); }}
-            className={`p-5 rounded-[2rem] border-2 transition-all cursor-pointer flex items-center justify-between ${
-              formData.is_private ? 'border-amber-200 bg-amber-50' : 'border-slate-100 bg-white'
+            className={`w-full p-6 rounded-[2.2rem] border-2 flex items-center justify-between transition-all ${
+              formData.is_private ? 'border-orange-200 bg-orange-50' : 'border-slate-50 bg-white'
             }`}
           >
-            <div className="flex items-center gap-4">
-              <div className={`p-3 rounded-xl ${formData.is_private ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
-                {formData.is_private ? <Lock size={18} /> : <Globe size={18} />}
+            <div className="flex items-center gap-4 text-left">
+              <div className={`p-3 rounded-2xl ${formData.is_private ? 'bg-orange-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                {formData.is_private ? <Lock size={20} /> : <Globe size={20} />}
               </div>
               <div>
                 <p className="font-black text-slate-900 text-sm italic">Modo Privado</p>
-                <p className="text-[10px] text-slate-400 font-bold">Solo tú verás el contenido</p>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Invisible para la Tribu</p>
               </div>
             </div>
-            <div className={`w-12 h-6 rounded-full relative transition-colors ${formData.is_private ? 'bg-amber-500' : 'bg-slate-200'}`}>
+            <div className={`w-12 h-6 rounded-full relative transition-all ${formData.is_private ? 'bg-orange-500' : 'bg-slate-200'}`}>
               <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${formData.is_private ? 'left-7' : 'left-1'}`} />
             </div>
-          </div>
+          </button>
 
-          {/* BOTÓN SUBMIT */}
           <Button 
             disabled={loading}
-            className="w-full h-20 rounded-[2rem] bg-slate-900 text-white font-black tracking-[0.2em] shadow-2xl hover:bg-slate-800 active:scale-95 transition-all mt-4"
+            className="w-full h-20 rounded-[2.5rem] bg-slate-900 text-white font-black tracking-[0.3em] shadow-2xl hover:bg-slate-800 active:scale-95 transition-all mb-4 italic"
           >
-            {loading ? <Loader2 className="animate-spin" /> : (
-              <div className="flex items-center gap-3">
-                <Sparkles size={18} className="text-sky-400" />
-                CREAR EN LA SINCRONÍA
-              </div>
-            )}
+            {loading ? <Loader2 className="animate-spin" /> : "VOLCAR AL CALENDARIO"}
           </Button>
         </form>
       </div>
