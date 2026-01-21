@@ -1,17 +1,10 @@
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { X, Camera, Sparkles, Check, AlertCircle, Loader2 } from 'lucide-react';
+import { X, Camera, Sparkles, Check, Loader2, Image as ImageIcon, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-
-// Feedback háptico profesional
-const triggerHaptic = (type: 'soft' | 'success' | 'warning') => {
-  if (typeof navigator !== "undefined" && navigator.vibrate) {
-    if (type === 'soft') navigator.vibrate(10);
-    else if (type === 'success') navigator.vibrate([20, 30, 20]);
-    else navigator.vibrate(100);
-  }
-};
+import { supabase } from '@/lib/supabase'; // Ruta corregida según tu estructura
+import { triggerHaptic } from '@/utils/haptics';
+import { useNestStore } from '@/store/useNestStore';
 
 export const UploadDocumentDrawer = ({ isOpen, onClose, onEventAdded, members, type }: { 
   isOpen: boolean; 
@@ -20,9 +13,9 @@ export const UploadDocumentDrawer = ({ isOpen, onClose, onEventAdded, members, t
   members: any[];
   type: 'camera' | 'gallery' | 'pdf';
 }) => {
+  const { nestId, profile } = useNestStore();
   const [step, setStep] = useState<'upload' | 'processing' | 'confirm'>('upload');
   const [extractedData, setExtractedData] = useState<any>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -31,128 +24,163 @@ export const UploadDocumentDrawer = ({ isOpen, onClose, onEventAdded, members, t
     const file = e.target.files?.[0];
     if (!file) return;
     triggerHaptic('soft');
-    const url = URL.createObjectURL(file);
-    setPreviewUrl(url);
     processWithIA(file);
   };
 
   const processWithIA = async (file: File) => {
     setStep('processing');
     
-    // Simulación de "KidUs Brain"
+    // Simulación de "KidUs Brain" (Próximo paso: Conectar con Edge Function de OpenAI/Gemini)
     setTimeout(() => {
       setExtractedData({
-        title: "Excursión a la Granja",
+        title: "Excursión Granja Escuela",
         date: "2026-02-15",
         time: "09:00",
         suggestedSubject: members[0]?.id || "",
-        details: "Llevar gorra y cantimplora."
+        description: "Llevar gorra, cantimplora y mochila pequeña. Salida desde el bus escolar."
       });
       setStep('confirm');
-      triggerHaptic('soft');
+      triggerHaptic('success');
     }, 2500);
   };
 
-  // FUNCIÓN CORREGIDA Y SINCRONIZADA
   const saveAIEvent = async () => {
+    if (!nestId || !profile) return;
     setLoading(true);
     
-    // Mapeo exacto a las columnas de la base de datos
-    const { error } = await supabase.from('events').insert([{
-      description: extractedData.title, // El título va a description según tu manual
-      assigned_to: extractedData.suggestedSubject,
-      event_date: `${extractedData.date}T${extractedData.time}:00`,
-      category: 'school',
-      nest_id: members[0]?.nest_id,
-      // notas_adicionales: extractedData.details // Opcional si tienes la columna
-    }]);
+    try {
+      // Sincronización con la tabla 'events' real
+      const { error } = await supabase.from('events').insert([{
+        title: extractedData.title,
+        description: extractedData.description,
+        assigned_to: extractedData.suggestedSubject || null,
+        start_time: `${extractedData.date}T${extractedData.time}:00`,
+        category: 'school',
+        nest_id: nestId,
+        is_private: false,
+        created_by: profile.id
+      }]);
 
-    if (!error) {
+      if (error) throw error;
+
       triggerHaptic('success');
-      toast({ title: "¡Entendido!", description: "La IA ha organizado el evento en el nido." });
+      toast({ title: "¡Sincronizado!", description: "La IA ha organizado el evento en el nido." });
       onEventAdded();
       onClose();
-    } else {
+      // Reset para la próxima vez
+      setStep('upload');
+    } catch (error: any) {
       triggerHaptic('warning');
-      console.error("Error guardando evento IA:", error);
       toast({ 
         title: "Error de sincronía", 
-        description: "No pudimos guardar el evento.", 
+        description: error.message, 
         variant: "destructive" 
       });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-50 animate-in slide-in-from-bottom duration-500">
-      <div className="relative w-full bg-white/95 backdrop-blur-2xl rounded-t-[3.5rem] p-8 shadow-2xl border-t border-white/50 min-h-[50vh]">
-        <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-8" />
+    <div className="fixed inset-0 z-[110] flex items-end justify-center">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={onClose} />
+      
+      <div className="relative w-full max-w-md bg-white rounded-t-[3.5rem] p-10 shadow-2xl animate-in slide-in-from-bottom duration-500 min-h-[50vh]">
+        <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-10" />
         
+        <button onClick={onClose} className="absolute top-10 right-10 text-slate-300 hover:text-slate-600 transition-colors">
+          <X size={24} />
+        </button>
+
         {step === 'upload' && (
-          <div className="text-center space-y-6 animate-in fade-in zoom-in-95">
-            <div className="w-20 h-20 bg-sky-50 rounded-[2rem] flex items-center justify-center mx-auto text-sky-500">
-              {type === 'camera' ? <Camera size={40} /> : <Sparkles size={40} />}
+          <div className="text-center space-y-8 animate-in fade-in zoom-in-95">
+            <div className="w-24 h-24 bg-sky-50 rounded-[2.5rem] flex items-center justify-center mx-auto text-sky-500 shadow-inner">
+              {type === 'camera' && <Camera size={44} strokeWidth={1.5} />}
+              {type === 'gallery' && <ImageIcon size={44} strokeWidth={1.5} />}
+              {type === 'pdf' && <FileText size={44} strokeWidth={1.5} />}
             </div>
-            <div>
-              <h3 className="text-2xl font-black text-slate-800">Sincroniza tu Nido</h3>
-              <p className="text-slate-500 text-sm font-medium mt-2">Sube una foto de la circular o menú escolar.</p>
+            
+            <div className="space-y-2">
+              <h3 className="text-3xl font-black text-slate-900 tracking-tighter">KidUs Brain</h3>
+              <p className="text-slate-500 font-medium px-4 text-balance">
+                Escanea circulares, menús o notas y deja que la IA organice el Nido por ti.
+              </p>
             </div>
-            <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleFileSelect} />
+
+            <input type="file" accept="image/*,application/pdf" className="hidden" ref={fileInputRef} onChange={handleFileSelect} />
+            
             <Button 
               onClick={() => fileInputRef.current?.click()}
-              className="w-full h-16 rounded-[2rem] bg-sky-500 hover:bg-sky-600 text-lg font-black shadow-lg active:scale-95 transition-all"
+              className="w-full h-20 rounded-[2.5rem] bg-slate-900 hover:bg-slate-800 text-lg font-black tracking-widest shadow-xl active:scale-95 transition-all"
             >
-              Seleccionar Archivo
+              {type === 'camera' ? 'ABRIR CÁMARA' : 'SELECCIONAR'}
             </Button>
           </div>
         )}
 
         {step === 'processing' && (
-          <div className="text-center py-12 space-y-6">
-            <div className="relative mx-auto w-24 h-24">
-              <Loader2 size={96} className="text-sky-500 animate-spin absolute inset-0" />
-              <Sparkles size={32} className="text-orange-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+          <div className="text-center py-16 space-y-8">
+            <div className="relative mx-auto w-28 h-28">
+              <Loader2 size={112} className="text-sky-500 animate-spin absolute inset-0 opacity-20" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Sparkles size={40} className="text-sky-500 animate-pulse" />
+              </div>
             </div>
-            <h3 className="text-xl font-black text-slate-800">KidUs Brain leyendo...</h3>
-            <p className="text-slate-400 font-bold text-[10px] uppercase tracking-[0.4em]">Extrayendo fechas de la tribu</p>
+            <div className="space-y-2">
+              <h3 className="text-2xl font-black text-slate-900 tracking-tight">Analizando Documento</h3>
+              <p className="text-sky-500 font-black text-[10px] uppercase tracking-[0.4em] animate-pulse">
+                Extrayendo Sincronía...
+              </p>
+            </div>
           </div>
         )}
 
         {step === 'confirm' && (
-          <div className="space-y-6 animate-in slide-in-from-bottom-4">
-            <div className="flex items-center gap-4 p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
-              <Check className="text-emerald-500" />
-              <p className="text-sm font-bold text-emerald-700">¡Lectura completada!</p>
-            </div>
+          <div className="space-y-8 animate-in slide-in-from-bottom-4">
+            <header className="flex items-center gap-4 p-5 bg-emerald-50 rounded-[2rem] border border-emerald-100">
+              <div className="bg-emerald-500 rounded-full p-1 text-white">
+                <Check size={16} strokeWidth={3} />
+              </div>
+              <p className="text-[11px] font-black uppercase tracking-widest text-emerald-700">¡Lectura Exitosa!</p>
+            </header>
             
             <div className="space-y-4">
-              <div className="bg-slate-50 p-4 rounded-2xl">
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Título detectado</label>
-                <p className="font-bold text-slate-800">{extractedData.title}</p>
+              <div className="bg-slate-50 p-6 rounded-[2rem] border border-slate-100">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2">Evento Detectado</label>
+                <p className="font-black text-xl text-slate-800 tracking-tight leading-none italic">"{extractedData.title}"</p>
               </div>
               
               <div className="grid grid-cols-2 gap-4">
-                 <div className="bg-slate-50 p-4 rounded-2xl">
-                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Fecha</label>
-                  <p className="font-bold text-slate-800">{extractedData.date}</p>
+                 <div className="bg-slate-50 p-6 rounded-[2rem] border border-slate-100">
+                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2">Fecha</label>
+                  <p className="font-bold text-slate-800 tracking-tight">{extractedData.date}</p>
                 </div>
-                <div className="bg-slate-50 p-4 rounded-2xl">
-                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Hora</label>
-                  <p className="font-bold text-slate-800">{extractedData.time}</p>
+                <div className="bg-slate-50 p-6 rounded-[2rem] border border-slate-100">
+                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2">Hora</label>
+                  <p className="font-bold text-slate-800 tracking-tight">{extractedData.time}h</p>
                 </div>
               </div>
             </div>
 
-            <Button 
-              onClick={saveAIEvent} 
-              disabled={loading}
-              className="w-full h-16 rounded-[2.5rem] bg-orange-500 hover:bg-orange-600 text-white font-black text-lg shadow-xl active:scale-95 transition-all"
-            >
-              {loading ? <Loader2 className="animate-spin" /> : "CONFIRMAR EN LA AGENDA"}
-            </Button>
+            <div className="flex gap-3">
+               <Button 
+                onClick={() => setStep('upload')}
+                variant="outline"
+                className="h-20 w-1/4 rounded-[2.2rem] border-2 border-slate-100 text-slate-400"
+              >
+                <X size={24} />
+              </Button>
+              <Button 
+                onClick={saveAIEvent} 
+                disabled={loading}
+                className="h-20 flex-1 rounded-[2.2rem] bg-orange-500 hover:bg-orange-600 text-white font-black text-lg tracking-widest shadow-xl shadow-orange-200 active:scale-95 transition-all"
+              >
+                {loading ? <Loader2 className="animate-spin" /> : "CONFIRMAR"}
+              </Button>
+            </div>
           </div>
         )}
       </div>
