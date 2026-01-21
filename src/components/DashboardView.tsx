@@ -1,8 +1,6 @@
-import { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabase"; 
 import { motion } from "framer-motion";
 import { triggerHaptic } from "@/utils/haptics";
-import { Sparkles, Calendar, ShieldCheck, Baby, ArrowRight, Share2 } from "lucide-react";
+import { Calendar, ShieldCheck, Baby, ArrowRight, Share2, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNestStore } from "@/store/useNestStore";
 import { format } from "date-fns";
@@ -14,29 +12,57 @@ interface DashboardProps {
 
 export const DashboardView = ({ onNavigate }: DashboardProps) => {
   const { toast } = useToast();
-  const { members, events, nestId, nestCode } = useNestStore();
+  // Extraemos todo del Store. Ya no necesitamos useEffect ni llamadas directas a Supabase aquí.
+  const { members, events, nestCode, profile } = useNestStore();
   
   const safeMembers = Array.isArray(members) ? members : [];
   const guiasCount = safeMembers.filter(m => m?.role === 'autonomous').length;
   const tribuCount = safeMembers.filter(m => m?.role === 'dependent').length;
 
-  // Lógica para encontrar el próximo evento cronológicamente
+  // Lógica de "Próximo Evento" mejorada para manejar fechas inválidas
   const nextEvent = events
-    .filter(e => new Date(e.start_time) > new Date())
+    .filter(e => {
+      const eventDate = new Date(e.start_time);
+      return eventDate > new Date();
+    })
     .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())[0];
 
+  const handleCopyCode = () => {
+    if (!nestCode) return;
+    navigator.clipboard.writeText(nestCode);
+    triggerHaptic('success');
+    toast({ 
+      title: "Sincronía Copiada", 
+      description: "El código KID está en tu portapapeles." 
+    });
+  };
+
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      {/* CARD PRINCIPAL: ESTADO DE LA TRIBU */}
-      <motion.section className="glass-panel p-10 relative overflow-hidden border-none shadow-2xl bg-white/40">
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 max-w-md mx-auto">
+      {/* SALUDO PERSONALIZADO (Gestión de Perfil) */}
+      <header className="px-2">
+        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-sky-500 mb-1">Bienvenido al Nido</p>
+        <h2 className="text-3xl font-black text-slate-900 tracking-tighter">
+          Hola, {profile?.display_name?.split(' ')[0] || 'Guía'}
+        </h2>
+      </header>
+
+      {/* CARD PRINCIPAL: ESTADO DE LA TRIBU (Gestión de Usuarios) */}
+      <motion.section 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="glass-panel p-10 relative overflow-hidden border-none shadow-2xl bg-white/40 rounded-[3.5rem]"
+      >
         <div className="relative z-10">
           <div className="flex items-center gap-2 mb-8">
             <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-emerald-600">Sincronía Nidal</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-emerald-600">Sincronía Activa</span>
           </div>
           
           <div className="flex items-baseline gap-3 mb-8">
-            <h3 className="text-7xl font-black text-slate-900 tracking-tighter leading-none">{safeMembers.length}</h3>
+            <h3 className="text-7xl font-black text-slate-900 tracking-tighter leading-none">
+              {safeMembers.length}
+            </h3>
             <span className="text-xl font-black text-slate-900 italic tracking-tighter">Miembros</span>
           </div>
 
@@ -46,7 +72,7 @@ export const DashboardView = ({ onNavigate }: DashboardProps) => {
               <p className="text-3xl font-black">{guiasCount}</p>
               <p className="text-[9px] font-black uppercase tracking-widest opacity-60 italic">Guías</p>
             </div>
-            <div className="bg-white/80 backdrop-blur-md border border-white p-6 rounded-[2.5rem] text-slate-900 shadow-sm active:scale-95 transition-all">
+            <div className="bg-white border border-slate-100 p-6 rounded-[2.5rem] text-slate-900 shadow-sm active:scale-95 transition-all">
               <Baby size={18} className="mb-2 text-orange-500" />
               <p className="text-3xl font-black">{tribuCount}</p>
               <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 italic">Tribu</p>
@@ -55,7 +81,7 @@ export const DashboardView = ({ onNavigate }: DashboardProps) => {
         </div>
       </motion.section>
 
-      {/* PRÓXIMA CITA: DINÁMICA */}
+      {/* PRÓXIMA CITA: DINÁMICA (Gestión de Calendario/Eventos) */}
       <motion.button 
         whileTap={{ scale: 0.97 }}
         onClick={() => { triggerHaptic('soft'); onNavigate("agenda"); }}
@@ -81,23 +107,20 @@ export const DashboardView = ({ onNavigate }: DashboardProps) => {
                 {format(new Date(nextEvent.start_time), "EEEE d 'a las' HH:mm", { locale: es })}
               </span>
             </>
-          ) : "Paz en el Nido"}
+          ) : (
+            <span className="text-slate-300 italic">Paz en el Nido</span>
+          )}
         </h4>
       </motion.button>
 
-      {/* INVITACIÓN: COMPARTIR CÓDIGO */}
+      {/* INVITACIÓN: COMPARTIR CÓDIGO (Sincronía de Nidos) */}
       <div 
-        onClick={() => {
-          if (!nestCode) return;
-          navigator.clipboard.writeText(nestCode);
-          triggerHaptic('success');
-          toast({ title: "Sincronía Copiada", description: "Envía el código a otro Guía." });
-        }}
-        className="flex items-center justify-between p-8 glass-panel cursor-pointer active:scale-95 transition-all shadow-sm group hover:border-sky-200"
+        onClick={handleCopyCode}
+        className="flex items-center justify-between p-8 bg-white/60 backdrop-blur-md rounded-[3rem] border border-white cursor-pointer active:scale-95 transition-all shadow-sm group hover:border-sky-200"
       >
         <div className="flex flex-col">
-          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Código de Invitación</span>
-          <span className="text-2xl font-black text-slate-800 tracking-[0.2em] font-mono group-hover:text-sky-600 transition-colors">
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">Sincronizar Guía</span>
+          <span className="text-2xl font-black text-slate-800 tracking-[0.15em] font-mono group-hover:text-sky-600 transition-colors">
             {nestCode || "KID-•••••"}
           </span>
         </div>
