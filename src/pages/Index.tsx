@@ -15,7 +15,8 @@ import { ImageScanner } from "@/components/ImageScanner";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("home");
-  const { profile, nestId, members, fetchSession, fetchEvents } = useNestStore();
+  // AÑADIDO: Extraemos 'loading' del store
+  const { profile, nestId, members, fetchSession, fetchEvents, loading } = useNestStore();
   const [isManualDrawerOpen, setIsManualDrawerOpen] = useState(false);
   const [aiExtractedData, setAiExtractedData] = useState<any>(null);
 
@@ -35,13 +36,11 @@ const Index = () => {
     setIsManualDrawerOpen(true);
   };
 
-  // Función de Login Robusta
   const handleGoogleLogin = async () => {
     triggerHaptic('medium');
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        // Esto soluciona el fallo en Netlify/Mobile
         redirectTo: window.location.origin,
         queryParams: {
           access_type: 'offline',
@@ -51,6 +50,12 @@ const Index = () => {
     });
     if (error) console.error("Error Auth:", error.message);
   };
+
+  // MODIFICACIÓN QUIRÚRGICA: 
+  // Si está cargando, retornamos null o un loader para evitar el parpadeo del login.
+  if (loading) {
+    return null; 
+  }
 
   if (!profile) {
     return (
@@ -112,7 +117,6 @@ const Index = () => {
           </AnimatePresence>
         </main>
         
-        {/* FAB Subido para evitar colisión con BottomNav */}
         <div className="fixed bottom-32 right-8 z-50">
           <button 
             onClick={handleManualOpen} 
