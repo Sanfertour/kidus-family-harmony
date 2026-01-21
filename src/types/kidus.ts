@@ -1,5 +1,3 @@
-// src/types/kidus.ts
-
 export type UserRole = 'autonomous' | 'dependent';
 
 export interface EventData {
@@ -11,9 +9,9 @@ export interface EventData {
   end_time: string;
   is_private: boolean;
   category: 'school' | 'meal' | 'health' | 'activity' | 'other';
-  assigned_to?: string; // ID del profile
+  assigned_to?: string; 
   created_at?: string;
-  created_by?: string; // ID del profile que lo creó
+  created_by?: string;
 }
 
 export interface Profile {
@@ -21,25 +19,16 @@ export interface Profile {
   nest_id: string | null;
   role: UserRole;
   display_name: string;
-  avatar_url?: string; // Usado para el color/avatar en la UI
+  avatar_url?: string;
 }
 
 export interface Nest {
   id: string;
-  nest_code: string; // El KID-XXXXX
+  nest_code: string; 
   name: string;
   created_at: string;
 }
 
-// Para la detección de conflictos
-export interface ConflictInfo {
-  eventId: string;
-  conflictingEventIds: string[];
-  message: string;
-  isPrivateConflict: boolean;
-}
-
-// Estado global del Store (Zustand)
 export interface NestState {
   profile: Profile | null;
   nestId: string | null;
@@ -53,4 +42,5 @@ export interface NestState {
   fetchEvents: () => Promise<void>;
   subscribeToChanges: () => void;
   signOut: () => Promise<void>;
+  setEvents: (events: EventData[]) => void; // Necesario para Realtime
 }
