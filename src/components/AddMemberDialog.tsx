@@ -173,7 +173,7 @@ export const AddMemberDialog = ({ children, onMemberAdded }: AddMemberDialogProp
                   <button
                     key={color}
                     type="button"
-                    onClick={() => { triggerHaptic('light'); setSelectedColor(color); }}
+                    onClick={() => { triggerHaptic('soft'); setSelectedColor(color); }}
                     className="w-10 h-10 rounded-full border-4 border-white shadow-sm flex items-center justify-center"
                     style={{ backgroundColor: color }}
                   >
