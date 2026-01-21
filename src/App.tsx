@@ -16,37 +16,27 @@ const App = () => {
 
   useEffect(() => {
     fetchSession();
-  }, [fetchSession]);
+  }, []);
 
-  // Pantalla de Carga de Élite
-  if (loading) {
+  // Solo bloqueamos la pantalla si está cargando y NO tenemos datos del perfil
+  if (loading && !profile) {
     return (
       <div className="min-h-[100dvh] w-full bg-[#F8FAFC] flex flex-col items-center justify-center p-6">
         <motion.div
-          animate={{ 
-            scale: [0.9, 1.05, 1],
-            opacity: [0.4, 1, 0.4] 
-          }}
-          transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-          className="relative w-32 h-32 bg-white rounded-[3.5rem] shadow-2xl flex items-center justify-center p-6"
+          animate={{ scale: [0.95, 1, 0.95], opacity: [0.6, 1, 0.6] }}
+          transition={{ duration: 2, repeat: Infinity }}
+          className="relative w-28 h-28 bg-white rounded-[3rem] shadow-2xl flex items-center justify-center p-4"
         >
           <img 
             src="https://raw.githubusercontent.com/Sanfertour/kidus-family-harmony/main/src/assets/IMG_20260120_144903.jpg" 
-            className="w-full h-full object-contain grayscale opacity-80"
+            className="w-full h-full object-cover rounded-[2rem]"
             alt="KidUs"
           />
         </motion.div>
-        <div className="mt-12 space-y-2 text-center">
-          <p className="text-[10px] font-black uppercase tracking-[0.6em] text-slate-400 animate-pulse italic">
-            Sincronizando Nido
+        <div className="mt-8 text-center">
+          <p className="text-[10px] font-black uppercase tracking-[0.5em] text-slate-400 italic">
+            Sincronizando
           </p>
-          <div className="w-12 h-[2px] bg-sky-200 mx-auto rounded-full overflow-hidden">
-            <motion.div 
-              animate={{ x: [-48, 48] }}
-              transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-              className="w-full h-full bg-sky-500"
-            />
-          </div>
         </div>
       </div>
     );
@@ -57,7 +47,6 @@ const App = () => {
       <BrowserRouter>
         <AnimatePresence mode="wait">
           <Routes>
-            {/* Si no hay perfil, va al Index (que maneja el Login) */}
             <Route 
               path="/" 
               element={
@@ -66,7 +55,6 @@ const App = () => {
                 <Index />
               } 
             />
-            {/* Solo permite Onboarding si el usuario está logueado pero no tiene Nido */}
             <Route 
               path="/onboarding" 
               element={
