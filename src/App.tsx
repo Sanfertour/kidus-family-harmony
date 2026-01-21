@@ -10,10 +10,8 @@ const App = () => {
   const { fetchSession, profile, nestId, loading, initialized } = useNestStore();
 
   useEffect(() => {
-    // Sincronización inicial única
     fetchSession();
 
-    // Listener de estado de autenticación
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') {
         window.location.href = '/';
@@ -23,8 +21,6 @@ const App = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // TU ESTÉTICA ORIGINAL: Pantalla de carga con logo y tipografía KidUs
-  // Se muestra solo mientras carga la sesión inicial (initialized: false)
   if (loading && !initialized) {
     return (
       <div className="relative min-h-screen flex flex-col items-center justify-center p-6 bg-slate-50">
@@ -50,11 +46,6 @@ const App = () => {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Lógica de Rutas Corregida: 
-            - Sin sesión: Index (Login)
-            - Con sesión pero sin Nido: Onboarding
-            - Con sesión y Nido: Index (Dashboard)
-        */}
         <Route 
           path="/" 
           element={
@@ -67,19 +58,10 @@ const App = () => {
             )
           } 
         />
-
         <Route 
           path="/onboarding" 
-          element={
-            profile && !nestId ? (
-              <OnboardingView />
-            ) : (
-              <Navigate to="/" replace />
-            )
-          } 
+          element={profile && !nestId ? <OnboardingView /> : <Navigate to="/" replace />} 
         />
-
-        {/* Catch-all para evitar páginas en blanco */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
