@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
 import { Chrome, Plus } from "lucide-react";
@@ -15,14 +15,10 @@ import { ImageScanner } from "@/components/ImageScanner";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("home");
-  // AÑADIDO: Extraemos 'loading' del store
-  const { profile, nestId, members, fetchSession, fetchEvents, loading } = useNestStore();
+  // Extraemos lo necesario del Store. App.tsx ya se encarga de llamar a fetchSession.
+  const { profile, nestId, members, fetchEvents } = useNestStore();
   const [isManualDrawerOpen, setIsManualDrawerOpen] = useState(false);
   const [aiExtractedData, setAiExtractedData] = useState<any>(null);
-
-  useEffect(() => {
-    fetchSession();
-  }, []);
 
   const handleScanComplete = (data: any) => {
     triggerHaptic('success');
@@ -51,12 +47,8 @@ const Index = () => {
     if (error) console.error("Error Auth:", error.message);
   };
 
-  // MODIFICACIÓN QUIRÚRGICA: 
-  // Si está cargando, retornamos null o un loader para evitar el parpadeo del login.
-  if (loading) {
-    return null; 
-  }
-
+  // VISTA A: SI NO HAY PERFIL (LOGIN)
+  // Mantenemos tu estética KidUs original al 100%
   if (!profile) {
     return (
       <div className="relative min-h-screen flex flex-col items-center justify-center p-6 bg-slate-50">
@@ -85,30 +77,40 @@ const Index = () => {
     );
   }
 
+  // VISTA B: DASHBOARD (CUANDO HAY PERFIL)
+  // Reutilizamos toda la lógica de componentes que ya funcionaba
   return (
     <div className="relative min-h-screen w-full bg-slate-50/50">
       <div className="relative z-10 flex flex-col min-h-screen">
         <Header />
+        
         <main className="flex-1 container mx-auto px-6 pt-6 max-w-md pb-48">
+          {/* Scanner de IA visible en Home y Agenda */}
           {(activeTab === "home" || activeTab === "agenda") && (
-            <div className="mb-8"><ImageScanner onScanComplete={handleScanComplete} /></div>
+            <div className="mb-8">
+              <ImageScanner onScanComplete={handleScanComplete} />
+            </div>
           )}
+
           <AnimatePresence mode="wait">
             {activeTab === "home" && (
               <motion.div key="h" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }}>
                 <DashboardView onNavigate={setActiveTab} nestId={nestId || ""} members={members} />
               </motion.div>
             )}
+            
             {activeTab === "agenda" && (
               <motion.div key="a" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }}>
                 <AgendaView />
               </motion.div>
             )}
+
             {activeTab === "vault" && (
               <motion.div key="v" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }}>
                 <VaultView nestId={nestId || ""} />
               </motion.div>
             )}
+
             {activeTab === "settings" && (
               <motion.div key="s" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }}>
                 <SettingsView />
@@ -117,6 +119,7 @@ const Index = () => {
           </AnimatePresence>
         </main>
         
+        {/* Botón Flotante (FAB) con rotación dinámica */}
         <div className="fixed bottom-32 right-8 z-50">
           <button 
             onClick={handleManualOpen} 
@@ -126,13 +129,16 @@ const Index = () => {
           </button>
         </div>
 
+        {/* Drawer de Eventos Manual/IA */}
         <ManualEventDrawer 
           isOpen={isManualDrawerOpen} 
           onClose={() => { setIsManualDrawerOpen(false); setAiExtractedData(null); }} 
           members={members} 
           onEventAdded={() => fetchEvents()} 
+          initialData={aiExtractedData} // Pasamos los datos de la IA si existen
         />
 
+        {/* Barra de navegación con haptic feedback */}
         <BottomNav activeTab={activeTab} onTabChange={(tab) => {
           triggerHaptic('soft');
           setActiveTab(tab);
