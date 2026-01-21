@@ -1,28 +1,25 @@
-import { useEffect } from "react"; // Añadimos useEffect
-import { supabase } from "@/lib/supabase"; // Volvemos a tu ruta base para evitar conflictos
+import { useEffect } from "react";
+import { supabase } from "@/lib/supabase";
 import { Auth } from "@supabase/auth-ui-react";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
 import { motion } from "framer-motion";
 import { ShieldCheck, Sparkles } from "lucide-react";
+import { triggerHaptic } from "@/utils/haptics";
 
 export const AuthView = () => {
-  // Truco para feedback háptico en componentes externos
   useEffect(() => {
     const handleGlobalClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      // Si clicamos un botón dentro del contenedor de auth
       if (target.closest('.auth-container button')) {
-        if (window.navigator.vibrate) window.navigator.vibrate(10);
+        triggerHaptic('soft');
       }
     };
-
     document.addEventListener('click', handleGlobalClick);
     return () => document.removeEventListener('click', handleGlobalClick);
   }, []);
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center bg-slate-50 px-6 font-sans">
-      {/* Elementos decorativos de fondo (Atmósfera KidUs) */}
       <div className="fixed top-[-10%] left-[-10%] w-[40%] h-[40%] bg-sky-100/50 rounded-full blur-[120px] -z-10" />
       <div className="fixed bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-orange-100/50 rounded-full blur-[120px] -z-10" />
 
@@ -58,7 +55,7 @@ export const AuthView = () => {
                   },
                   radii: {
                     borderRadiusButton: '1.5rem',
-                    buttonPadding: '1rem',
+                    buttonBorderRadius: '1.5rem',
                     inputBorderRadius: '1.2rem',
                   }
                 } 
