@@ -8,13 +8,12 @@ interface NestState {
   members: any[];
   events: any[];
   loading: boolean;
-  
-  // Acciones
   fetchSession: () => Promise<void>;
   initializeNest: (nestId: string) => Promise<void>;
   fetchMembers: () => Promise<void>;
   fetchEvents: () => Promise<void>;
   subscribeToChanges: () => void;
+  signOut: () => Promise<void>; // Añadido para SettingsView
 }
 
 export const useNestStore = create<NestState>((set, get) => ({
@@ -48,8 +47,6 @@ export const useNestStore = create<NestState>((set, get) => ({
 
   initializeNest: async (id) => {
     set({ nestId: id, loading: true });
-    
-    // Cargar datos básicos del nido
     const { data: nestData } = await supabase
       .from('nests')
       .select('nest_code')
@@ -58,12 +55,7 @@ export const useNestStore = create<NestState>((set, get) => ({
       
     set({ nestCode: nestData?.nest_code || null });
     
-    // Cargas paralelas para velocidad
-    await Promise.all([
-      get().fetchMembers(),
-      get().fetchEvents()
-    ]);
-    
+    await Promise.all([get().fetchMembers(), get().fetchEvents()]);
     get().subscribeToChanges();
     set({ loading: false });
   },
@@ -71,10 +63,7 @@ export const useNestStore = create<NestState>((set, get) => ({
   fetchMembers: async () => {
     const { nestId } = get();
     if (!nestId) return;
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('nest_id', nestId);
+    const { data } = await supabase.from('profiles').select('*').eq('nest_id', nestId);
     set({ members: data || [] });
   },
 
@@ -89,11 +78,15 @@ export const useNestStore = create<NestState>((set, get) => ({
     set({ events: data || [] });
   },
 
+  signOut: async () => {
+    await supabase.auth.signOut();
+    set({ profile: null, nestId: null, nestCode: null, members: [], events: [] });
+  },
+
   subscribeToChanges: () => {
     const { nestId } = get();
     if (!nestId) return;
 
-    // Suscripción única multicanal
     supabase
       .channel('nest-realtime')
       .on('postgres_changes', 
