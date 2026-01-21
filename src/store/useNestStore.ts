@@ -1,34 +1,23 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 
-interface NestState {
-  profile: any | null;
-  nestId: string | null;
-  nestCode: string | null;
-  members: any[];
-  events: any[];
-  loading: boolean;
-  fetchSession: () => Promise<void>;
-  initializeNest: (nestId: string) => Promise<void>;
-  fetchMembers: () => Promise<void>;
-  fetchEvents: () => Promise<void>;
-  subscribeToChanges: () => void;
-  signOut: () => Promise<void>; // Añadido para SettingsView
-}
-
-export const useNestStore = create<NestState>((set, get) => ({
+export const useNestStore = create<any>((set, get) => ({
   profile: null,
   nestId: null,
   nestCode: null,
   members: [],
   events: [],
-  loading: false,
+  loading: true, // Empezamos en true para evitar parpadeos
 
   fetchSession: async () => {
-    set({ loading: true });
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (session?.user) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.user) {
+        set({ profile: null, loading: false });
+        return;
+      }
+
       const { data: profile } = await supabase
         .from('profiles')
         .select('*')
@@ -41,12 +30,14 @@ export const useNestStore = create<NestState>((set, get) => ({
           await get().initializeNest(profile.nest_id);
         }
       }
+    } catch (error) {
+      console.error("Error en sincronía:", error);
+    } finally {
+      set({ loading: false });
     }
-    set({ loading: false });
   },
 
-  initializeNest: async (id) => {
-    set({ nestId: id, loading: true });
+  initializeNest: async (id: string) => {
     const { data: nestData } = await supabase
       .from('nests')
       .select('nest_code')
@@ -57,7 +48,6 @@ export const useNestStore = create<NestState>((set, get) => ({
     
     await Promise.all([get().fetchMembers(), get().fetchEvents()]);
     get().subscribeToChanges();
-    set({ loading: false });
   },
 
   fetchMembers: async () => {
@@ -80,7 +70,7 @@ export const useNestStore = create<NestState>((set, get) => ({
 
   signOut: async () => {
     await supabase.auth.signOut();
-    set({ profile: null, nestId: null, nestCode: null, members: [], events: [] });
+    set({ profile: null, nestId: null, nestCode: null, members: [], events: [], loading: false });
   },
 
   subscribeToChanges: () => {
