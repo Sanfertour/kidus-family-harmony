@@ -11,7 +11,6 @@ export const useNestStore = create<any>((set, get) => ({
   initialized: false,
 
   fetchSession: async () => {
-    // Evitamos re-ejecución si ya está inicializado
     if (get().initialized && get().profile) return;
 
     try {
@@ -22,7 +21,7 @@ export const useNestStore = create<any>((set, get) => ({
         return;
       }
 
-      const { data: profile, error } = await supabase
+      const { data: profile } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', session.user.id)
@@ -34,13 +33,12 @@ export const useNestStore = create<any>((set, get) => ({
           await get().initializeNest(profile.nest_id);
         }
       } else {
-        // Usuario autenticado pero sin perfil en la tabla public (nuevo registro)
         set({ profile: null, nestId: null });
       }
     } catch (e) {
       console.error("Error en fetchSession:", e);
     } finally {
-      // Garantizamos que la app "despierte"
+      // Garantizamos que la app siempre despierte tras el intento
       set({ loading: false, initialized: true });
     }
   },
@@ -54,11 +52,7 @@ export const useNestStore = create<any>((set, get) => ({
         .maybeSingle();
         
       set({ nestCode: nestData?.nest_code || null });
-      
-      // Cargamos datos iniciales
       await Promise.all([get().fetchMembers(), get().fetchEvents()]);
-      
-      // ACTIVAMOS REALTIME (Vital para KidUs)
       get().subscribeToChanges();
     } catch (e) {
       console.error("Error inicializando nido:", e);
@@ -79,7 +73,6 @@ export const useNestStore = create<any>((set, get) => ({
     set({ events: data || [] });
   },
 
-  // Suscripción Realtime para Sincronía total
   subscribeToChanges: () => {
     const { nestId } = get();
     if (!nestId) return;
