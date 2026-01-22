@@ -6,6 +6,11 @@ import { Plus, Users, Loader2, Sparkles, ArrowLeft } from "lucide-react";
 import { triggerHaptic } from "@/utils/haptics";
 import { useToast } from "@/hooks/use-toast";
 
+/**
+ * KidUs - OnboardingView
+ * Estética Brisa: Glassmorphism profundo y bordes ultra-redondeados.
+ * Flujo: Selección -> (Crear Nido / Unirse a Nido) -> Sincronía.
+ */
 export const OnboardingView = () => {
   const [mode, setMode] = useState<'selection' | 'create' | 'join'>('selection');
   const [inputValue, setInputValue] = useState("");
@@ -21,21 +26,24 @@ export const OnboardingView = () => {
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) throw new Error("Sesión expirada");
+      if (!session?.user) throw new Error("Sesión expirada. Por favor, reidentifícate.");
 
-      // ELIMINAMOS la generación manual del código aquí. 
-      // Dejamos que el DEFAULT generate_nest_code() de SQL haga su magia.
+      // 1. Creación del Nido (El nest_code se genera automáticamente en PostgreSQL)
       const { data: newNest, error: nestError } = await supabase
         .from('nests')
-        .insert([{ name: inputValue.trim() }]) // El código se genera solo en DB
+        .insert([{ name: inputValue.trim() }])
         .select()
         .single();
 
       if (nestError) throw nestError;
 
+      // 2. Vinculación del Guía al Nido con rol 'autonomous'
       const { error: profileError } = await supabase
         .from('profiles')
-        .update({ nest_id: newNest.id, role: 'autonomous' })
+        .update({ 
+          nest_id: newNest.id, 
+          role: 'autonomous' 
+        })
         .eq('id', session.user.id);
 
       if (profileError) throw profileError;
@@ -43,13 +51,19 @@ export const OnboardingView = () => {
       triggerHaptic('success');
       toast({ 
         title: "¡Nido Fundado! 🌿", 
-        description: `Código generado: ${newNest.nest_code}` 
+        description: `Bienvenido a ${newNest.name}. Código: ${newNest.nest_code}` 
       });
       
+      // Sincronización final y entrada al Dashboard
       await fetchSession(); 
 
     } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      console.error("Error al fundar nido:", error.message);
+      toast({ 
+        title: "Error", 
+        description: error.message || "No se pudo fundar el nido.", 
+        variant: "destructive" 
+      });
     } finally {
       setIsLoading(false);
     }
@@ -63,30 +77,43 @@ export const OnboardingView = () => {
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      
-      // Buscamos el nido
+      if (!session?.user) throw new Error("Sesión expirada.");
+
+      // 1. Búsqueda del nido existente mediante el código KID-XXXXX
       const { data: nest, error: nestError } = await supabase
         .from('nests')
         .select('id, name')
         .eq('nest_code', code)
         .maybeSingle();
 
-      if (!nest) throw new Error("El código KID no existe.");
+      if (nestError) throw nestError;
+      if (!nest) throw new Error("El código KID no existe o es incorrecto.");
 
-      // Vinculamos
+      // 2. Vinculación del perfil al nido encontrado
       const { error: profileError } = await supabase
         .from('profiles')
-        .update({ nest_id: nest.id, role: 'autonomous' })
-        .eq('id', session?.user.id);
+        .update({ 
+          nest_id: nest.id, 
+          role: 'autonomous' 
+        })
+        .eq('id', session.user.id);
 
       if (profileError) throw profileError;
 
       triggerHaptic('success');
-      toast({ title: "Sincronía completada", description: `Te has unido a: ${nest.name}` });
+      toast({ 
+        title: "Sincronía completada", 
+        description: `Te has unido al Nido: ${nest.name}` 
+      });
+
       await fetchSession();
 
     } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ 
+        title: "Error", 
+        description: error.message, 
+        variant: "destructive" 
+      });
     } finally {
       setIsLoading(false);
     }
@@ -94,7 +121,7 @@ export const OnboardingView = () => {
 
   return (
     <div className="min-h-[100dvh] w-full flex flex-col items-center justify-center p-6 bg-[#F8FAFC] relative overflow-hidden">
-      {/* Background Decor (Efecto Brisa) */}
+      {/* Elementos decorativos de fondo (Efecto Brisa) */}
       <div className="absolute top-[-10%] right-[-10%] w-[80%] h-[40%] bg-sky-400/5 blur-[120px] rounded-full" />
       <div className="absolute bottom-[-5%] left-[-5%] w-[60%] h-[30%] bg-indigo-400/5 blur-[100px] rounded-full" />
       
@@ -102,7 +129,9 @@ export const OnboardingView = () => {
         {mode === 'selection' ? (
           <motion.div 
             key="selection"
-            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
+            initial={{ opacity: 0, y: 20 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            exit={{ opacity: 0, scale: 0.95 }}
             className="w-full max-w-sm space-y-6 relative z-10"
           >
             <div className="text-center mb-12">
@@ -139,7 +168,9 @@ export const OnboardingView = () => {
         ) : (
           <motion.div 
             key="form"
-            initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+            initial={{ opacity: 0, x: 20 }} 
+            animate={{ opacity: 1, x: 0 }} 
+            exit={{ opacity: 0, x: -20 }}
             className="w-full max-w-sm bg-white p-12 rounded-[4rem] shadow-[0_40px_80px_rgba(0,0,0,0.08)] relative z-10 border border-slate-50"
           >
             <button 
@@ -149,7 +180,7 @@ export const OnboardingView = () => {
               <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" /> Volver
             </button>
 
-            <h3 className="text-3xl font-black text-slate-900 mb-8 italic tracking-tighter leading-tight">
+            <h3 className="text-3xl font-black text-slate-900 mb-8 italic tracking-tighter leading-tight whitespace-pre-line">
               {mode === 'create' ? 'Nombre de tu\nNido' : 'Sincronizar\nCódigo KID'}
             </h3>
 
