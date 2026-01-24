@@ -44,7 +44,7 @@ export const CalendarView = ({
 
   const getEventsForDay = (day: Date) => {
     const dateStr = format(day, "yyyy-MM-dd");
-    return events.filter((e: any) => e.date === dateStr || e.event_date?.startsWith(dateStr));
+    return events.filter((e: any) => e.date === dateStr || e.start_time?.startsWith(dateStr));
   };
 
   const weekDays = ["L", "M", "X", "J", "V", "S", "D"];

@@ -67,7 +67,7 @@ export const EventCard = ({ event, members = [], onDelegate, onConflictResolve }
       <div className="space-y-2 mb-6 ml-1">
         <div className="flex items-center gap-2 text-[11px] font-black text-slate-500 uppercase tracking-wider">
           <Clock size={14} className="text-[#0EA5E9]" />
-          <span>{event.startTime || event.event_date?.split('T')[1]?.substring(0, 5)} {event.endTime ? `- ${event.endTime}` : ''}</span>
+          <span>{event.startTime || event.start_time?.split('T')[1]?.substring(0, 5)} {event.endTime ? `- ${event.endTime}` : ''}</span>
         </div>
         {event.location && (
           <div className="flex items-center gap-2 text-[11px] font-bold text-slate-400">

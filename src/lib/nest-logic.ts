@@ -5,7 +5,7 @@ import { areIntervalsOverlapping } from 'date-fns';
  * checkConflicts: Busca colisiones de agenda para un miembro dentro de un Nido.
  * - Siempre requiere nestId (Verdad Única) para evitar fugas de eventos entre Nidos.
  * - Se espera que startTime/endTime sean ISO strings.
- * - Soporta varias columnas posibles para compatibilidad con esquemas (start_time / event_date / date).
+ * - Soporta varias columnas posibles para compatibilidad con esquemas (start_time / start_time / date).
  */
 export const checkConflicts = async (
   memberId: string,
@@ -21,7 +21,7 @@ export const checkConflicts = async (
     // Traemos sólo los campos necesarios y limitamos por nest_id y por miembro (assigned_to OR member_id)
     const { data: events, error } = await supabase
       .from('events')
-      .select('id, start_time, end_time, event_date, date, assigned_to, member_id')
+      .select('id, start_time, end_time, start_time, date, assigned_to, member_id')
       .eq('nest_id', nestId)
       .or(`assigned_to.eq.${memberId},member_id.eq.${memberId}`);
 
@@ -38,8 +38,8 @@ export const checkConflicts = async (
     // Filtramos en el cliente para mantener la consulta simple y evitar strings complejos en PostgREST
     const conflicts = (events || []).filter((ev: any) => {
       try {
-        const evStartStr = ev.start_time || ev.event_date || ev.date;
-        const evEndStr = ev.end_time || ev.event_date || ev.date || ev.start_time;
+        const evStartStr = ev.start_time || ev.start_time || ev.date;
+        const evEndStr = ev.end_time || ev.start_time || ev.date || ev.start_time;
         if (!evStartStr) return false;
 
         const evInterval = { start: new Date(evStartStr), end: new Date(evEndStr) };

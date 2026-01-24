@@ -44,8 +44,8 @@ const UpcomingEvents = ({ events = [] }: { events?: any[] }) => {
               
               {/* Formateo de fecha profesional */}
               <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-wider">
-                {event.event_date 
-                  ? format(new Date(event.event_date), "HH:mm '·' d MMM", { locale: es }) 
+                {event.start_time 
+                  ? format(new Date(event.start_time), "HH:mm '·' d MMM", { locale: es }) 
                   : 'Sincronizando...'}
               </p>
             </div>
