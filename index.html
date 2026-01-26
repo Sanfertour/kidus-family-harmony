@@ -35,12 +35,10 @@
         height: 100%;
         margin: 0;
         padding: 0;
-        /* Evita el scroll elástico que rompe la sensación de app nativa */
         overflow: hidden; 
         background-color: #F8FAFC; 
         font-family: 'Nunito', sans-serif;
         -webkit-tap-highlight-color: transparent;
-        /* Suavizado de fuentes para pantallas retina */
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
       }
@@ -57,12 +55,15 @@
       OneSignalDeferred.push(function(OneSignal) {
         OneSignal.init({
           appId: "810a2f7e-f786-42b0-af39-1cc848d55248",
+          safari_web_id: "web.onesignal.auto.064560b3-f01a-472e-8984-d45009a24467",
           allowLocalhostAsSecureOrigin: true,
+          // Forzamos el dominio de Vercel para evitar el error de domain.ts
+          origin: "https://kidus-family-harmony.vercel.app"
         });
 
         OneSignal.Notifications.addEventListener("permissionChange", function(permission) {
           if (permission) {
-            console.log("🌿 KidUs: Sincronía de notificaciones activada.");
+            console.log("🌿 KidUs: Sincronía de notificaciones activada en Vercel.");
           }
         });
       });
