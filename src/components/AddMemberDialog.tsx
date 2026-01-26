@@ -18,10 +18,10 @@ const PRESET_COLORS = ["#0ea5e9", "#f43f5e", "#10b981", "#f59e0b", "#8b5cf6", "#
 export const AddMemberDialog = ({ children, onMemberAdded }: AddMemberDialogProps) => {
   const [mode, setMode] = useState<'select' | 'link_guide' | 'create_member'>('select');
   const [loading, setLoading] = useState(false);
-  const { nestId, fetchSession } = useNestStore();
+  const { nestId, fetchSession } = useNestStore(); // No tocamos el store actual
   const { toast } = useToast();
 
-  // Estados de formulario
+  // Estados de formulario (Mantenemos nombres de variables para no romper lógica)
   const [targetNestCode, setTargetNestCode] = useState("");
   const [memberName, setMemberName] = useState("");
   const [memberRole, setMemberRole] = useState<'autonomous' | 'dependent'>('dependent');
@@ -35,7 +35,7 @@ export const AddMemberDialog = ({ children, onMemberAdded }: AddMemberDialogProp
     setLoading(false);
   };
 
-  // 1. VINCULAR GUÍA EXTERNO (Mediante Código KID)
+  // 1. VINCULAR GUÍA (Mantenemos tu lógica de fusión KID-XXXXX exacta)
   const handleLinkGuide = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -48,10 +48,10 @@ export const AddMemberDialog = ({ children, onMemberAdded }: AddMemberDialogProp
         .eq('nest_code', targetNestCode.toUpperCase())
         .single();
 
-      if (nestError || !targetNest) throw new Error("Código KID no válido");
+      if (nestError || !targetNest) throw new Error("Código KID no encontrado");
 
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Sin sesión activa");
+      if (!user) throw new Error("No hay sesión activa");
 
       const { error: updateError } = await supabase
         .from('profiles')
@@ -60,8 +60,8 @@ export const AddMemberDialog = ({ children, onMemberAdded }: AddMemberDialogProp
 
       if (updateError) throw updateError;
 
-      toast({ title: "Sincronía Total", description: "Te has unido al nuevo Nido con éxito." });
-      await fetchSession(); // Actualiza el estado global
+      toast({ title: "Nidos Sincronizados", description: "Sincronía completada con éxito." });
+      await fetchSession();
       resetForm();
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -70,7 +70,7 @@ export const AddMemberDialog = ({ children, onMemberAdded }: AddMemberDialogProp
     }
   };
 
-  // 2. CREAR MIEMBRO DE LA TRIBU (Local)
+  // 2. CREAR MIEMBRO (Evolución de "Crear Tribu" con selección de Rol)
   const handleCreateMember = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nestId) return;
@@ -84,15 +84,13 @@ export const AddMemberDialog = ({ children, onMemberAdded }: AddMemberDialogProp
           id: crypto.randomUUID(),
           nest_id: nestId,
           display_name: memberName,
-          role: memberRole,
+          role: memberRole, // Ahora dinámico: 'autonomous' o 'dependent'
           color: selectedColor,
         }]);
 
       if (error) throw error;
 
-      toast({ title: "Miembro Integrado", description: `${memberName} ya es parte de la Tribu.` });
-      
-      // Forzar recarga de datos en el Dashboard
+      toast({ title: "Tribu Actualizada", description: `${memberName} se ha unido al nido.` });
       if (onMemberAdded) await onMemberAdded();
       resetForm();
     } catch (error: any) {
@@ -115,14 +113,14 @@ export const AddMemberDialog = ({ children, onMemberAdded }: AddMemberDialogProp
         </DialogHeader>
 
         {mode === 'select' && (
-          <div className="grid grid-cols-1 gap-4">
+          <div className="space-y-4">
             <button 
               onClick={() => { triggerHaptic('soft'); setMode('create_member'); }}
               className="w-full p-8 bg-slate-900 rounded-[2.5rem] text-left transition-all active:scale-95"
             >
               <Users className="text-sky-400 mb-4" size={32} />
               <h4 className="text-white font-black italic text-xl uppercase tracking-tighter">Crear Miembro</h4>
-              <p className="text-sky-400/60 text-[10px] font-bold uppercase tracking-widest mt-1">Añadir peque o familiar sin app</p>
+              <p className="text-sky-400/60 text-[10px] font-bold uppercase tracking-widest mt-1">Añadir a la Tribu (Peques o Guías sin app)</p>
             </button>
 
             <button 
@@ -130,8 +128,8 @@ export const AddMemberDialog = ({ children, onMemberAdded }: AddMemberDialogProp
               className="w-full p-8 bg-white border-2 border-slate-100 rounded-[2.5rem] text-left transition-all active:scale-95"
             >
               <Link2 className="text-orange-500 mb-4" size={32} />
-              <h4 className="text-slate-900 font-black italic text-xl uppercase tracking-tighter">Vincular otro Guía</h4>
-              <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Fusionar con otro código KID</p>
+              <h4 className="text-slate-900 font-black italic text-xl uppercase tracking-tighter">Vincular otro Nido</h4>
+              <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Fusión mediante código KID-XXXXX</p>
             </button>
           </div>
         )}
@@ -140,7 +138,7 @@ export const AddMemberDialog = ({ children, onMemberAdded }: AddMemberDialogProp
           <form onSubmit={handleCreateMember} className="space-y-6">
             <div className="flex flex-col items-center gap-6">
               <div 
-                className="w-20 h-20 rounded-[2rem] flex items-center justify-center text-white text-3xl font-black shadow-xl"
+                className="w-20 h-20 rounded-[2rem] flex items-center justify-center text-white text-3xl font-black shadow-xl transition-colors duration-500"
                 style={{ backgroundColor: selectedColor }}
               >
                 {memberName ? memberName.charAt(0).toUpperCase() : "?"}
@@ -150,24 +148,25 @@ export const AddMemberDialog = ({ children, onMemberAdded }: AddMemberDialogProp
                 value={memberName}
                 onChange={(e) => setMemberName(e.target.value)}
                 placeholder="Nombre del miembro"
-                className="h-14 rounded-2xl bg-slate-50 border-none text-center text-lg font-bold"
+                className="h-14 rounded-2xl bg-slate-50 border-none text-center text-lg font-bold italic"
                 required
               />
 
+              {/* Selector de Status (Rol) */}
               <div className="flex bg-slate-100 p-1 rounded-2xl w-full">
                 <button
                   type="button"
                   onClick={() => { triggerHaptic('soft'); setMemberRole('dependent'); }}
                   className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all ${memberRole === 'dependent' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}
                 >
-                  <Baby size={18} /> <span className="text-xs font-black uppercase italic">Tribu</span>
+                  <Baby size={16} /> <span className="text-[10px] font-black uppercase italic">Tribu</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => { triggerHaptic('soft'); setMemberRole('autonomous'); }}
                   className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all ${memberRole === 'autonomous' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}
                 >
-                  <ShieldCheck size={18} /> <span className="text-xs font-black uppercase italic">Guía</span>
+                  <ShieldCheck size={16} /> <span className="text-[10px] font-black uppercase italic">Guía</span>
                 </button>
               </div>
 
