@@ -33,7 +33,7 @@ export const DashboardView = ({ onNavigate, members }: DashboardProps) => {
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 max-w-md mx-auto">
-      {/* Header */}
+      {/* Header con saludo dinámico */}
       <header className="px-2 flex justify-between items-end">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.4em] text-sky-500 mb-1 italic">KidUs Home</p>
@@ -65,11 +65,12 @@ export const DashboardView = ({ onNavigate, members }: DashboardProps) => {
             </h3>
             <div className="flex flex-col">
                <span className="text-2xl font-black text-slate-900 italic tracking-tighter opacity-30 leading-none">Miembros</span>
-               <span className="text-[9px] font-black uppercase tracking-[0.1em] text-sky-500">Sincronía Total</span>
+               <span className="text-[9px] font-black uppercase tracking-[0.1em] text-sky-500">Sincronía</span>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
+            {/* Contador de Guías */}
             <div className="bg-slate-900 p-6 rounded-[2.5rem] text-white shadow-2xl">
               <div className="flex justify-between items-start mb-4">
                 <ShieldCheck size={20} className="text-sky-400" />
@@ -79,6 +80,7 @@ export const DashboardView = ({ onNavigate, members }: DashboardProps) => {
               <p className="text-[9px] font-black uppercase tracking-widest opacity-50 italic">Guías</p>
             </div>
 
+            {/* Contador de Peques */}
             <div className="bg-white/80 border border-slate-100 p-6 rounded-[2.5rem] text-slate-900 shadow-sm">
               <div className="flex justify-between items-start mb-4">
                 <Baby size={20} className="text-orange-500" />
@@ -119,3 +121,7 @@ export const DashboardView = ({ onNavigate, members }: DashboardProps) => {
             </span>
           </div>
         )}
+      </motion.button>
+    </div>
+  );
+};
