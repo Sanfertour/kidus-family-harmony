@@ -1,5 +1,12 @@
 import React, { ReactNode, useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription, // Añadido
+  DialogTrigger 
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -18,10 +25,9 @@ const PRESET_COLORS = ["#0ea5e9", "#f43f5e", "#10b981", "#f59e0b", "#8b5cf6", "#
 export const AddMemberDialog = ({ children, onMemberAdded }: AddMemberDialogProps) => {
   const [mode, setMode] = useState<'select' | 'link_guide' | 'create_member'>('select');
   const [loading, setLoading] = useState(false);
-  const { nestId, fetchSession } = useNestStore(); // No tocamos el store actual
+  const { nestId, fetchSession } = useNestStore();
   const { toast } = useToast();
 
-  // Estados de formulario (Mantenemos nombres de variables para no romper lógica)
   const [targetNestCode, setTargetNestCode] = useState("");
   const [memberName, setMemberName] = useState("");
   const [memberRole, setMemberRole] = useState<'autonomous' | 'dependent'>('dependent');
@@ -35,7 +41,6 @@ export const AddMemberDialog = ({ children, onMemberAdded }: AddMemberDialogProp
     setLoading(false);
   };
 
-  // 1. VINCULAR GUÍA (Mantenemos tu lógica de fusión KID-XXXXX exacta)
   const handleLinkGuide = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -70,7 +75,6 @@ export const AddMemberDialog = ({ children, onMemberAdded }: AddMemberDialogProp
     }
   };
 
-  // 2. CREAR MIEMBRO (Evolución de "Crear Tribu" con selección de Rol)
   const handleCreateMember = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nestId) return;
@@ -84,7 +88,7 @@ export const AddMemberDialog = ({ children, onMemberAdded }: AddMemberDialogProp
           id: crypto.randomUUID(),
           nest_id: nestId,
           display_name: memberName,
-          role: memberRole, // Ahora dinámico: 'autonomous' o 'dependent'
+          role: memberRole,
           color: selectedColor,
         }]);
 
@@ -104,12 +108,16 @@ export const AddMemberDialog = ({ children, onMemberAdded }: AddMemberDialogProp
     <Dialog onOpenChange={(open) => !open && resetForm()}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="rounded-[3.5rem] border-none bg-white/95 backdrop-blur-2xl p-8 shadow-2xl max-w-[90vw] sm:max-w-md">
-        <DialogHeader className="mb-6">
-          <DialogTitle className="text-3xl font-black italic tracking-tighter text-slate-900 text-center uppercase">
+        <DialogHeader className="mb-6 text-center">
+          <DialogTitle className="text-3xl font-black italic tracking-tighter text-slate-900 uppercase">
             {mode === 'select' && "Gestión de Nido"}
             {mode === 'link_guide' && "Vincular Guía"}
             {mode === 'create_member' && "Añadir Miembro"}
           </DialogTitle>
+          {/* Silenciamos el warning de accesibilidad con sr-only */}
+          <DialogDescription className="sr-only">
+            Panel para gestionar los miembros y la sincronía del nido familiar.
+          </DialogDescription>
         </DialogHeader>
 
         {mode === 'select' && (
@@ -152,7 +160,6 @@ export const AddMemberDialog = ({ children, onMemberAdded }: AddMemberDialogProp
                 required
               />
 
-              {/* Selector de Status (Rol) */}
               <div className="flex bg-slate-100 p-1 rounded-2xl w-full">
                 <button
                   type="button"
