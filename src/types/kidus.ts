@@ -19,7 +19,8 @@ export interface Profile {
   nest_id: string | null;
   role: UserRole;
   display_name: string;
-  avatar_url?: string;
+  avatar_url?: string; // Aquí vendrá la URL de Google para los Guías
+  color: string | null;   // <-- CRÍTICO: Esto soluciona el error TS2339 en Vercel
 }
 
 export interface Nest {
@@ -36,11 +37,12 @@ export interface NestState {
   members: Profile[];
   events: EventData[];
   loading: boolean;
+  initialized: boolean; // Añadido para controlar el estado de carga inicial
   fetchSession: () => Promise<void>;
   initializeNest: (nestId: string) => Promise<void>;
   fetchMembers: () => Promise<void>;
   fetchEvents: () => Promise<void>;
-  subscribeToChanges: () => void;
+  subscribeToChanges: () => () => void; // Cambiado para permitir limpieza del useEffect
   signOut: () => Promise<void>;
-  setEvents: (events: EventData[]) => void; // Necesario para Realtime
+  setEvents: (events: EventData[]) => void;
 }
