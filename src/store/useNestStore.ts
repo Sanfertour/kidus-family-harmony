@@ -7,52 +7,50 @@ export const useNestStore = create<any>((set, get) => ({
   nestCode: null,
   members: [],
   events: [],
-  loading: false, // Empezamos en false para evitar parpadeos innecesarios
+  loading: false,
   initialized: false,
 
   fetchSession: async () => {
-    // Evitar múltiples llamadas si ya se está cargando
     if (get().loading) return;
-
     try {
       set({ loading: true });
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
-        set({ profile: null, nestId: null, nestCode: null, loading: false, initialized: true });
+        set({ profile: null, nestId: null, initialized: true, loading: false });
         return;
       }
 
-      // Solo pedimos el perfil si no lo tenemos o si el ID ha cambiado
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', session.user.id)
         .single();
       
-      if (error || !profile) {
-        set({ profile: null, loading: false, initialized: true });
-        return;
-      }
+      if (error || !profile) throw error;
 
+      // Seteamos lo básico primero
       set({ 
         profile, 
-        nestId: profile.nest_id, 
+        nestId: profile.nest_id,
         initialized: true 
       });
 
+      // Si tiene nido, cargamos el resto
       if (profile.nest_id) {
-        // Ejecutamos la inicialización del nido solo si tenemos ID
         await get().initializeNest(profile.nest_id);
       }
     } catch (e) {
-      console.error("Fallo crítico en fetchSession:", e);
+      console.error("Error en sesión:", e);
     } finally {
       set({ loading: false });
     }
   },
 
   initializeNest: async (id: string) => {
+    // Validamos que el ID sea un string real para evitar el error 400
+    if (!id || id === 'undefined') return;
+
     try {
       const { data: nestData } = await supabase
         .from('nests')
@@ -62,31 +60,44 @@ export const useNestStore = create<any>((set, get) => ({
         
       set({ nestCode: nestData?.nest_code || null });
       
-      // Lanzamos las cargas en paralelo para mayor velocidad
+      // Cargamos miembros y eventos
       await Promise.all([get().fetchMembers(), get().fetchEvents()]);
       
-      console.log("Sincronía KidUs: Nido listo.");
+      console.log("Sincronía KidUs: Nido y Miembros cargados.");
     } catch (e) {
-      console.error("Error al inicializar nido:", e);
+      console.error("Error inicializando nido:", e);
     }
   },
 
   fetchMembers: async () => {
     const { nestId } = get();
     if (!nestId) return;
-    const { data } = await supabase.from('profiles').select('*').eq('nest_id', nestId);
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('nest_id', nestId);
+    
+    if (error) {
+      console.error("Error cargando miembros:", error);
+      return;
+    }
     set({ members: data || [] });
   },
 
   fetchEvents: async () => {
     const { nestId } = get();
     if (!nestId) return;
-    const { data } = await supabase.from('events').select('*').eq('nest_id', nestId).order('start_time', { ascending: true });
-    set({ events: data || [] });
-  },
 
-  signOut: async () => {
-    await supabase.auth.signOut();
-    set({ profile: null, nestId: null, nestCode: null, members: [], events: [] });
+    const { data, error } = await supabase
+      .from('events')
+      .select('*')
+      .eq('nest_id', nestId);
+    
+    if (error) {
+      console.error("Error cargando eventos:", error);
+      return;
+    }
+    set({ events: data || [] });
   }
 }));
