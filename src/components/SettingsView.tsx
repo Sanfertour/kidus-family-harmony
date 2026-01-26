@@ -5,12 +5,14 @@ import { motion } from "framer-motion";
 import { 
   LogOut, Shield, Bell, Users, 
   ChevronRight, Share2, Sparkles,
-  Heart, Crown, UserMinus
+  Heart, Crown, UserMinus, Pencil
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { AddMemberDialog } from "@/components/AddMemberDialog";
+import { Profile } from "@/types/kidus";
 
 export const SettingsView = () => {
-  const { profile, nestCode, signOut, members, fetchSession } = useNestStore();
+  const { profile, nestCode, signOut, members, fetchMembers } = useNestStore();
   const { toast } = useToast();
 
   const handleLogout = async () => {
@@ -38,7 +40,7 @@ export const SettingsView = () => {
     const { error } = await supabase.from('profiles').delete().eq('id', id);
     if (!error) {
       toast({ title: "Miembro eliminado", description: `${name} ya no está en el nido.` });
-      await fetchSession();
+      await fetchMembers();
     }
   };
 
@@ -58,18 +60,31 @@ export const SettingsView = () => {
         <h2 className="text-4xl font-black text-slate-900 tracking-tighter italic">Ajustes</h2>
       </header>
 
-      {/* TARJETA DE PERFIL BRISA */}
+      {/* TARJETA DE PERFIL BRISA - Soporte para Avatar de Google */}
       <div className="relative group">
         <div className="absolute -inset-1 bg-gradient-to-r from-sky-400 to-indigo-400 rounded-[3.5rem] blur opacity-20 group-hover:opacity-30 transition duration-1000"></div>
         <div className="relative bg-white/80 backdrop-blur-2xl rounded-[3rem] p-8 border border-white shadow-xl">
           <div className="flex items-center gap-6 mb-8">
             <div className="relative">
-              <div 
-                className="w-20 h-20 rounded-[2.2rem] flex items-center justify-center text-white shadow-2xl transition-colors"
-                style={{ backgroundColor: profile?.color || '#0f172a' }}
-              >
-                <span className="font-black text-3xl italic">{profile?.display_name?.charAt(0) || 'G'}</span>
-              </div>
+              {profile?.avatar_url ? (
+                <img 
+                  src={profile.avatar_url} 
+                  alt={profile.display_name}
+                  className="w-20 h-20 rounded-[2.2rem] object-cover shadow-2xl border-4 border-white transition-transform group-hover:scale-105 duration-500"
+                  onError={(e) => {
+                    // Si falla la carga de la imagen de Google, volvemos a la inicial
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              ) : (
+                <div 
+                  className="w-20 h-20 rounded-[2.2rem] flex items-center justify-center text-white shadow-2xl transition-colors"
+                  style={{ backgroundColor: profile?.color || '#0f172a' }}
+                >
+                  <span className="font-black text-3xl italic">{profile?.display_name?.charAt(0) || 'G'}</span>
+                </div>
+              )}
+              
               {isGuiaPrincipal && (
                 <div className="absolute -top-2 -right-2 w-8 h-8 bg-amber-400 rounded-full flex items-center justify-center border-4 border-white shadow-lg text-white">
                   <Crown size={14} strokeWidth={3} />
@@ -105,7 +120,7 @@ export const SettingsView = () => {
         </div>
       </div>
 
-      {/* LISTA DE MIEMBROS (GESTIÓN DIRECTA) */}
+      {/* LISTA DE MIEMBROS (GESTIÓN DIRECTA Y EDICIÓN) */}
       <div className="space-y-4">
         <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 ml-4 italic">Miembros del Nido</h4>
         <div className="space-y-2">
@@ -113,7 +128,7 @@ export const SettingsView = () => {
             <div key={member.id} className="flex items-center justify-between p-4 bg-white/40 rounded-[2rem] border border-white/60">
               <div className="flex items-center gap-4">
                 <div 
-                  className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-xs"
+                  className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-xs shadow-sm"
                   style={{ backgroundColor: member.color || '#94a3b8' }}
                 >
                   {member.display_name?.charAt(0)}
@@ -123,14 +138,27 @@ export const SettingsView = () => {
                   <p className="text-[8px] font-bold uppercase tracking-widest text-slate-400">{member.role === 'autonomous' ? 'Guía' : 'Tribu'}</p>
                 </div>
               </div>
-              {member.id !== profile?.id && (
-                <button 
-                  onClick={() => removeMember(member.id, member.display_name || '')}
-                  className="p-3 text-slate-300 hover:text-red-500 transition-colors"
-                >
-                  <UserMinus size={18} />
-                </button>
-              )}
+
+              <div className="flex items-center gap-1">
+                {/* DIÁLOGO DE EDICIÓN PARA EL COLOR/NOMBRE */}
+                <AddMemberDialog editingMember={member}>
+                  <button 
+                    onClick={() => triggerHaptic('soft')}
+                    className="p-3 text-slate-400 hover:text-sky-500 transition-colors"
+                  >
+                    <Pencil size={18} />
+                  </button>
+                </AddMemberDialog>
+
+                {member.id !== profile?.id && (
+                  <button 
+                    onClick={() => removeMember(member.id, member.display_name || '')}
+                    className="p-3 text-slate-300 hover:text-red-500 transition-colors"
+                  >
+                    <UserMinus size={18} />
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
