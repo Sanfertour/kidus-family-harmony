@@ -33,6 +33,7 @@ export const DashboardView = ({ onNavigate, members }: DashboardProps) => {
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 max-w-md mx-auto">
+      {/* Header */}
       <header className="px-2 flex justify-between items-end">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.4em] text-sky-500 mb-1 italic">KidUs Home</p>
@@ -46,6 +47,7 @@ export const DashboardView = ({ onNavigate, members }: DashboardProps) => {
         </div>
       </header>
 
+      {/* Card Principal: Estado de la Familia */}
       <motion.section 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -68,7 +70,7 @@ export const DashboardView = ({ onNavigate, members }: DashboardProps) => {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="bg-slate-900 p-6 rounded-[2.5rem] text-white shadow-2xl transition-all">
+            <div className="bg-slate-900 p-6 rounded-[2.5rem] text-white shadow-2xl">
               <div className="flex justify-between items-start mb-4">
                 <ShieldCheck size={20} className="text-sky-400" />
                 <div className="w-1.5 h-1.5 bg-sky-400 rounded-full animate-pulse" />
@@ -77,7 +79,7 @@ export const DashboardView = ({ onNavigate, members }: DashboardProps) => {
               <p className="text-[9px] font-black uppercase tracking-widest opacity-50 italic">Guías</p>
             </div>
 
-            <div className="bg-white/80 border border-slate-100 p-6 rounded-[2.5rem] text-slate-900 shadow-sm transition-all">
+            <div className="bg-white/80 border border-slate-100 p-6 rounded-[2.5rem] text-slate-900 shadow-sm">
               <div className="flex justify-between items-start mb-4">
                 <Baby size={20} className="text-orange-500" />
               </div>
@@ -88,6 +90,7 @@ export const DashboardView = ({ onNavigate, members }: DashboardProps) => {
         </div>
       </motion.section>
 
+      {/* Widget de Próximo Evento */}
       <motion.button 
         whileTap={{ scale: 0.96 }}
         onClick={() => { triggerHaptic('soft'); onNavigate("agenda"); }}
@@ -111,4 +114,8 @@ export const DashboardView = ({ onNavigate, members }: DashboardProps) => {
         
         {nextEvent && (
           <div className="flex items-center gap-2 mt-4 bg-sky-50 w-fit px-3 py-1 rounded-full">
-            <span className="text-
+            <span className="text-[11px] font-black text-sky-600 uppercase tracking-tighter">
+              {format(parseISO(nextEvent.start_time), "EEEE d '•' HH:mm", { locale: es })}
+            </span>
+          </div>
+        )}
