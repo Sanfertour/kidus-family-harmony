@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react"; // 1. Añadimos useEffect
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus } from "lucide-react";
 import { useNestStore } from "@/store/useNestStore";
@@ -14,8 +14,15 @@ import { ImageScanner } from "@/components/ImageScanner";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("home");
-  const { nestId, members, fetchEvents } = useNestStore();
+  const { nestId, members, fetchEvents, fetchSession, initialized } = useNestStore();
   const [isManualDrawerOpen, setIsManualDrawerOpen] = useState(false);
+
+  // 2. DISPARADOR CRÍTICO: Cargar sesión al montar la app
+  useEffect(() => {
+    if (!initialized) {
+      fetchSession();
+    }
+  }, [initialized, fetchSession]);
 
   const handleScanComplete = () => {
     triggerHaptic('success');
@@ -42,6 +49,7 @@ const Index = () => {
           <AnimatePresence mode="wait">
             {activeTab === "home" && (
               <motion.div key="h" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }}>
+                {/* Ahora el Dashboard recibirá los miembros actualizados del store */}
                 <DashboardView onNavigate={setActiveTab} nestId={nestId || ""} members={members} />
               </motion.div>
             )}
@@ -75,11 +83,14 @@ const Index = () => {
           </button>
         </div>
 
+        {/* 3. VINCULACIÓN: El drawer usa los mismos miembros que el Dashboard */}
         <ManualEventDrawer 
           isOpen={isManualDrawerOpen} 
           onClose={() => setIsManualDrawerOpen(false)} 
           members={members} 
-          onEventAdded={() => fetchEvents()} 
+          onEventAdded={async () => {
+            await fetchEvents(); // Refresca eventos tras añadir uno manual
+          }} 
         />
 
         <BottomNav activeTab={activeTab} onTabChange={(tab) => {
