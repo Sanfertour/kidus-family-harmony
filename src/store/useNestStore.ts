@@ -29,14 +29,12 @@ export const useNestStore = create<any>((set, get) => ({
       
       if (error || !profile) throw error;
 
-      // Seteamos lo básico primero
       set({ 
         profile, 
         nestId: profile.nest_id,
         initialized: true 
       });
 
-      // Si tiene nido, cargamos el resto
       if (profile.nest_id) {
         await get().initializeNest(profile.nest_id);
       }
@@ -48,7 +46,6 @@ export const useNestStore = create<any>((set, get) => ({
   },
 
   initializeNest: async (id: string) => {
-    // Validamos que el ID sea un string real para evitar el error 400
     if (!id || id === 'undefined') return;
 
     try {
@@ -60,7 +57,7 @@ export const useNestStore = create<any>((set, get) => ({
         
       set({ nestCode: nestData?.nest_code || null });
       
-      // Cargamos miembros y eventos
+      // Ejecutamos en paralelo para mayor velocidad
       await Promise.all([get().fetchMembers(), get().fetchEvents()]);
       
       console.log("Sincronía KidUs: Nido y Miembros cargados.");
@@ -89,15 +86,32 @@ export const useNestStore = create<any>((set, get) => ({
     const { nestId } = get();
     if (!nestId) return;
 
+    // CORRECCIÓN: Añadimos el select con join para traer los perfiles
+    // Esto evita el error 400 y permite que AgendaCard lea event.profiles
     const { data, error } = await supabase
       .from('events')
-      .select('*')
-      .eq('nest_id', nestId);
+      .select(`
+        *,
+        profiles:assigned_to (
+          id,
+          display_name,
+          avatar_url,
+          role,
+          color
+        )
+      `)
+      .eq('nest_id', nestId)
+      .order('start_time', { ascending: true });
     
     if (error) {
       console.error("Error cargando eventos:", error);
+      // Si el error persiste, puede ser que la FK no esté configurada. 
+      // En ese caso, hacemos fallback a un select simple para no romper la app:
+      const { data: fallbackData } = await supabase.from('events').select('*').eq('nest_id', nestId);
+      set({ events: fallbackData || [] });
       return;
     }
+
     set({ events: data || [] });
   }
 }));
