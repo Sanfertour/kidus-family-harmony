@@ -1,8 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { X, Shield, EyeOff, BookOpen, Trophy, HeartPulse, Sparkles, Loader2, Calendar, Clock } from 'lucide-react';
+import { X, Shield, EyeOff, BookOpen, Trophy, HeartPulse, Sparkles, Loader2, Calendar, Clock, UserCheck, Baby } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
 import { Switch } from "@/components/ui/switch";
@@ -22,23 +21,28 @@ export const ManualEventDrawer = ({
   isOpen: boolean; onClose: () => void; onEventAdded: () => void;
   members: any[];
 }) => {
-  const { nestId, profile } = useNestStore();
+  const { nestId, profile, fetchEvents } = useNestStore();
   const { toast } = useToast();
   
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     category: 'other',
-    assigned_to: '',
+    assigned_to: '', // Guía responsable
+    involved_member: '', // Peque/Tribu involucrado
     date: new Date().toISOString().split('T')[0],
     time: "09:00",
     description: '',
     is_private: false
   });
 
+  // Filtramos miembros por rol para la UI
+  const guias = members.filter(m => m.role === 'autonomous');
+  const tribu = members.filter(m => m.role === 'dependent');
+
   const handleSave = async () => {
-    if (!nestId || !profile) {
-      triggerHaptic('error');
+    if (!nestId || !profile?.id) {
+      toast({ title: "Error de sesión", description: "No se detectó el Nido activo.", variant: "destructive" });
       return;
     }
 
@@ -53,13 +57,18 @@ export const ManualEventDrawer = ({
 
     try {
       const startDateTime = new Date(`${formData.date}T${formData.time}:00`).toISOString();
+      
+      // Construimos una descripción inteligente si hay un peque involucrado
+      const finalDescription = formData.involved_member 
+        ? `Acompañar a ${members.find(m => m.id === formData.involved_member)?.display_name}. ${formData.description}`
+        : formData.description;
 
       const { error } = await supabase.from('events').insert([{ 
         title: formData.title.trim(),
-        description: formData.description.trim(),
+        description: finalDescription.trim(),
         start_time: startDateTime,
         category: formData.category,
-        assigned_to: formData.assigned_to || null, 
+        assigned_to: formData.assigned_to || profile.id, // Si no se elige, el creador es el responsable
         nest_id: nestId,
         is_private: formData.is_private,
         created_by: profile.id 
@@ -67,10 +76,13 @@ export const ManualEventDrawer = ({
 
       if (error) throw error;
 
+      await fetchEvents();
       triggerHaptic('success');
       toast({ title: "Sincronizado", description: "Evento añadido al Nido." });
       onEventAdded(); 
       onClose(); 
+      // Reset
+      setFormData({ title: '', category: 'other', assigned_to: '', involved_member: '', date: new Date().toISOString().split('T')[0], time: "09:00", description: '', is_private: false });
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
@@ -91,12 +103,10 @@ export const ManualEventDrawer = ({
         <div className="space-y-6 pb-10">
           <header className="text-center">
              <h2 className="text-3xl font-black tracking-tighter italic">Nuevo Plan</h2>
-             <p className={`text-[10px] font-bold uppercase tracking-widest ${formData.is_private ? 'text-orange-400' : 'text-sky-500'}`}>
-               {formData.is_private ? 'Privacidad Individual' : 'Sincronía del Nido'}
-             </p>
+             <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-sky-500">Sincronía KidUs</p>
           </header>
 
-          {/* Categorías */}
+          {/* CATEGORÍAS */}
           <div className="grid grid-cols-4 gap-3">
             {EVENT_CATEGORIES.map((cat) => (
               <button key={cat.id} onClick={() => { triggerHaptic('soft'); setFormData({...formData, category: cat.id}); }} 
@@ -113,22 +123,38 @@ export const ManualEventDrawer = ({
             className={`rounded-[2rem] h-16 border-none font-bold text-lg px-8 shadow-sm ${formData.is_private ? 'bg-white/10 text-white placeholder:text-white/30' : 'bg-white text-slate-900'}`} 
           />
 
-          {/* Asignación de Miembros */}
+          {/* ASIGNACIÓN DE GUÍA RESPONSABLE */}
           <div className="space-y-3">
-            <label className="text-[10px] font-black uppercase opacity-40 ml-4 tracking-widest">¿Para quién?</label>
-            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
-              <button 
-                onClick={() => setFormData({...formData, assigned_to: ''})} 
-                className={`flex-shrink-0 px-6 py-3 rounded-2xl text-[10px] font-black uppercase transition-all ${!formData.assigned_to ? 'bg-slate-800 text-white shadow-lg' : 'bg-white/50 text-slate-400'}`}
-              >
+            <div className="flex items-center gap-2 ml-4">
+              <UserCheck size={12} className="text-sky-500" />
+              <label className="text-[10px] font-black uppercase opacity-40 tracking-widest italic">¿Qué Guía se encarga?</label>
+            </div>
+            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 px-2">
+              {guias.map(m => (
+                <button key={m.id} onClick={() => { triggerHaptic('soft'); setFormData({...formData, assigned_to: m.id}); }} 
+                  className={`flex-shrink-0 px-5 py-3 rounded-2xl text-[10px] font-black uppercase transition-all flex items-center gap-2 ${formData.assigned_to === m.id ? 'bg-slate-900 text-white' : 'bg-white shadow-sm text-slate-400'}`}>
+                  <div className="w-4 h-4 rounded-full" style={{ backgroundColor: m.color || '#000' }} />
+                  {m.display_name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* SELECCIÓN DE MIEMBRO DE LA TRIBU (PEQUES) */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 ml-4">
+              <Baby size={12} className="text-pink-500" />
+              <label className="text-[10px] font-black uppercase opacity-40 tracking-widest italic">¿A quién involucra?</label>
+            </div>
+            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 px-2">
+              <button onClick={() => setFormData({...formData, involved_member: ''})}
+                className={`flex-shrink-0 px-5 py-3 rounded-2xl text-[10px] font-black uppercase transition-all ${!formData.involved_member ? 'bg-pink-500 text-white' : 'bg-white shadow-sm text-slate-400'}`}>
                 Toda la Tribu
               </button>
-              {members.map(m => (
-                <button 
-                  key={m.id} 
-                  onClick={() => { triggerHaptic('soft'); setFormData({...formData, assigned_to: m.id}); }} 
-                  className={`flex-shrink-0 px-6 py-3 rounded-2xl text-[10px] font-black uppercase transition-all ${formData.assigned_to === m.id ? 'bg-sky-500 text-white shadow-lg' : 'bg-white/50 text-slate-400'}`}
-                >
+              {tribu.map(m => (
+                <button key={m.id} onClick={() => { triggerHaptic('soft'); setFormData({...formData, involved_member: m.id}); }} 
+                  className={`flex-shrink-0 px-5 py-3 rounded-2xl text-[10px] font-black uppercase transition-all flex items-center gap-2 ${formData.involved_member === m.id ? 'bg-pink-500 text-white shadow-lg' : 'bg-white shadow-sm text-slate-400'}`}>
+                  <div className="w-4 h-4 rounded-full" style={{ backgroundColor: m.color || '#ff0080' }} />
                   {m.display_name}
                 </button>
               ))}
