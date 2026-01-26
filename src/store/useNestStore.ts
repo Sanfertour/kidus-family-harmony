@@ -56,7 +56,7 @@ export const useNestStore = create<any>((set, get) => ({
         
       set({ nestCode: nestData?.nest_code || null });
       await Promise.all([get().fetchMembers(), get().fetchEvents()]);
-      console.log("Sincronía KidUs: Nido cargado con éxito.");
+      console.log("Sincronía KidUs: Nido y Miembros cargados.");
     } catch (e) {
       console.error("Error inicializando nido:", e);
     }
@@ -70,7 +70,11 @@ export const useNestStore = create<any>((set, get) => ({
       .select('*')
       .eq('nest_id', nestId);
     
-    if (!error) set({ members: data || [] });
+    if (error) {
+      console.error("Error cargando miembros:", error);
+      return;
+    }
+    set({ members: data || [] });
   },
 
   fetchEvents: async () => {
@@ -78,7 +82,7 @@ export const useNestStore = create<any>((set, get) => ({
     if (!nestId) return;
 
     try {
-      // Intentamos query con Join (Optimizado)
+      // Intentamos la query completa (Join para AgendaCard)
       const { data, error } = await supabase
         .from('events')
         .select(`
@@ -87,6 +91,7 @@ export const useNestStore = create<any>((set, get) => ({
             id,
             display_name,
             avatar_url,
+            role,
             color
           )
         `)
@@ -94,7 +99,7 @@ export const useNestStore = create<any>((set, get) => ({
         .order('start_time', { ascending: true });
       
       if (error) {
-        // Fallback si la relación FK falla (Evita error 400)
+        console.warn("Fallo en Join, reintentando query simple para evitar Error 400...");
         const { data: fallbackData } = await supabase
           .from('events')
           .select('*')
@@ -105,7 +110,7 @@ export const useNestStore = create<any>((set, get) => ({
         set({ events: data || [] });
       }
     } catch (e) {
-      console.error("Error en fetchEvents:", e);
+      console.error("Error crítico en fetchEvents:", e);
     }
   }
 }));
