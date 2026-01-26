@@ -9,13 +9,12 @@ import { Profile } from "@/types/kidus";
 interface DashboardProps {
   onNavigate: (tab: string) => void;
   nestId: string;
-  members: Profile[]; // Estos vienen del store a través de Index.tsx
+  members: Profile[];
 }
 
 export const DashboardView = ({ onNavigate, members }: DashboardProps) => {
   const { events, nestCode, profile, loading } = useNestStore();
   
-  // 1. Lógica de Contadores (Filtrado por el campo 'role' que definimos)
   const guiasCount = members.filter(m => m.role === 'autonomous').length;
   const tribuCount = members.filter(m => m.role === 'dependent').length;
 
@@ -34,7 +33,6 @@ export const DashboardView = ({ onNavigate, members }: DashboardProps) => {
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 max-w-md mx-auto">
-      {/* Header con saludo dinámico */}
       <header className="px-2 flex justify-between items-end">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.4em] text-sky-500 mb-1 italic">KidUs Home</p>
@@ -48,7 +46,6 @@ export const DashboardView = ({ onNavigate, members }: DashboardProps) => {
         </div>
       </header>
 
-      {/* Card Principal: Estado de la Familia */}
       <motion.section 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -65,13 +62,12 @@ export const DashboardView = ({ onNavigate, members }: DashboardProps) => {
               {members.length}
             </h3>
             <div className="flex flex-col">
-               <span className="text-2xl font-black text-slate-900 italic tracking-tighter opacity-30 leading-none">Tribu</span>
-               <span className="text-[9px] font-black uppercase tracking-[0.1em] text-sky-500">Activa</span>
+               <span className="text-2xl font-black text-slate-900 italic tracking-tighter opacity-30 leading-none">Miembros</span>
+               <span className="text-[9px] font-black uppercase tracking-[0.1em] text-sky-500">Sincronía Total</span>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            {/* Contador de Guías (Rol Autonomous) */}
             <div className="bg-slate-900 p-6 rounded-[2.5rem] text-white shadow-2xl transition-all">
               <div className="flex justify-between items-start mb-4">
                 <ShieldCheck size={20} className="text-sky-400" />
@@ -81,7 +77,6 @@ export const DashboardView = ({ onNavigate, members }: DashboardProps) => {
               <p className="text-[9px] font-black uppercase tracking-widest opacity-50 italic">Guías</p>
             </div>
 
-            {/* Contador de Peques (Rol Dependent) */}
             <div className="bg-white/80 border border-slate-100 p-6 rounded-[2.5rem] text-slate-900 shadow-sm transition-all">
               <div className="flex justify-between items-start mb-4">
                 <Baby size={20} className="text-orange-500" />
@@ -93,7 +88,6 @@ export const DashboardView = ({ onNavigate, members }: DashboardProps) => {
         </div>
       </motion.section>
 
-      {/* Widget de Próximo Evento */}
       <motion.button 
         whileTap={{ scale: 0.96 }}
         onClick={() => { triggerHaptic('soft'); onNavigate("agenda"); }}
@@ -117,12 +111,4 @@ export const DashboardView = ({ onNavigate, members }: DashboardProps) => {
         
         {nextEvent && (
           <div className="flex items-center gap-2 mt-4 bg-sky-50 w-fit px-3 py-1 rounded-full">
-            <span className="text-[11px] font-black text-sky-600 uppercase tracking-tighter">
-              {format(parseISO(nextEvent.start_time), "EEEE d '•' HH:mm", { locale: es })}
-            </span>
-          </div>
-        )}
-      </motion.button>
-    </div>
-  );
-};
+            <span className="text-
