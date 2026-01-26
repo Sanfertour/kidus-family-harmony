@@ -1,112 +1,140 @@
-import { format, parseISO } from "date-fns";
-import { motion } from "framer-motion";
-import { Lock, ChevronRight, AlertTriangle, ShieldCheck, User } from "lucide-react";
+import { useState, useMemo } from "react";
+import { useNestStore } from "@/store/useNestStore";
+import { motion, AnimatePresence } from "framer-motion";
+import { 
+  Clock, Lock, Sparkles, Utensils, GraduationCap, 
+  HeartPulse, Trophy, Loader2, Bell
+} from "lucide-react";
+import { 
+  format, isToday, startOfWeek, addDays, 
+  isSameDay, eachDayOfInterval 
+} from "date-fns";
+import { es } from "date-fns/locale";
 import { triggerHaptic } from "@/utils/haptics";
+import { AgendaCard } from "./AgendaCard";
 
-interface AgendaCardProps {
-  event: any;
-  isCreator: boolean;
-  assignedMember?: any;
-  hasConflict?: boolean;
-  onClick: () => void;
-}
+// Iconos por categoría (Restaurados al 100%)
+const CATEGORY_ICONS: any = {
+  school: <GraduationCap size={18} />,
+  meal: <Utensils size={18} />,
+  health: <HeartPulse size={18} />,
+  activity: <Trophy size={18} />,
+  other: <Sparkles size={18} />,
+};
 
-export const AgendaCard = ({ event, isCreator, assignedMember, hasConflict, onClick }: AgendaCardProps) => {
-  const isLocked = event.is_private && !isCreator;
-  const memberColor = assignedMember?.color || "#0EA5E9";
+export const AgendaView = () => {
+  const { events, members, profile, loading } = useNestStore();
+  const [selectedDate, setSelectedDate] = useState(new Date());
 
-  const handleInteraction = () => {
-    if (isLocked) {
-      triggerHaptic('warning');
-      return;
-    }
-    triggerHaptic('soft');
-    onClick();
-  };
+  // Generar semana actual (Timeline Brisa)
+  const weekDays = useMemo(() => {
+    const start = startOfWeek(new Date(), { weekStartsOn: 1 });
+    return eachDayOfInterval({
+      start,
+      end: addDays(start, 6),
+    });
+  }, []);
+
+  // Filtrar eventos solo para el día seleccionado
+  const dayEvents = useMemo(() => {
+    return events
+      .filter((event: any) => isSameDay(new Date(event.start_time), selectedDate))
+      .sort((a: any, b: any) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+  }, [events, selectedDate]);
+
+  if (loading) return (
+    <div className="py-20 flex flex-col items-center justify-center opacity-40 animate-pulse">
+      <Loader2 className="animate-spin text-sky-500 mb-4" size={32} />
+      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Sincronizando Nido...</p>
+    </div>
+  );
 
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.9 }}
-      onClick={handleInteraction}
-      className={`relative overflow-hidden p-6 rounded-[3rem] border transition-all duration-500 ${
-        isLocked 
-        ? "bg-slate-50/60 border-slate-200/50 cursor-not-allowed" 
-        : "bg-white border-white shadow-[0_20px_40px_-15px_rgba(0,0,0,0.03)] hover:shadow-2xl active:scale-[0.97] cursor-pointer"
-      }`}
-    >
-      {hasConflict && !isLocked && (
-        <div className="absolute top-0 right-10 bg-rose-500 text-white text-[8px] font-black px-4 py-1.5 rounded-b-xl flex items-center gap-1.5 shadow-lg z-10 animate-pulse uppercase tracking-tighter">
-          <AlertTriangle size={10} /> Solape detectado
+    <div className="space-y-8 pb-32 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+      {/* 1. HEADER LOGÍSTICO */}
+      <div className="px-8 flex justify-between items-end pt-4">
+        <div>
+          <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-sky-600 mb-1 italic">Sincronía Semanal</h2>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tighter capitalize font-nunito">
+            {format(selectedDate, "MMMM yyyy", { locale: es })}
+          </h1>
         </div>
-      )}
+        <button 
+          onClick={() => triggerHaptic('medium')}
+          className="relative p-4 bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 text-slate-900 active:scale-90 transition-all"
+        >
+          <Bell size={22} strokeWidth={2.5} />
+          <span className="absolute top-3 right-3 w-3 h-3 bg-orange-500 border-2 border-white rounded-full" />
+        </button>
+      </div>
 
-      <div className="flex gap-6">
-        <div className="flex flex-col items-center min-w-[55px]">
-          <span className="text-sm font-black text-slate-900 tracking-tighter">
-            {format(parseISO(event.start_time), "HH:mm")}
-          </span>
-          <div 
-            className="w-1.5 flex-1 rounded-full my-3 transition-all duration-700 opacity-20"
-            style={{ backgroundColor: isLocked ? '#CBD5E1' : memberColor }}
-          />
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <div className="flex justify-between items-center mb-2">
-            <span className={`text-[8px] font-black uppercase tracking-[0.2em] px-3 py-1.5 rounded-xl border ${
-              isLocked 
-              ? "bg-slate-200 text-slate-400 border-transparent" 
-              : "bg-slate-50 text-slate-500 border-slate-100 shadow-sm"
-            }`}>
-              {isLocked ? "Evento Privado" : event.category || "Tribu"}
-            </span>
-            {isLocked ? (
-              <Lock size={12} className="text-slate-400" />
-            ) : (
-              event.is_private && <ShieldCheck size={14} className="text-sky-500" />
-            )}
-          </div>
-
-          <h4 className={`text-2xl font-black tracking-tighter leading-tight transition-all duration-500 ${
-            isLocked ? "text-slate-300 blur-[4.5px] select-none" : "text-slate-800"
-          }`}>
-            {isLocked ? "Espacio Ocupado" : event.title}
-          </h4>
-
-          {!isLocked && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
-              {event.description && (
-                <p className="text-slate-400 text-xs font-medium mt-2 line-clamp-2 italic leading-relaxed tracking-tight">
-                  {event.description}
-                </p>
-              )}
-
-              <div className="mt-6 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div 
-                    className="w-9 h-9 rounded-2xl flex items-center justify-center text-[11px] font-black text-white shadow-lg rotate-3 transition-transform hover:rotate-0"
-                    style={{ backgroundColor: memberColor }}
-                  >
-                    {assignedMember?.display_name?.charAt(0) || <User size={14} />}
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.15em]">Guía a cargo</span>
-                    <span className="text-[10px] font-black text-slate-700 uppercase">
-                      {assignedMember?.display_name || "Sincronía Nido"}
-                    </span>
-                  </div>
-                </div>
-                <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 border border-slate-100/50">
-                  <ChevronRight size={20} strokeWidth={3} />
-                </div>
-              </div>
-            </motion.div>
-          )}
+      {/* 2. SELECTOR DE 7 DÍAS */}
+      <div className="px-4">
+        <div className="flex justify-between bg-white/40 backdrop-blur-xl p-3 rounded-[2.5rem] border border-white/60 shadow-lg overflow-x-auto no-scrollbar">
+          {weekDays.map((day) => {
+            const active = isSameDay(day, selectedDate);
+            return (
+              <button
+                key={day.toISOString()}
+                onClick={() => { triggerHaptic('soft'); setSelectedDate(day); }}
+                className={`flex flex-col items-center justify-center min-w-[50px] py-4 rounded-2xl transition-all ${
+                  active ? 'bg-slate-900 text-white shadow-lg scale-110' : 'text-slate-400 hover:bg-slate-100'
+                }`}
+              >
+                <span className="text-[9px] font-black uppercase tracking-widest mb-1">
+                  {format(day, "EEE", { locale: es })}
+                </span>
+                <span className="text-lg font-black tracking-tighter">
+                  {format(day, "d")}
+                </span>
+                {active && <motion.div layoutId="dot" className="w-1 h-1 bg-sky-400 rounded-full mt-1" />}
+              </button>
+            );
+          })}
         </div>
       </div>
-    </motion.div>
+
+      {/* 3. LISTA DE EVENTOS */}
+      <div className="px-6 space-y-6">
+        <div className="flex items-center gap-4 px-2">
+           <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-slate-400 italic">
+             {isToday(selectedDate) ? "Hoy" : format(selectedDate, "EEEE d", { locale: es })}
+           </h3>
+           <div className="h-[1px] flex-1 bg-slate-200" />
+        </div>
+
+        <AnimatePresence mode="popLayout">
+          {dayEvents.length > 0 ? (
+            dayEvents.map((event: any) => {
+              const isOwner = event.created_by === profile?.id;
+              const assignedGuia = members.find((m: any) => m.id === event.assigned_to);
+              
+              return (
+                <AgendaCard 
+                  key={event.id}
+                  event={event}
+                  isCreator={isOwner}
+                  assignedMember={assignedGuia}
+                  onClick={() => {
+                    console.log("Evento seleccionado:", event.title);
+                  }}
+                />
+              );
+            })
+          ) : (
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              className="py-12 text-center"
+            >
+              <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 opacity-50">
+                <Sparkles className="text-slate-300" />
+              </div>
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-300">Nido en calma para este día</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
   );
 };
