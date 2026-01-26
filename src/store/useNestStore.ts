@@ -47,7 +47,6 @@ export const useNestStore = create<any>((set, get) => ({
 
   initializeNest: async (id: string) => {
     if (!id || id === 'undefined') return;
-
     try {
       const { data: nestData } = await supabase
         .from('nests')
@@ -56,11 +55,8 @@ export const useNestStore = create<any>((set, get) => ({
         .single();
         
       set({ nestCode: nestData?.nest_code || null });
-      
-      // Ejecutamos en paralelo para mayor velocidad
       await Promise.all([get().fetchMembers(), get().fetchEvents()]);
-      
-      console.log("Sincronía KidUs: Nido y Miembros cargados.");
+      console.log("Sincronía KidUs: Nido cargado con éxito.");
     } catch (e) {
       console.error("Error inicializando nido:", e);
     }
@@ -69,49 +65,47 @@ export const useNestStore = create<any>((set, get) => ({
   fetchMembers: async () => {
     const { nestId } = get();
     if (!nestId) return;
-
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('nest_id', nestId);
     
-    if (error) {
-      console.error("Error cargando miembros:", error);
-      return;
-    }
-    set({ members: data || [] });
+    if (!error) set({ members: data || [] });
   },
 
   fetchEvents: async () => {
     const { nestId } = get();
     if (!nestId) return;
 
-    // CORRECCIÓN: Añadimos el select con join para traer los perfiles
-    // Esto evita el error 400 y permite que AgendaCard lea event.profiles
-    const { data, error } = await supabase
-      .from('events')
-      .select(`
-        *,
-        profiles:assigned_to (
-          id,
-          display_name,
-          avatar_url,
-          role,
-          color
-        )
-      `)
-      .eq('nest_id', nestId)
-      .order('start_time', { ascending: true });
-    
-    if (error) {
-      console.error("Error cargando eventos:", error);
-      // Si el error persiste, puede ser que la FK no esté configurada. 
-      // En ese caso, hacemos fallback a un select simple para no romper la app:
-      const { data: fallbackData } = await supabase.from('events').select('*').eq('nest_id', nestId);
-      set({ events: fallbackData || [] });
-      return;
+    try {
+      // Intentamos query con Join (Optimizado)
+      const { data, error } = await supabase
+        .from('events')
+        .select(`
+          *,
+          profiles:assigned_to (
+            id,
+            display_name,
+            avatar_url,
+            color
+          )
+        `)
+        .eq('nest_id', nestId)
+        .order('start_time', { ascending: true });
+      
+      if (error) {
+        // Fallback si la relación FK falla (Evita error 400)
+        const { data: fallbackData } = await supabase
+          .from('events')
+          .select('*')
+          .eq('nest_id', nestId)
+          .order('start_time', { ascending: true });
+        set({ events: fallbackData || [] });
+      } else {
+        set({ events: data || [] });
+      }
+    } catch (e) {
+      console.error("Error en fetchEvents:", e);
     }
-
-    set({ events: data || [] });
   }
 }));
