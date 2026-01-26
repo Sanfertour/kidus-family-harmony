@@ -5,11 +5,12 @@ import { motion } from "framer-motion";
 import { 
   LogOut, Shield, Bell, Users, 
   ChevronRight, Share2, Sparkles,
-  Heart, Crown
+  Heart, Crown, UserMinus
 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 export const SettingsView = () => {
-  const { profile, nestCode, signOut, members } = useNestStore();
+  const { profile, nestCode, signOut, members, fetchSession } = useNestStore();
   const { toast } = useToast();
 
   const handleLogout = async () => {
@@ -32,7 +33,15 @@ export const SettingsView = () => {
     }
   };
 
-  // Calculamos la salud del nido basado en miembros
+  const removeMember = async (id: string, name: string) => {
+    triggerHaptic('warning');
+    const { error } = await supabase.from('profiles').delete().eq('id', id);
+    if (!error) {
+      toast({ title: "Miembro eliminado", description: `${name} ya no está en el nido.` });
+      await fetchSession();
+    }
+  };
+
   const isGuiaPrincipal = profile?.role === 'autonomous';
 
   return (
@@ -55,12 +64,11 @@ export const SettingsView = () => {
         <div className="relative bg-white/80 backdrop-blur-2xl rounded-[3rem] p-8 border border-white shadow-xl">
           <div className="flex items-center gap-6 mb-8">
             <div className="relative">
-              <div className="w-20 h-20 bg-slate-900 rounded-[2.2rem] flex items-center justify-center text-white shadow-2xl">
-                {profile?.avatar_url ? (
-                   <img src={profile.avatar_url} className="w-full h-full object-cover rounded-[2.2rem]" alt="" />
-                ) : (
-                  <span className="font-black text-3xl italic">{profile?.display_name?.charAt(0) || 'G'}</span>
-                )}
+              <div 
+                className="w-20 h-20 rounded-[2.2rem] flex items-center justify-center text-white shadow-2xl transition-colors"
+                style={{ backgroundColor: profile?.color || '#0f172a' }}
+              >
+                <span className="font-black text-3xl italic">{profile?.display_name?.charAt(0) || 'G'}</span>
               </div>
               {isGuiaPrincipal && (
                 <div className="absolute -top-2 -right-2 w-8 h-8 bg-amber-400 rounded-full flex items-center justify-center border-4 border-white shadow-lg text-white">
@@ -97,10 +105,40 @@ export const SettingsView = () => {
         </div>
       </div>
 
-      {/* MENÚ DE OPCIONES */}
+      {/* LISTA DE MIEMBROS (GESTIÓN DIRECTA) */}
+      <div className="space-y-4">
+        <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 ml-4 italic">Miembros del Nido</h4>
+        <div className="space-y-2">
+          {members.map((member) => (
+            <div key={member.id} className="flex items-center justify-between p-4 bg-white/40 rounded-[2rem] border border-white/60">
+              <div className="flex items-center gap-4">
+                <div 
+                  className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-xs"
+                  style={{ backgroundColor: member.color || '#94a3b8' }}
+                >
+                  {member.display_name?.charAt(0)}
+                </div>
+                <div>
+                  <p className="text-sm font-black text-slate-700 italic">{member.display_name}</p>
+                  <p className="text-[8px] font-bold uppercase tracking-widest text-slate-400">{member.role === 'autonomous' ? 'Guía' : 'Tribu'}</p>
+                </div>
+              </div>
+              {member.id !== profile?.id && (
+                <button 
+                  onClick={() => removeMember(member.id, member.display_name || '')}
+                  className="p-3 text-slate-300 hover:text-red-500 transition-colors"
+                >
+                  <UserMinus size={18} />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* MENÚ DE OPCIONES ADICIONALES */}
       <div className="space-y-3">
         {[
-          { icon: Users, label: 'Gestionar Tribu', color: 'text-orange-500', bg: 'bg-orange-50' },
           { icon: Bell, label: 'Notificaciones Inteligentes', color: 'text-sky-500', bg: 'bg-sky-50' },
           { icon: Shield, label: 'Seguridad del Nido', color: 'text-emerald-500', bg: 'bg-emerald-50' },
           { icon: Heart, label: 'Preferencias Familiares', color: 'text-pink-500', bg: 'bg-pink-50' },
@@ -124,7 +162,6 @@ export const SettingsView = () => {
         ))}
       </div>
 
-      {/* BOTÓN DE CIERRE (LOGOUT) */}
       <div className="pt-4">
         <button 
           onClick={handleLogout}
@@ -134,16 +171,6 @@ export const SettingsView = () => {
           Cerrar Sincronía
         </button>
       </div>
-
-      {/* FOOTER */}
-      <footer className="text-center space-y-2 py-6 opacity-30">
-        <p className="text-[9px] font-black text-slate-900 uppercase tracking-[0.5em]">KidUs Élite v1.0</p>
-        <div className="flex justify-center gap-4">
-          <span className="w-1 h-1 bg-slate-400 rounded-full" />
-          <span className="w-1 h-1 bg-slate-400 rounded-full" />
-          <span className="w-1 h-1 bg-slate-400 rounded-full" />
-        </div>
-      </footer>
     </motion.div>
   );
 };
