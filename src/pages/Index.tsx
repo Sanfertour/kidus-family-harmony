@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"; // 1. Añadimos useEffect
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus } from "lucide-react";
 import { useNestStore } from "@/store/useNestStore";
@@ -17,7 +17,7 @@ const Index = () => {
   const { nestId, members, fetchEvents, fetchSession, initialized } = useNestStore();
   const [isManualDrawerOpen, setIsManualDrawerOpen] = useState(false);
 
-  // 2. DISPARADOR CRÍTICO: Cargar sesión al montar la app
+  // 1. DISPARADOR CRÍTICO: Sincronizar sesión al iniciar
   useEffect(() => {
     if (!initialized) {
       fetchSession();
@@ -48,32 +48,56 @@ const Index = () => {
 
           <AnimatePresence mode="wait">
             {activeTab === "home" && (
-              <motion.div key="h" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }}>
-                {/* Ahora el Dashboard recibirá los miembros actualizados del store */}
+              <motion.div 
+                key="h" 
+                initial={{ opacity: 0, x: -10 }} 
+                animate={{ opacity: 1, x: 0 }} 
+                exit={{ opacity: 0, x: 10 }}
+                transition={{ duration: 0.3 }}
+              >
                 <DashboardView onNavigate={setActiveTab} nestId={nestId || ""} members={members} />
               </motion.div>
             )}
             
             {activeTab === "agenda" && (
-              <motion.div key="a" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }}>
+              <motion.div 
+                key="a" 
+                initial={{ opacity: 0, x: -10 }} 
+                animate={{ opacity: 1, x: 0 }} 
+                exit={{ opacity: 0, x: 10 }}
+                transition={{ duration: 0.3 }}
+              >
                 <AgendaView />
               </motion.div>
             )}
 
             {activeTab === "vault" && (
-              <motion.div key="v" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }}>
+              <motion.div 
+                key="v" 
+                initial={{ opacity: 0, x: -10 }} 
+                animate={{ opacity: 1, x: 0 }} 
+                exit={{ opacity: 0, x: 10 }}
+                transition={{ duration: 0.3 }}
+              >
                 <VaultView nestId={nestId || ""} />
               </motion.div>
             )}
 
             {activeTab === "settings" && (
-              <motion.div key="s" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }}>
+              <motion.div 
+                key="s" 
+                initial={{ opacity: 0, x: -10 }} 
+                animate={{ opacity: 1, x: 0 }} 
+                exit={{ opacity: 0, x: 10 }}
+                transition={{ duration: 0.3 }}
+              >
                 <SettingsView />
               </motion.div>
             )}
           </AnimatePresence>
         </main>
         
+        {/* BOTÓN FLOTANTE KIDUS */}
         <div className="fixed bottom-32 right-8 z-50">
           <button 
             onClick={handleManualOpen} 
@@ -83,20 +107,24 @@ const Index = () => {
           </button>
         </div>
 
-        {/* 3. VINCULACIÓN: El drawer usa los mismos miembros que el Dashboard */}
+        {/* COMPONENTES GLOBALES */}
         <ManualEventDrawer 
           isOpen={isManualDrawerOpen} 
           onClose={() => setIsManualDrawerOpen(false)} 
           members={members} 
           onEventAdded={async () => {
             await fetchEvents(); // Refresca eventos tras añadir uno manual
+            triggerHaptic('success');
           }} 
         />
 
-        <BottomNav activeTab={activeTab} onTabChange={(tab) => {
-          triggerHaptic('soft');
-          setActiveTab(tab);
-        }} />
+        <BottomNav 
+          activeTab={activeTab} 
+          onTabChange={(tab) => {
+            triggerHaptic('soft');
+            setActiveTab(tab);
+          }} 
+        />
       </div>
     </div>
   );
