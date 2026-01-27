@@ -7,38 +7,29 @@ import { OnboardingView } from "./components/OnboardingView";
 import { AuthView } from "./components/AuthView";
 import { motion, AnimatePresence } from "framer-motion";
 
-/**
- * KidUs - Aplicación de Gestión Familiar de Élite
- * Estética: Brisa (Glassmorphism, Rounded 3.5rem, Haptic Feedback)
- */
 const App = () => {
   const { fetchSession, profile, nestId, loading, initialized } = useNestStore();
 
   useEffect(() => {
-    // Captura inicial de sesión para evitar el bucle de redirección
     const handleInitialAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         await fetchSession();
       } else {
-        // Marcamos como inicializado para mostrar el AuthView si no hay sesión
         useNestStore.setState({ initialized: true, loading: false });
       }
     };
 
     handleInitialAuth();
 
-    // Listener de cambios de estado de autenticación de Supabase
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event) => {
       console.log("Auth Event:", event);
       if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
-        // Pequeño delay para asegurar que el trigger de perfiles en DB ha terminado
         setTimeout(async () => {
           await fetchSession();
         }, 500);
       }
       if (event === 'SIGNED_OUT') {
-        // Limpieza de estado y redirección dura al inicio
         useNestStore.setState({ profile: null, nestId: null, initialized: true });
         window.location.href = '/';
       }
@@ -47,19 +38,20 @@ const App = () => {
     return () => subscription.unsubscribe();
   }, [fetchSession]);
 
-  // PANTALLA DE CARGA "BRISA" 
-  // Se mantiene activa hasta que el Store confirma el estado del usuario
   if (!initialized) {
     return (
-      <div className="relative min-h-screen flex flex-col items-center justify-center p-6 bg-slate-50">
+      <div className="relative min-h-screen flex flex-col items-center justify-center p-6 bg-slate-50 overflow-hidden">
+        {/* Atmósfera de carga */}
+        <div className="absolute top-[-10%] left-[-10%] w-[80%] h-[80%] bg-sky-100/30 blur-[100px] rounded-full animate-wave-brisa" />
+        
         <motion.div 
           initial={{ opacity: 0, y: 20 }} 
           animate={{ opacity: 1, y: 0 }} 
-          className="text-center w-full max-w-sm"
+          className="text-center w-full max-w-sm z-10"
         >
           <img 
             src="https://raw.githubusercontent.com/Sanfertour/kidus-family-harmony/main/src/assets/IMG_20260120_144903.jpg" 
-            className="w-40 h-40 mx-auto mb-8 rounded-[3rem] shadow-2xl object-cover" 
+            className="w-40 h-40 mx-auto mb-8 rounded-[3.5rem] shadow-2xl object-cover border-4 border-white" 
             alt="KidUs Logo" 
           />
           <h1 className="text-5xl font-black text-slate-900 mb-2 italic tracking-tighter leading-none">KidUs</h1>
@@ -73,9 +65,14 @@ const App = () => {
 
   return (
     <BrowserRouter>
+      {/* CAPA ATMÓSFERA BRISA (Ondas de fondo) */}
+      <div className="atmosfera-container">
+        <div className="absolute top-[-15%] right-[-10%] w-[70%] h-[70%] bg-sky-200/20 blur-[120px] rounded-full animate-wave-brisa" />
+        <div className="absolute bottom-[-15%] left-[-10%] w-[80%] h-[80%] bg-orange-100/20 blur-[120px] rounded-full animate-wave-brisa-reverse" />
+      </div>
+
       <AnimatePresence mode="wait">
         <Routes>
-          {/* RUTA RAÍZ: Decide según perfil y nido */}
           <Route 
             path="/" 
             element={
@@ -89,7 +86,6 @@ const App = () => {
             } 
           />
 
-          {/* RUTA ONBOARDING: Solo accesible si eres Guía sin Nido */}
           <Route 
             path="/onboarding" 
             element={
@@ -101,7 +97,6 @@ const App = () => {
             } 
           />
 
-          {/* FALLBACK: Redirige cualquier ruta desconocida al inicio */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AnimatePresence>
@@ -110,4 +105,3 @@ const App = () => {
 };
 
 export default App;
-            
