@@ -1,139 +1,134 @@
 import { useState, useMemo } from "react";
 import { useNestStore } from "@/store/useNestStore";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Clock, Lock, Sparkles, Utensils, GraduationCap, 
-  HeartPulse, Trophy, Loader2, Bell
-} from "lucide-react";
+import { Bell, Sparkles, Loader2, Clock } from "lucide-react";
 import { 
   format, isToday, startOfWeek, addDays, 
-  isSameDay, eachDayOfInterval 
+  isSameDay, eachDayOfInterval, eachHourOfInterval, 
+  startOfDay, addHours 
 } from "date-fns";
 import { es } from "date-fns/locale";
 import { triggerHaptic } from "@/utils/haptics";
 import { AgendaCard } from "./AgendaCard";
 
-// Iconos por categoría (Restaurados al 100%)
-const CATEGORY_ICONS: any = {
-  school: <GraduationCap size={18} />,
-  meal: <Utensils size={18} />,
-  health: <HeartPulse size={18} />,
-  activity: <Trophy size={18} />,
-  other: <Sparkles size={18} />,
-};
-
 export const AgendaView = () => {
   const { events, members, profile, loading } = useNestStore();
   const [selectedDate, setSelectedDate] = useState(new Date());
 
-  // Generar semana actual (Timeline Brisa)
+  // Definimos el rango visual del día (07:00 a 22:00)
+  const dayHours = useMemo(() => {
+    const start = startOfDay(selectedDate);
+    return Array.from({ length: 16 }, (_, i) => addHours(start, i + 7));
+  }, [selectedDate]);
+
   const weekDays = useMemo(() => {
     const start = startOfWeek(new Date(), { weekStartsOn: 1 });
-    return eachDayOfInterval({
-      start,
-      end: addDays(start, 6),
-    });
+    return eachDayOfInterval({ start, end: addDays(start, 6) });
   }, []);
 
-  // Filtrar eventos solo para el día seleccionado
-  const dayEvents = useMemo(() => {
-    return events
-      .filter((event: any) => isSameDay(new Date(event.start_time), selectedDate))
-      .sort((a: any, b: any) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
-  }, [events, selectedDate]);
+  // Lógica de la Campana de Sincronía (Eventos en las próximas 3 horas)
+  const hasUpcoming = useMemo(() => {
+    const now = new Date();
+    return events.some(e => {
+      const start = new Date(e.start_time);
+      const diff = (start.getTime() - now.getTime()) / (1000 * 60);
+      return diff > 0 && diff < 180;
+    });
+  }, [events]);
 
   if (loading) return (
-    <div className="py-20 flex flex-col items-center justify-center opacity-40 animate-pulse">
+    <div className="py-20 flex flex-col items-center justify-center opacity-40">
       <Loader2 className="animate-spin text-sky-500 mb-4" size={32} />
-      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Sincronizando Nido...</p>
+      <p className="text-[10px] font-black uppercase tracking-[0.3em]">Sincronizando Nido...</p>
     </div>
   );
 
   return (
-    <div className="space-y-8 pb-32 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-      {/* 1. HEADER LOGÍSTICO */}
-      <div className="px-8 flex justify-between items-end pt-4">
+    <div className="space-y-6 pb-32 bg-slate-50/20 min-h-screen">
+      {/* HEADER LOGÍSTICO */}
+      <div className="px-8 flex justify-between items-end pt-8">
         <div>
-          <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-sky-600 mb-1 italic">Sincronía Semanal</h2>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tighter capitalize font-nunito">
-            {format(selectedDate, "MMMM yyyy", { locale: es })}
+          <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-sky-600 mb-1 italic">KidUs Logística</h2>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tighter capitalize italic">
+            {format(selectedDate, "EEEE d", { locale: es })}
           </h1>
         </div>
         <button 
           onClick={() => triggerHaptic('medium')}
-          className="relative p-4 bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 text-slate-900 active:scale-90 transition-all"
+          className={`relative p-5 rounded-[2.2rem] transition-all duration-500 shadow-2xl ${
+            hasUpcoming ? 'bg-orange-500 text-white animate-pulse' : 'bg-white text-slate-900 shadow-slate-200/40'
+          }`}
         >
-          <Bell size={22} strokeWidth={2.5} />
-          <span className="absolute top-3 right-3 w-3 h-3 bg-orange-500 border-2 border-white rounded-full" />
+          <Bell size={24} strokeWidth={hasUpcoming ? 3 : 2} />
+          {hasUpcoming && (
+            <span className="absolute top-2 right-2 w-3 h-3 bg-white rounded-full border-4 border-orange-500" />
+          )}
         </button>
       </div>
 
-      {/* 2. SELECTOR DE 7 DÍAS */}
-      <div className="px-4">
-        <div className="flex justify-between bg-white/40 backdrop-blur-xl p-3 rounded-[2.5rem] border border-white/60 shadow-lg overflow-x-auto no-scrollbar">
+      {/* SELECTOR SEMANAL TIPO PILL */}
+      <div className="px-6">
+        <div className="flex justify-between bg-white/70 backdrop-blur-2xl p-2 rounded-[2.5rem] shadow-sm border border-white">
           {weekDays.map((day) => {
             const active = isSameDay(day, selectedDate);
             return (
               <button
                 key={day.toISOString()}
                 onClick={() => { triggerHaptic('soft'); setSelectedDate(day); }}
-                className={`flex flex-col items-center justify-center min-w-[50px] py-4 rounded-2xl transition-all ${
-                  active ? 'bg-slate-900 text-white shadow-lg scale-110' : 'text-slate-400 hover:bg-slate-100'
+                className={`flex flex-col items-center justify-center min-w-[45px] py-4 rounded-[1.8rem] transition-all ${
+                  active ? 'bg-slate-900 text-white shadow-xl scale-105' : 'text-slate-400 hover:bg-slate-50'
                 }`}
               >
-                <span className="text-[9px] font-black uppercase tracking-widest mb-1">
-                  {format(day, "EEE", { locale: es })}
-                </span>
-                <span className="text-lg font-black tracking-tighter">
-                  {format(day, "d")}
-                </span>
-                {active && <motion.div layoutId="dot" className="w-1 h-1 bg-sky-400 rounded-full mt-1" />}
+                <span className="text-[8px] font-black uppercase tracking-tighter mb-1">{format(day, "EE", { locale: es })}</span>
+                <span className="text-base font-black">{format(day, "d")}</span>
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* 3. LISTA DE EVENTOS */}
-      <div className="px-6 space-y-6">
-        <div className="flex items-center gap-4 px-2">
-           <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-slate-400 italic">
-             {isToday(selectedDate) ? "Hoy" : format(selectedDate, "EEEE d", { locale: es })}
-           </h3>
-           <div className="h-[1px] flex-1 bg-slate-200" />
-        </div>
+      {/* PARRILLA HORARIA (STYLE GROUPCAL) */}
+      <div className="px-4 relative mt-4">
+        {/* Línea de tiempo vertical */}
+        <div className="absolute left-16 top-0 bottom-0 w-[1px] bg-slate-200/50" />
+        
+        <div className="space-y-1">
+          {dayHours.map((hour) => {
+            const hourStr = format(hour, "HH:00");
+            const hourEvents = events.filter(e => 
+              isSameDay(new Date(e.start_time), selectedDate) && 
+              format(new Date(e.start_time), "HH:00") === hourStr
+            );
 
-        <AnimatePresence mode="popLayout">
-          {dayEvents.length > 0 ? (
-            dayEvents.map((event: any) => {
-              const isOwner = event.created_by === profile?.id;
-              const assignedGuia = members.find((m: any) => m.id === event.assigned_to);
-              
-              return (
-                <AgendaCard 
-                  key={event.id}
-                  event={event}
-                  isCreator={isOwner}
-                  assignedMember={assignedGuia}
-                  onClick={() => {
-                    console.log("Evento seleccionado:", event.title);
-                  }}
-                />
-              );
-            })
-          ) : (
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              className="py-12 text-center"
-            >
-              <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 opacity-50">
-                <Sparkles className="text-slate-300" />
+            return (
+              <div key={hourStr} className="flex gap-4 group">
+                {/* Indicador de Hora */}
+                <div className="w-12 text-right pt-2">
+                  <span className="text-[9px] font-black text-slate-300 group-hover:text-sky-500 transition-colors">
+                    {hourStr}
+                  </span>
+                </div>
+
+                {/* Slot de Eventos */}
+                <div className={`flex-1 min-h-[90px] rounded-3xl transition-colors ${hourEvents.length === 0 ? 'border-b border-slate-100/40' : ''}`}>
+                  <div className="space-y-3 pb-4">
+                    <AnimatePresence>
+                      {hourEvents.map((event) => (
+                        <AgendaCard 
+                          key={event.id}
+                          event={event}
+                          isCreator={event.created_by === profile?.id}
+                          assignedMember={members.find((m: any) => m.id === event.assigned_to)}
+                          onClick={() => console.log("Detalle", event.title)}
+                        />
+                      ))}
+                    </AnimatePresence>
+                  </div>
+                </div>
               </div>
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-300">Nido en calma para este día</p>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
