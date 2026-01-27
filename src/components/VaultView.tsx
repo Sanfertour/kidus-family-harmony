@@ -4,7 +4,7 @@ import {
   FileText, Download, Search, 
   Loader2, Sparkles, Camera, Utensils, 
   Heart, ShieldCheck, AlertCircle, Trash2, 
-  CloudLightning, X, Check, Calendar, Info
+  CloudLightning, X, Check, Calendar, Info, Users
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useNestStore } from "@/store/useNestStore";
@@ -17,11 +17,11 @@ export const VaultView = ({ nestId }: { nestId: string }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   
-  // NUEVOS ESTADOS PARA CONFIRMACIÓN IA
   const [aiResult, setAiResult] = useState<any>(null);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  const { profile, fetchEvents } = useNestStore();
+  // Extraemos profile y la lista de miembros del store
+  const { profile, fetchEvents, members } = useNestStore();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -65,8 +65,9 @@ export const VaultView = ({ nestId }: { nestId: string }) => {
       if (error) throw error;
 
       if (data) {
-        setAiResult(data);
-        setShowConfirm(true); // Abrimos el formulario de confirmación
+        // Inicializamos el evento con el ID del usuario actual como responsable por defecto
+        setAiResult({ ...data, assigned_to: profile?.id });
+        setShowConfirm(true);
         triggerHaptic('success');
       }
     } catch (err: any) {
@@ -84,11 +85,12 @@ export const VaultView = ({ nestId }: { nestId: string }) => {
   const saveAiEvent = async () => {
     try {
       setIsProcessing(true);
+      triggerHaptic('medium');
+      
       const { error } = await supabase.from('events').insert([{
         ...aiResult,
         nest_id: nestId,
-        created_by: profile?.id,
-        assigned_to: profile?.id // Por defecto al Guía que escanea
+        created_by: profile?.id
       }]);
 
       if (error) throw error;
@@ -97,7 +99,7 @@ export const VaultView = ({ nestId }: { nestId: string }) => {
       setShowConfirm(false);
       setAiResult(null);
       triggerHaptic('success');
-      toast({ title: "¡Sincronía completada!", description: "Evento añadido al calendario." });
+      toast({ title: "¡Sincronía completada!", description: "Evento añadido al calendario de la Tribu." });
     } catch (err) {
       toast({ title: "Error al guardar", variant: "destructive" });
     } finally {
@@ -114,7 +116,6 @@ export const VaultView = ({ nestId }: { nestId: string }) => {
       initial={{ opacity: 0 }} animate={{ opacity: 1 }}
       className="space-y-8 pb-32"
     >
-      {/* HEADER Y BUSCADOR (Igual que antes) */}
       <header className="px-2">
         <div className="flex items-center gap-2 mb-3">
           <div className="w-8 h-8 bg-sky-500/10 rounded-xl flex items-center justify-center">
@@ -136,7 +137,6 @@ export const VaultView = ({ nestId }: { nestId: string }) => {
         />
       </div>
 
-      {/* LISTADO DE DOCUMENTOS (Igual que antes) */}
       <div className="space-y-4">
         {loading ? (
           <div className="py-20 flex flex-col items-center gap-4 opacity-40">
@@ -174,7 +174,6 @@ export const VaultView = ({ nestId }: { nestId: string }) => {
         )}
       </div>
 
-      {/* BANNER IA SCANNER */}
       <motion.div 
         whileHover={{ scale: 1.01 }}
         className="p-10 rounded-[4rem] bg-slate-900 text-white relative overflow-hidden shadow-3xl shadow-slate-300 group mt-10"
@@ -219,14 +218,13 @@ export const VaultView = ({ nestId }: { nestId: string }) => {
         </div>
       </motion.div>
 
-      {/* MODAL DE CONFIRMACIÓN IA (BRISA STYLE) */}
       <AnimatePresence>
         {showConfirm && aiResult && (
           <div className="fixed inset-0 z-[100] flex items-end justify-center px-4 pb-10">
             <motion.div 
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => setShowConfirm(false)}
-              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
             />
             <motion.div 
               initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
@@ -234,35 +232,72 @@ export const VaultView = ({ nestId }: { nestId: string }) => {
               className="relative w-full max-w-lg bg-white rounded-[3.5rem] shadow-2xl overflow-hidden p-8"
             >
               <div className="flex justify-between items-start mb-6">
-                <div className="p-3 bg-sky-50 rounded-2xl text-sky-600">
+                <div className="p-3 bg-sky-50 rounded-2xl text-sky-600 flex items-center gap-2">
                   <Sparkles size={24} />
+                  <span className="text-[10px] font-black uppercase tracking-widest italic">Nest-Vision Ready</span>
                 </div>
-                <button onClick={() => setShowConfirm(false)} className="p-2 bg-slate-50 rounded-full text-slate-400">
+                <button 
+                  onClick={() => { triggerHaptic('soft'); setShowConfirm(false); }} 
+                  className="p-2 bg-slate-50 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
+                >
                   <X size={20} />
                 </button>
               </div>
 
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-[10px] font-black uppercase tracking-widest text-sky-600 mb-2 italic">Confirmar Sincronía</h3>
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 italic">Título del Evento</h3>
                   <input 
                     value={aiResult.title}
                     onChange={(e) => setAiResult({...aiResult, title: e.target.value})}
-                    className="text-2xl font-black text-slate-900 w-full bg-transparent outline-none tracking-tighter italic"
+                    className="text-2xl font-black text-slate-900 w-full bg-slate-50 p-4 rounded-2xl outline-none tracking-tighter italic border border-transparent focus:border-sky-100 transition-all"
                   />
                 </div>
 
+                {/* SELECTOR DE RESPONSABLE (BRISA STYLE) */}
+                <div className="space-y-3">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Asignar a:</p>
+                  <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar px-1">
+                    <button
+                      onClick={() => { triggerHaptic('soft'); setAiResult({...aiResult, assigned_to: null}) }}
+                      className={`flex-shrink-0 px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-tighter transition-all border ${
+                        !aiResult.assigned_to ? 'bg-slate-900 text-white border-slate-900 shadow-lg' : 'bg-slate-50 text-slate-400 border-transparent hover:bg-slate-100'
+                      }`}
+                    >
+                      <Users size={14} className="inline mr-2 mb-0.5" />
+                      Toda la Tribu
+                    </button>
+                    
+                    {members?.map((member: any) => (
+                      <button
+                        key={member.id}
+                        onClick={() => { triggerHaptic('soft'); setAiResult({...aiResult, assigned_to: member.id}) }}
+                        className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-2xl font-black text-[10px] uppercase tracking-tighter transition-all border ${
+                          aiResult.assigned_to === member.id 
+                          ? 'bg-sky-500 border-sky-500 text-white shadow-lg' 
+                          : 'bg-slate-50 text-slate-400 border-transparent hover:bg-slate-100'
+                        }`}
+                      >
+                        <div className="w-5 h-5 rounded-lg bg-white/20 flex items-center justify-center text-[8px]">
+                          {member.display_name?.charAt(0)}
+                        </div>
+                        {member.display_name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 bg-slate-50 rounded-3xl">
+                  <div className="p-4 bg-slate-50 rounded-3xl border border-slate-100/50">
                     <div className="flex items-center gap-2 mb-1 text-slate-400">
                       <Calendar size={12} />
-                      <span className="text-[8px] font-black uppercase">Fecha Sugerida</span>
+                      <span className="text-[8px] font-black uppercase">Fecha</span>
                     </div>
                     <p className="text-xs font-bold text-slate-700">
                       {new Date(aiResult.start_time).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric' })}
                     </p>
                   </div>
-                  <div className="p-4 bg-slate-50 rounded-3xl">
+                  <div className="p-4 bg-slate-50 rounded-3xl border border-slate-100/50">
                     <div className="flex items-center gap-2 mb-1 text-slate-400">
                       <Info size={12} />
                       <span className="text-[8px] font-black uppercase">Categoría</span>
@@ -271,7 +306,7 @@ export const VaultView = ({ nestId }: { nestId: string }) => {
                   </div>
                 </div>
 
-                <div className="p-6 bg-sky-50/50 rounded-3xl border border-sky-100">
+                <div className="p-6 bg-sky-50/50 rounded-[2.5rem] border border-sky-100/50">
                   <p className="text-[10px] font-black text-sky-600 uppercase mb-2">Análisis de la IA</p>
                   <textarea 
                     value={aiResult.description}
@@ -283,9 +318,9 @@ export const VaultView = ({ nestId }: { nestId: string }) => {
                 <button 
                   onClick={saveAiEvent}
                   disabled={isProcessing}
-                  className="w-full h-18 bg-slate-900 text-white rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-all"
+                  className="w-full h-20 bg-slate-900 text-white rounded-[2.2rem] font-black text-xs uppercase tracking-[0.3em] flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-all disabled:opacity-50"
                 >
-                  {isProcessing ? <Loader2 className="animate-spin" /> : <><Check size={20} /> Confirmar en Agenda</>}
+                  {isProcessing ? <Loader2 className="animate-spin" /> : <><Check size={20} strokeWidth={3} /> Confirmar en Agenda</>}
                 </button>
               </div>
             </motion.div>
