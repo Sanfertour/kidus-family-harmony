@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   FileText, Download, Search, 
   Loader2, Sparkles, Camera, Utensils, 
-  Heart, CloudLightning, X, Check, Calendar, Info, Users
+  Heart, CloudLightning, X, Check, Calendar, Info, Users, Trash2 
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useNestStore } from "@/store/useNestStore";
@@ -48,6 +48,24 @@ export const VaultView = ({ nestId }: { nestId: string }) => {
     fetchDocs();
   }, [nestId]);
 
+  // NUEVA FUNCIÓN DE BORRADO (Sin romper nada)
+  const handleDeleteDoc = async (fileName: string) => {
+    if (!confirm("¿Eliminar este documento del Nido?")) return;
+    try {
+      triggerHaptic('medium');
+      const { error } = await supabase.storage
+        .from('vault')
+        .remove([`${nestId}/${fileName}`]);
+
+      if (error) throw error;
+
+      toast({ title: "Documento eliminado", description: "El nido se ha actualizado." });
+      fetchDocs();
+    } catch (err) {
+      toast({ title: "Error al borrar", variant: "destructive" });
+    }
+  };
+
   const handleVisionScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !nestId) return;
@@ -61,7 +79,6 @@ export const VaultView = ({ nestId }: { nestId: string }) => {
     });
 
     try {
-      // 1. SUBIR AL STORAGE (Ruta: nestId/filename)
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
       const filePath = `${nestId}/${fileName}`;
@@ -72,18 +89,16 @@ export const VaultView = ({ nestId }: { nestId: string }) => {
 
       if (uploadError) throw uploadError;
 
-      // 2. CONVERTIR A BASE64 LIMPIO
       const base64Image = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => {
           const res = reader.result as string;
-          resolve(res.split(',')[1]); // Solo enviamos el contenido, sin el prefijo data:image...
+          resolve(res.split(',')[1]);
         };
         reader.onerror = reject;
         reader.readAsDataURL(file);
       });
 
-      // 3. INVOCAR IA
       const { data, error: aiError } = await supabase.functions.invoke('process-image-ai', {
         body: { image: base64Image, nest_id: nestId }
       });
@@ -91,7 +106,6 @@ export const VaultView = ({ nestId }: { nestId: string }) => {
       if (aiError) throw aiError;
 
       if (data) {
-        // Aseguramos que los campos obligatorios existan para evitar errores de renderizado
         setAiResult({ 
           title: data.title || "Nuevo Evento Detectado",
           start_time: data.start_time || new Date().toISOString(),
@@ -107,7 +121,7 @@ export const VaultView = ({ nestId }: { nestId: string }) => {
       console.error("Scan Error:", err);
       toast({ 
         title: "Error de Sincronía", 
-        description: "La IA no ha podido procesar este archivo. Revisa los logs de la función.", 
+        description: "La IA no ha podido procesar este archivo.", 
         variant: "destructive" 
       });
     } finally {
@@ -183,8 +197,8 @@ export const VaultView = ({ nestId }: { nestId: string }) => {
                 transition={{ delay: idx * 0.05 }}
                 className="group p-6 rounded-[3rem] bg-white/80 backdrop-blur-md border border-white shadow-xl shadow-slate-200/40 flex items-center justify-between active:scale-[0.98] transition-all"
               >
-                <div className="flex items-center gap-5">
-                  <div className="w-14 h-14 rounded-[1.5rem] bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-sky-500 group-hover:text-white transition-all duration-500 shadow-inner">
+                <div className="flex items-center gap-5 min-w-0 flex-1">
+                  <div className="w-14 h-14 rounded-[1.5rem] bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-sky-500 group-hover:text-white transition-all duration-500 shadow-inner shrink-0">
                     {doc.category === 'Alimentación' ? <Utensils size={22} /> : <FileText size={22} />}
                   </div>
                   <div className="min-w-0 flex-1">
@@ -195,9 +209,19 @@ export const VaultView = ({ nestId }: { nestId: string }) => {
                     </div>
                   </div>
                 </div>
-                <button className="w-10 h-10 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 hover:bg-sky-50 hover:text-sky-600 transition-all flex-shrink-0 ml-4">
-                  <Download size={16} />
-                </button>
+                
+                <div className="flex gap-2 ml-4">
+                  {/* BOTÓN BORRAR INTEGRADO */}
+                  <button 
+                    onClick={() => handleDeleteDoc(doc.name)}
+                    className="w-10 h-10 bg-red-50 rounded-2xl flex items-center justify-center text-red-400 hover:bg-red-500 hover:text-white transition-all flex-shrink-0"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                  <button className="w-10 h-10 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 hover:bg-sky-50 hover:text-sky-600 transition-all flex-shrink-0">
+                    <Download size={16} />
+                  </button>
+                </div>
               </motion.div>
             )) : (
               <p className="text-center py-10 text-slate-400 font-bold text-[10px] uppercase tracking-widest">El nido está vacío</p>
