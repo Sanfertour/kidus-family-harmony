@@ -5,15 +5,24 @@ import { motion } from "framer-motion";
 import { LogOut, Shield, Bell, Users, ChevronRight, Share2, Sparkles, Heart, Crown, UserMinus, Pencil, UserPlus } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { AddMemberDialog } from "@/components/AddMemberDialog";
+import { useNavigate } from "react-router-dom";
 
 export const SettingsView = () => {
   const { profile, nestCode, signOut, members, fetchMembers } = useNestStore();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleLogout = async () => {
     triggerHaptic('medium');
-    await signOut();
-    toast({ title: "Sincronía Finalizada", description: "Has salido del nido." });
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast({ title: "Error", description: "No se pudo cerrar la sesión.", variant: "destructive" });
+    } else {
+      // Limpiamos el store manualmente para asegurar el reset total
+      useNestStore.setState({ profile: null, nestId: null, initialized: true });
+      toast({ title: "Sincronía Finalizada", description: "Cierre de sesión exitoso." });
+      navigate("/", { replace: true });
+    }
   };
 
   const copyNestCode = () => {
@@ -48,7 +57,7 @@ export const SettingsView = () => {
         <button onClick={() => triggerHaptic('medium')} className="w-full bg-slate-900 rounded-[2.5rem] p-8 flex items-center justify-between group active:scale-[0.98] transition-all shadow-2xl">
           <div className="text-left">
             <h4 className="text-white font-black italic text-xl uppercase tracking-tighter">Gestionar Nido</h4>
-            <p className="text-sky-400 text-[9px] font-bold uppercase tracking-widest mt-1">Añadir Guías o Tribu</p>
+            <p className="text-sky-400 text-[9px] font-bold uppercase tracking-widest mt-1">Configurar Miembros</p>
           </div>
           <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center text-white group-hover:bg-sky-500 transition-all">
             <UserPlus size={24} />
@@ -56,21 +65,37 @@ export const SettingsView = () => {
         </button>
       </AddMemberDialog>
 
-      {/* TARJETA DE CÓDIGO KID */}
+      {/* TARJETA DE PERFIL CON FOTO DE GOOGLE */}
       <div className="bg-white/80 backdrop-blur-2xl rounded-[3rem] p-8 border border-white shadow-xl space-y-6">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-3xl bg-slate-50 flex items-center justify-center text-slate-900">
-             <Crown size={24} className="text-amber-400" />
+          <div className="relative">
+            {profile?.avatar_url ? (
+              <img 
+                src={profile.avatar_url} 
+                alt={profile.display_name} 
+                className="w-16 h-16 rounded-3xl object-cover border-2 border-white shadow-lg"
+              />
+            ) : (
+              <div 
+                className="w-16 h-16 rounded-3xl flex items-center justify-center text-white font-black text-xl shadow-lg"
+                style={{ backgroundColor: profile?.color || '#0f172a' }}
+              >
+                {profile?.display_name?.charAt(0)}
+              </div>
+            )}
+            <div className="absolute -top-2 -right-2 w-6 h-6 bg-amber-400 rounded-full flex items-center justify-center border-2 border-white shadow-md text-white">
+              <Crown size={10} strokeWidth={3} />
+            </div>
           </div>
           <div>
             <h3 className="font-black text-xl text-slate-900 tracking-tighter italic">{profile?.display_name}</h3>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Guía del Nido</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Guía Registrado</p>
           </div>
         </div>
         
         <button onClick={copyNestCode} className="w-full bg-slate-50 rounded-[2rem] p-6 flex justify-between items-center active:scale-95 transition-all">
           <div className="text-left">
-            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Código de Sincronía</span>
+            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Código KID (Sincronía)</span>
             <span className="font-mono font-bold text-slate-900 text-lg tracking-[0.2em]">{nestCode || 'KID-XXXXX'}</span>
           </div>
           <Share2 size={18} className="text-sky-500" />
@@ -79,17 +104,19 @@ export const SettingsView = () => {
 
       {/* LISTA DE TRIBU */}
       <div className="space-y-4">
-        <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 ml-4 italic">Miembros Sincronizados</h4>
+        <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 ml-4 italic">Sincronía Actual</h4>
         <div className="space-y-2">
           {members.map((member) => (
             <div key={member.id} className="flex items-center justify-between p-4 bg-white/40 rounded-[2rem] border border-white/60">
               <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-xs" style={{ backgroundColor: member.color || '#94a3b8' }}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-xs shadow-sm" style={{ backgroundColor: member.color || '#94a3b8' }}>
                   {member.display_name?.charAt(0)}
                 </div>
                 <div>
                   <p className="text-sm font-black text-slate-700 italic">{member.display_name}</p>
-                  <p className="text-[8px] font-bold uppercase tracking-widest text-slate-400">{member.role === 'autonomous' ? 'Guía' : 'Tribu'}</p>
+                  <p className="text-[8px] font-bold uppercase tracking-widest text-slate-400">
+                    {member.role === 'autonomous' ? 'Guía' : 'Tribu'}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center">
@@ -109,7 +136,7 @@ export const SettingsView = () => {
         </div>
       </div>
 
-      <button onClick={handleLogout} className="w-full p-8 bg-red-50 text-red-500 font-black uppercase tracking-[0.3em] text-[10px] rounded-[2.5rem] border border-red-100 active:scale-95 transition-all">
+      <button onClick={handleLogout} className="w-full p-8 bg-red-50 text-red-500 font-black uppercase tracking-[0.3em] text-[10px] rounded-[2.5rem] border border-red-100 active:scale-95 transition-all hover:bg-red-500 hover:text-white duration-300">
         Cerrar Sincronía
       </button>
     </motion.div>
