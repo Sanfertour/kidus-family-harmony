@@ -4,7 +4,7 @@ import {
   FileText, Download, Search, 
   Loader2, Sparkles, Camera, Utensils, 
   Heart, ShieldCheck, AlertCircle, Trash2, 
-  CloudLightning
+  CloudLightning, X, Check, Calendar, Info
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useNestStore } from "@/store/useNestStore";
@@ -16,13 +16,17 @@ export const VaultView = ({ nestId }: { nestId: string }) => {
   const [loading, setLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // NUEVOS ESTADOS PARA CONFIRMACIÓN IA
+  const [aiResult, setAiResult] = useState<any>(null);
+  const [showConfirm, setShowConfirm] = useState(false);
+
   const { profile, fetchEvents } = useNestStore();
   const { toast } = useToast();
 
   useEffect(() => {
     const fetchDocs = async () => {
       setLoading(true);
-      // Aquí podrías integrar la llamada real a storage.from('vault').list()
       setTimeout(() => {
         setDocuments([
           { id: '1', name: "Cartilla Salud Peques.pdf", size: "1.2MB", date: "12 Ene", category: 'Salud' },
@@ -44,7 +48,7 @@ export const VaultView = ({ nestId }: { nestId: string }) => {
     
     toast({ 
       title: "Activando Nest-Vision", 
-      description: "Sincronizando el documento con la agenda de la Tribu...",
+      description: "Analizando el documento con la IA de KidUs...",
     });
 
     try {
@@ -60,13 +64,10 @@ export const VaultView = ({ nestId }: { nestId: string }) => {
 
       if (error) throw error;
 
-      if (data?.events) {
-        await fetchEvents();
+      if (data) {
+        setAiResult(data);
+        setShowConfirm(true); // Abrimos el formulario de confirmación
         triggerHaptic('success');
-        toast({ 
-          title: "¡Sincronía completada!", 
-          description: "La IA ha organizado los nuevos planes en vuestro nido.",
-        });
       }
     } catch (err: any) {
       toast({ 
@@ -80,6 +81,30 @@ export const VaultView = ({ nestId }: { nestId: string }) => {
     }
   };
 
+  const saveAiEvent = async () => {
+    try {
+      setIsProcessing(true);
+      const { error } = await supabase.from('events').insert([{
+        ...aiResult,
+        nest_id: nestId,
+        created_by: profile?.id,
+        assigned_to: profile?.id // Por defecto al Guía que escanea
+      }]);
+
+      if (error) throw error;
+
+      await fetchEvents();
+      setShowConfirm(false);
+      setAiResult(null);
+      triggerHaptic('success');
+      toast({ title: "¡Sincronía completada!", description: "Evento añadido al calendario." });
+    } catch (err) {
+      toast({ title: "Error al guardar", variant: "destructive" });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const filteredDocs = documents.filter(doc => 
     doc.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -89,6 +114,7 @@ export const VaultView = ({ nestId }: { nestId: string }) => {
       initial={{ opacity: 0 }} animate={{ opacity: 1 }}
       className="space-y-8 pb-32"
     >
+      {/* HEADER Y BUSCADOR (Igual que antes) */}
       <header className="px-2">
         <div className="flex items-center gap-2 mb-3">
           <div className="w-8 h-8 bg-sky-500/10 rounded-xl flex items-center justify-center">
@@ -110,6 +136,7 @@ export const VaultView = ({ nestId }: { nestId: string }) => {
         />
       </div>
 
+      {/* LISTADO DE DOCUMENTOS (Igual que antes) */}
       <div className="space-y-4">
         {loading ? (
           <div className="py-20 flex flex-col items-center gap-4 opacity-40">
@@ -147,6 +174,7 @@ export const VaultView = ({ nestId }: { nestId: string }) => {
         )}
       </div>
 
+      {/* BANNER IA SCANNER */}
       <motion.div 
         whileHover={{ scale: 1.01 }}
         className="p-10 rounded-[4rem] bg-slate-900 text-white relative overflow-hidden shadow-3xl shadow-slate-300 group mt-10"
@@ -190,6 +218,80 @@ export const VaultView = ({ nestId }: { nestId: string }) => {
           </label>
         </div>
       </motion.div>
+
+      {/* MODAL DE CONFIRMACIÓN IA (BRISA STYLE) */}
+      <AnimatePresence>
+        {showConfirm && aiResult && (
+          <div className="fixed inset-0 z-[100] flex items-end justify-center px-4 pb-10">
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setShowConfirm(false)}
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="relative w-full max-w-lg bg-white rounded-[3.5rem] shadow-2xl overflow-hidden p-8"
+            >
+              <div className="flex justify-between items-start mb-6">
+                <div className="p-3 bg-sky-50 rounded-2xl text-sky-600">
+                  <Sparkles size={24} />
+                </div>
+                <button onClick={() => setShowConfirm(false)} className="p-2 bg-slate-50 rounded-full text-slate-400">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-sky-600 mb-2 italic">Confirmar Sincronía</h3>
+                  <input 
+                    value={aiResult.title}
+                    onChange={(e) => setAiResult({...aiResult, title: e.target.value})}
+                    className="text-2xl font-black text-slate-900 w-full bg-transparent outline-none tracking-tighter italic"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-slate-50 rounded-3xl">
+                    <div className="flex items-center gap-2 mb-1 text-slate-400">
+                      <Calendar size={12} />
+                      <span className="text-[8px] font-black uppercase">Fecha Sugerida</span>
+                    </div>
+                    <p className="text-xs font-bold text-slate-700">
+                      {new Date(aiResult.start_time).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric' })}
+                    </p>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-3xl">
+                    <div className="flex items-center gap-2 mb-1 text-slate-400">
+                      <Info size={12} />
+                      <span className="text-[8px] font-black uppercase">Categoría</span>
+                    </div>
+                    <p className="text-xs font-bold text-slate-700 capitalize">{aiResult.category}</p>
+                  </div>
+                </div>
+
+                <div className="p-6 bg-sky-50/50 rounded-3xl border border-sky-100">
+                  <p className="text-[10px] font-black text-sky-600 uppercase mb-2">Análisis de la IA</p>
+                  <textarea 
+                    value={aiResult.description}
+                    onChange={(e) => setAiResult({...aiResult, description: e.target.value})}
+                    className="text-[11px] text-slate-600 font-medium bg-transparent w-full h-24 resize-none outline-none leading-relaxed italic"
+                  />
+                </div>
+
+                <button 
+                  onClick={saveAiEvent}
+                  disabled={isProcessing}
+                  className="w-full h-18 bg-slate-900 text-white rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-all"
+                >
+                  {isProcessing ? <Loader2 className="animate-spin" /> : <><Check size={20} /> Confirmar en Agenda</>}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <footer className="py-10 flex flex-col items-center gap-3 opacity-20">
         <CloudLightning size={20} />
