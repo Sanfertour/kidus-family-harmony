@@ -27,7 +27,8 @@ const Index = () => {
   };
 
   return (
-    <div className="relative min-h-screen w-full bg-slate-50/50">
+    // CAMBIO: Fondo más etéreo y refinado
+    <div className="relative min-h-screen w-full bg-slate-50/30">
       <div className="relative z-10 flex flex-col min-h-screen">
         <Header />
         
@@ -60,13 +61,26 @@ const Index = () => {
           </AnimatePresence>
         </main>
 
-        {/* Scanner Modal (Se activa desde el FAB Central) */}
+        {/* Scanner Modal - CAMBIO: Ahora es Glassmorphism puro para no romper la estética Brisa */}
         <AnimatePresence>
           {isScannerOpen && (
-            <motion.div className="fixed inset-0 z-[110] bg-white" initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}>
-              <div className="p-6">
-                <button onClick={() => setIsScannerOpen(false)} className="mb-4 text-slate-400 text-xs font-black uppercase tracking-widest">Cerrar</button>
-                <ImageScanner onScanComplete={() => { setIsScannerOpen(false); setIsManualDrawerOpen(true); triggerHaptic('success'); }} />
+            <motion.div 
+              className="fixed inset-0 z-[110] bg-white/70 backdrop-blur-3xl" 
+              initial={{ y: "100%" }} 
+              animate={{ y: 0 }} 
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            >
+              <div className="p-6 pt-12">
+                <button 
+                  onClick={() => { triggerHaptic('soft'); setIsScannerOpen(false); }} 
+                  className="mb-8 px-4 py-2 bg-slate-900/5 rounded-full text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] border border-slate-900/5"
+                >
+                  ← Volver al Nido
+                </button>
+                <div className="bg-white/40 p-4 rounded-[2.5rem] border border-white shadow-2xl">
+                   <ImageScanner onScanComplete={() => { setIsScannerOpen(false); setIsManualDrawerOpen(true); triggerHaptic('success'); }} />
+                </div>
               </div>
             </motion.div>
           )}
