@@ -11,7 +11,6 @@
   html {
     scroll-behavior: smooth;
     -webkit-tap-highlight-color: transparent;
-    background-color: #f8fafc;
   }
 
   body {
@@ -27,21 +26,17 @@
 }
 
 @layer components {
-  /* Estética Brisa corregida para visibilidad Élite */
   .glass-panel {
-    background: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+    border: 1px solid rgba(255, 255, 255, 0.6);
     border-radius: 3.5rem;
-    box-shadow: 0 20px 40px -10px rgba(15, 23, 42, 0.05);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.08);
   }
 
-  /* Capa Atmosférica */
   .atmosfera-container {
-    @apply fixed inset-0 -z-10 overflow-hidden pointer-events-none;
-    background: radial-gradient(at 0% 0%, rgba(14, 165, 233, 0.05) 0, transparent 50%),
-                radial-gradient(at 100% 100%, rgba(249, 115, 22, 0.03) 0, transparent 50%);
+    @apply fixed inset-0 -z-10 overflow-hidden pointer-events-none bg-slate-50;
   }
 }
 
@@ -53,23 +48,36 @@
     @apply uppercase tracking-[0.4em] font-black text-[10px];
   }
 
-  /* Animación Liquid para las ondas del fondo */
-  @keyframes wave-apple {
+  @keyframes wave-organic {
     0%, 100% { 
-      transform: translate(0px, 0px) scale(1);
-      border-radius: 35% 65% 70% 30% / 30% 40% 60% 70%;
+      transform: translate(0, 0) scale(1) rotate(0deg);
+      border-radius: 40% 60% 70% 30% / 40% 40% 60% 50%;
     }
-    50% { 
-      transform: translate(3%, 5%) scale(1.1);
-      border-radius: 50% 50% 35% 65% / 55% 55% 45% 45%;
+    33% {
+      transform: translate(8%, -5%) scale(1.15) rotate(6deg);
+      border-radius: 70% 30% 50% 50% / 30% 30% 70% 70%;
+    }
+    66% {
+      transform: translate(-5%, 10%) scale(0.95) rotate(-6deg);
+      border-radius: 30% 70% 70% 30% / 50% 60% 40% 40%;
     }
   }
 
-  .animate-wave-brisa {
-    animation: wave-apple 20s ease-in-out infinite;
+  .animate-wave-viva {
+    filter: blur(55px); 
+    animation: wave-organic 16s ease-in-out infinite;
+    opacity: 0.8;
   }
-  
-  .animate-wave-brisa-reverse {
-    animation: wave-apple 25s ease-in-out infinite reverse;
+
+  .animate-wave-viva-delayed {
+    filter: blur(65px);
+    animation: wave-organic 20s ease-in-out infinite reverse;
+    opacity: 0.7;
+  }
+
+  .animate-wave-viva-fast {
+    filter: blur(45px);
+    animation: wave-organic 12s ease-in-out infinite alternate;
+    opacity: 0.6;
   }
 }
