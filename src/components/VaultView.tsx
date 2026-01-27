@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   FileText, Download, Search, 
   Loader2, Sparkles, Camera, Utensils, 
-  Heart, ShieldCheck, AlertCircle, Trash2
+  Heart, ShieldCheck, AlertCircle, Trash2, 
+  CloudLightning
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useNestStore } from "@/store/useNestStore";
@@ -18,11 +19,10 @@ export const VaultView = ({ nestId }: { nestId: string }) => {
   const { profile, fetchEvents } = useNestStore();
   const { toast } = useToast();
 
-  // 1. Cargar documentos (Simulado hasta conectar con Bucket de Supabase)
   useEffect(() => {
     const fetchDocs = async () => {
       setLoading(true);
-      // Simulación de delay para feedback "Brisa"
+      // Aquí podrías integrar la llamada real a storage.from('vault').list()
       setTimeout(() => {
         setDocuments([
           { id: '1', name: "Cartilla Salud Peques.pdf", size: "1.2MB", date: "12 Ene", category: 'Salud' },
@@ -35,7 +35,6 @@ export const VaultView = ({ nestId }: { nestId: string }) => {
     fetchDocs();
   }, [nestId]);
 
-  // 2. Nest-Vision AI: El núcleo de KidUs
   const handleVisionScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !nestId) return;
@@ -49,46 +48,24 @@ export const VaultView = ({ nestId }: { nestId: string }) => {
     });
 
     try {
-      // Conversión optimizada a Base64
       const base64Image = await new Promise<string>((resolve) => {
         const reader = new FileReader();
         reader.onloadend = () => resolve(reader.result?.toString().split(',')[1] || "");
         reader.readAsDataURL(file);
       });
 
-      // Llamada a Edge Function (AI Engine)
-      const { data, error } = await supabase.functions.invoke('nest-vision', {
+      const { data, error } = await supabase.functions.invoke('process-image-ai', {
         body: { image: base64Image, nest_id: nestId, user_id: profile?.id }
       });
 
       if (error) throw error;
 
-      // Inserción masiva siguiendo el Esquema de Cero Roturas
-      if (data?.events && data.events.length > 0) {
-        const eventsToInsert = data.events.map((ev: any) => ({
-          title: ev.title,
-          description: ev.description || "Escaneado por KidUs Vision",
-          start_time: ev.start_time,
-          end_time: ev.end_time || ev.start_time,
-          nest_id: nestId,
-          created_by: profile?.id,
-          is_private: false,
-          category: ev.category || 'other'
-        }));
-
-        const { error: insertError } = await supabase
-          .from('events')
-          .insert(eventsToInsert);
-
-        if (insertError) throw insertError;
-
-        // Refrescar el Store global
+      if (data?.events) {
         await fetchEvents();
-        
         triggerHaptic('success');
         toast({ 
           title: "¡Sincronía completada!", 
-          description: `He añadido ${data.events.length} planes a vuestro Nido automáticamente.`,
+          description: "La IA ha organizado los nuevos planes en vuestro nido.",
         });
       }
     } catch (err: any) {
@@ -112,7 +89,6 @@ export const VaultView = ({ nestId }: { nestId: string }) => {
       initial={{ opacity: 0 }} animate={{ opacity: 1 }}
       className="space-y-8 pb-32"
     >
-      {/* HEADER AMABLE */}
       <header className="px-2">
         <div className="flex items-center gap-2 mb-3">
           <div className="w-8 h-8 bg-sky-500/10 rounded-xl flex items-center justify-center">
@@ -123,7 +99,6 @@ export const VaultView = ({ nestId }: { nestId: string }) => {
         <h2 className="text-4xl font-black text-slate-900 tracking-tighter italic leading-none">Documentos</h2>
       </header>
 
-      {/* SEARCH BAR (Brisa Design) */}
       <div className="relative group">
         <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-sky-500 transition-colors" size={20} />
         <input 
@@ -135,17 +110,11 @@ export const VaultView = ({ nestId }: { nestId: string }) => {
         />
       </div>
 
-      {/* LISTADO DE DOCUMENTOS */}
       <div className="space-y-4">
         {loading ? (
           <div className="py-20 flex flex-col items-center gap-4 opacity-40">
             <Loader2 className="animate-spin text-sky-500" size={32} />
             <p className="text-[10px] font-black uppercase tracking-widest">Sincronizando archivos...</p>
-          </div>
-        ) : filteredDocs.length === 0 ? (
-          <div className="py-20 text-center bg-white/30 rounded-[3rem] border-2 border-dashed border-slate-200">
-            <AlertCircle size={40} className="mx-auto mb-4 text-slate-200" />
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 italic">No hay documentos que coincidan</p>
           </div>
         ) : (
           <div className="grid gap-4">
@@ -164,27 +133,20 @@ export const VaultView = ({ nestId }: { nestId: string }) => {
                   <div>
                     <h3 className="font-black text-slate-900 tracking-tight text-base italic leading-tight">{doc.name}</h3>
                     <div className="flex gap-2 items-center mt-1">
-                       <span className="text-[9px] font-black text-sky-600 bg-sky-50 px-2 py-0.5 rounded-full uppercase tracking-tighter">
-                        {doc.category}
-                       </span>
-                       <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                        {doc.date} • {doc.size}
-                       </span>
+                       <span className="text-[9px] font-black text-sky-600 bg-sky-50 px-2 py-0.5 rounded-full uppercase tracking-tighter">{doc.category}</span>
+                       <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{doc.date}</span>
                     </div>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <button className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 hover:bg-sky-50 hover:text-sky-600 transition-all">
-                    <Download size={18} />
-                  </button>
-                </div>
+                <button className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 hover:bg-sky-50 hover:text-sky-600 transition-all">
+                  <Download size={18} />
+                </button>
               </motion.div>
             ))}
           </div>
         )}
       </div>
 
-      {/* NEST-VISION AI CARD (Premium Feature) */}
       <motion.div 
         whileHover={{ scale: 1.01 }}
         className="p-10 rounded-[4rem] bg-slate-900 text-white relative overflow-hidden shadow-3xl shadow-slate-300 group mt-10"
@@ -202,40 +164,37 @@ export const VaultView = ({ nestId }: { nestId: string }) => {
           </div>
           
           <div className="space-y-3">
-            <h3 className="text-4xl font-black leading-[0.9] tracking-tighter italic">
-              Libera tu <br/> mente.
-            </h3>
+            <h3 className="text-4xl font-black leading-[0.9] tracking-tighter italic">Libera tu <br/> mente.</h3>
             <p className="text-xs text-slate-400 font-medium leading-relaxed max-w-[240px]">
               Sube una circular o menú escolar. Mi IA lo leerá por ti y organizará vuestra agenda en segundos.
             </p>
           </div>
 
           <input 
-            type="file" accept="image/*" id="vision-upload" 
+            type="file" accept="image/*" id="vision-upload-vault" 
             className="hidden" onChange={handleVisionScan} disabled={isProcessing}
           />
           
           <label 
-            htmlFor="vision-upload"
-            className={`w-full h-20 bg-white text-slate-900 rounded-[2.2rem] font-black text-xs uppercase tracking-[0.3em] flex items-center justify-center gap-3 active:scale-95 transition-all cursor-pointer shadow-2xl ${isProcessing ? 'opacity-50' : 'hover:bg-sky-50 hover:shadow-white/20'}`}
+            htmlFor="vision-upload-vault"
+            className={`w-full h-20 bg-white text-slate-900 rounded-[2.2rem] font-black text-xs uppercase tracking-[0.3em] flex items-center justify-center gap-3 active:scale-95 transition-all cursor-pointer shadow-2xl ${isProcessing ? 'opacity-50' : 'hover:bg-sky-50'}`}
           >
             {isProcessing ? (
               <Loader2 className="animate-spin" size={24} />
             ) : (
               <>
                 <Camera size={24} strokeWidth={2.5} />
-                Escanear y Organizar
+                Sincronizar con IA
               </>
             )}
           </label>
         </div>
       </motion.div>
 
-      {/* FOOTER SECURITY */}
       <footer className="py-10 flex flex-col items-center gap-3 opacity-20">
-        <ShieldCheck size={20} />
-        <p className="text-[8px] font-black uppercase tracking-[0.5em] text-center">
-          Encriptación Grado Élite <br/> Tus documentos son privados
+        <CloudLightning size={20} />
+        <p className="text-[8px] font-black uppercase tracking-[0.5em] text-center leading-loose">
+          Privacidad Blindada <br/> KidUs protege la Sincronía de tu Tribu
         </p>
       </footer>
     </motion.div>
