@@ -14,7 +14,7 @@ import { es } from "date-fns/locale";
 import { triggerHaptic } from "@/utils/haptics";
 import { AgendaCard } from "./AgendaCard";
 
-// Configuración de Estilo por Categoría
+// 1. Configuración de Estilo por Categoría (Verdad Única para iconos y colores)
 export const CATEGORY_CONFIG: any = {
   school: { icon: <GraduationCap size={14} />, color: "#8B5CF6", bg: "#F5F3FF", label: "Escuela" },
   meal: { icon: <Utensils size={14} />, color: "#F59E0B", bg: "#FFFBEB", label: "Alimentación" },
@@ -79,7 +79,9 @@ export const AgendaView = () => {
         <div className="flex justify-between bg-white/70 backdrop-blur-2xl p-2 rounded-[2.5rem] shadow-sm border border-white">
           {weekDays.map((day) => {
             const active = isSameDay(day, selectedDate);
+            // 2. Lógica de resaltado: Buscamos si el día tiene eventos para pintar el indicador
             const hasEvents = events.some(e => isSameDay(new Date(e.start_time), day));
+            
             return (
               <button
                 key={day.toISOString()}
@@ -90,8 +92,12 @@ export const AgendaView = () => {
               >
                 <span className="text-[8px] font-black uppercase tracking-tighter mb-1">{format(day, "EE", { locale: es })}</span>
                 <span className="text-base font-black">{format(day, "d")}</span>
-                {hasEvents && !active && (
-                   <div className="absolute bottom-2 w-1 h-1 bg-sky-500 rounded-full" />
+                
+                {/* 3. Indicador visual de eventos en el calendario */}
+                {hasEvents && (
+                  <div className={`absolute bottom-2 w-1.5 h-1.5 rounded-full transition-all ${
+                    active ? 'bg-sky-400' : 'bg-sky-500 animate-pulse'
+                  }`} />
                 )}
               </button>
             );
