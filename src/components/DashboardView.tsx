@@ -33,7 +33,7 @@ export const DashboardView = ({ onNavigate, members }: DashboardProps) => {
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 max-w-md mx-auto">
-      {/* Header con saludo dinámico */}
+      {/* Header con saludo dinámico - Ahora con cristal suave */}
       <header className="px-2 flex justify-between items-end">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.4em] text-sky-500 mb-1 italic">KidUs Home</p>
@@ -41,20 +41,20 @@ export const DashboardView = ({ onNavigate, members }: DashboardProps) => {
             Hola, {profile?.display_name?.split(' ')[0] || 'Guía'}
           </h2>
         </div>
-        <div className="text-right bg-white/50 px-4 py-2 rounded-2xl border border-white shadow-sm">
+        <div className="text-right bg-white/20 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/30 shadow-sm">
           <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest block mb-0.5">Código Nido</span>
           <span className="text-[11px] font-black text-slate-900 tracking-widest">{nestCode || 'KID-XXXXX'}</span>
         </div>
       </header>
 
-      {/* Card Principal: Estado de la Familia */}
+      {/* Card Principal: Estado de la Familia - Cambiado a bg-white/10 y backdrop-blur-3xl */}
       <motion.section 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative p-10 bg-white/40 backdrop-blur-3xl rounded-[3.5rem] border border-white/60 shadow-xl overflow-hidden"
+        className="relative p-10 bg-white/10 backdrop-blur-3xl rounded-[3.5rem] border border-white/20 shadow-2xl overflow-hidden"
       >
         <div className="relative z-10">
-          <div className="flex items-center gap-2 mb-8 bg-slate-900/5 w-fit px-4 py-1.5 rounded-full border border-slate-900/5">
+          <div className="flex items-center gap-2 mb-8 bg-slate-900/5 w-fit px-4 py-1.5 rounded-full border border-white/10">
             <Users size={12} className="text-slate-900" />
             <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-900">Comunidad Nido</span>
           </div>
@@ -70,8 +70,8 @@ export const DashboardView = ({ onNavigate, members }: DashboardProps) => {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            {/* Contador de Guías */}
-            <div className="bg-slate-900 p-6 rounded-[2.5rem] text-white shadow-2xl">
+            {/* Contador de Guías - Slate 900 con ligera transparencia para profundidad */}
+            <div className="bg-slate-900/90 backdrop-blur-md p-6 rounded-[2.5rem] text-white shadow-2xl">
               <div className="flex justify-between items-start mb-4">
                 <ShieldCheck size={20} className="text-sky-400" />
                 <div className="w-1.5 h-1.5 bg-sky-400 rounded-full animate-pulse" />
@@ -80,8 +80,8 @@ export const DashboardView = ({ onNavigate, members }: DashboardProps) => {
               <p className="text-[9px] font-black uppercase tracking-widest opacity-50 italic">Guías</p>
             </div>
 
-            {/* Contador de Peques */}
-            <div className="bg-white/80 border border-slate-100 p-6 rounded-[2.5rem] text-slate-900 shadow-sm">
+            {/* Contador de Peques - Cristal blanco más nítido */}
+            <div className="bg-white/40 backdrop-blur-md border border-white/40 p-6 rounded-[2.5rem] text-slate-900 shadow-sm">
               <div className="flex justify-between items-start mb-4">
                 <Baby size={20} className="text-orange-500" />
               </div>
@@ -92,19 +92,19 @@ export const DashboardView = ({ onNavigate, members }: DashboardProps) => {
         </div>
       </motion.section>
 
-      {/* Widget de Próximo Evento */}
+      {/* Widget de Próximo Evento - Cambiado de bg-white a bg-white/10 + blur */}
       <motion.button 
         whileTap={{ scale: 0.96 }}
         onClick={() => { triggerHaptic('soft'); onNavigate("agenda"); }}
-        className="w-full bg-white border border-white p-10 rounded-[3.5rem] text-left relative group shadow-xl transition-all overflow-hidden"
+        className="w-full bg-white/10 backdrop-blur-2xl border border-white/20 p-10 rounded-[3.5rem] text-left relative group shadow-xl transition-all overflow-hidden"
       >
-        <div className="absolute top-0 right-0 w-32 h-32 bg-sky-50 rounded-full blur-3xl -mr-16 -mt-16 opacity-50 group-hover:bg-sky-200 transition-colors" />
+        <div className="absolute top-0 right-0 w-32 h-32 bg-sky-400/20 rounded-full blur-3xl -mr-16 -mt-16 opacity-50 group-hover:bg-sky-400/40 transition-colors" />
         
         <div className="flex justify-between items-start mb-8 relative z-10">
-          <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-900 group-hover:bg-slate-900 group-hover:text-white transition-all duration-500">
+          <div className="w-14 h-14 bg-slate-50/50 backdrop-blur-md rounded-2xl flex items-center justify-center text-slate-900 group-hover:bg-slate-900 group-hover:text-white transition-all duration-500">
             <Calendar size={28} />
           </div>
-          <div className="p-3 rounded-full bg-slate-50 text-slate-300 group-hover:text-sky-500 transition-colors">
+          <div className="p-3 rounded-full bg-slate-50/50 text-slate-300 group-hover:text-sky-500 transition-colors">
             <ArrowRight size={20} />
           </div>
         </div>
@@ -115,7 +115,7 @@ export const DashboardView = ({ onNavigate, members }: DashboardProps) => {
         </h4>
         
         {nextEvent && (
-          <div className="flex items-center gap-2 mt-4 bg-sky-50 w-fit px-3 py-1 rounded-full">
+          <div className="flex items-center gap-2 mt-4 bg-sky-50/50 backdrop-blur-sm w-fit px-3 py-1 rounded-full">
             <span className="text-[11px] font-black text-sky-600 uppercase tracking-tighter">
               {format(parseISO(nextEvent.start_time), "EEEE d '•' HH:mm", { locale: es })}
             </span>
