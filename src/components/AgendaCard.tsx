@@ -2,6 +2,7 @@ import { format, parseISO } from "date-fns";
 import { motion } from "framer-motion";
 import { Lock, ChevronRight, AlertTriangle, ShieldCheck, User, UserPlus } from "lucide-react";
 import { triggerHaptic } from "@/utils/haptics";
+import { CATEGORY_CONFIG } from "./AgendaView"; // Importación necesaria para la sincronía visual
 
 interface AgendaCardProps {
   event: any;
@@ -14,6 +15,9 @@ interface AgendaCardProps {
 export const AgendaCard = ({ event, isCreator, assignedMember, hasConflict, onClick }: AgendaCardProps) => {
   const isLocked = event.is_private && !isCreator;
   const memberColor = assignedMember?.color || "#0EA5E9";
+
+  // Obtenemos la configuración visual de la categoría o usamos la por defecto (other)
+  const config = CATEGORY_CONFIG[event.category] || CATEGORY_CONFIG.other;
 
   const handleInteraction = () => {
     if (isLocked) {
@@ -35,6 +39,8 @@ export const AgendaCard = ({ event, isCreator, assignedMember, hasConflict, onCl
         ? "bg-slate-50/50 border-slate-200/40 cursor-not-allowed opacity-80" 
         : "bg-white border-white shadow-[0_15px_30px_-10px_rgba(0,0,0,0.02)] hover:shadow-xl active:scale-[0.98] cursor-pointer"
       }`}
+      // Añadimos un sutil acento lateral con el color de la categoría
+      style={{ borderLeft: !isLocked ? `6px solid ${config.color}` : undefined }}
     >
       {hasConflict && !isLocked && (
         <div className="absolute top-0 right-8 bg-orange-500 text-white text-[7px] font-black px-3 py-1 rounded-b-lg flex items-center gap-1 shadow-lg z-10 animate-pulse">
@@ -45,13 +51,18 @@ export const AgendaCard = ({ event, isCreator, assignedMember, hasConflict, onCl
       <div className="flex gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex justify-between items-center mb-2">
-            <span className={`text-[7px] font-black uppercase tracking-[0.2em] px-2.5 py-1 rounded-lg border ${
-              isLocked 
-              ? "bg-slate-200 text-slate-400 border-transparent" 
-              : "bg-slate-50 text-slate-500 border-slate-100"
-            }`}>
-              {isLocked ? "Privado" : event.category || "Sincronía"}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className={`flex items-center gap-1.5 text-[7px] font-black uppercase tracking-[0.2em] px-2.5 py-1 rounded-lg border ${
+                isLocked 
+                ? "bg-slate-200 text-slate-400 border-transparent" 
+                : "border-transparent"
+              }`}
+              style={!isLocked ? { backgroundColor: config.bg, color: config.color } : {}}
+              >
+                {!isLocked && config.icon}
+                {isLocked ? "Privado" : (config.label || "Sincronía")}
+              </span>
+            </div>
             {isLocked ? (
               <Lock size={10} className="text-slate-400" />
             ) : (
@@ -65,10 +76,16 @@ export const AgendaCard = ({ event, isCreator, assignedMember, hasConflict, onCl
             {isLocked ? "Ocupado" : event.title}
           </h4>
 
+          {/* Renderizado de la descripción/sugerencia IA si existe */}
+          {!isLocked && event.description && (
+            <p className="text-[10px] text-slate-400 font-medium mt-1 line-clamp-2 italic leading-relaxed">
+              {event.description}
+            </p>
+          )}
+
           {!isLocked && (
             <div className="mt-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                {/* Avatar con Acción de Delegación */}
                 <div className="relative group">
                   <div 
                     className="w-9 h-9 rounded-2xl flex items-center justify-center text-[10px] font-black text-white shadow-md rotate-3 transition-transform group-hover:rotate-0"
@@ -80,7 +97,6 @@ export const AgendaCard = ({ event, isCreator, assignedMember, hasConflict, onCl
                     onClick={(e) => {
                       e.stopPropagation();
                       triggerHaptic('medium');
-                      // Lógica de apertura de delegación aquí
                     }}
                     className="absolute -bottom-1 -right-1 w-5 h-5 bg-slate-900 text-white rounded-full flex items-center justify-center shadow-lg border-2 border-white scale-90 active:scale-125 transition-all"
                   >
