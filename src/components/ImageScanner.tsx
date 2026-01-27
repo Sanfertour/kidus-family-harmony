@@ -17,7 +17,7 @@ export const ImageScanner = ({ onScanComplete }: { onScanComplete: (data: any) =
     triggerHaptic('medium');
     
     try {
-      // 1. Convertir a Base64 para envío directo a la Edge Function
+      // 1. Convertir a Base64
       const base64Image = await new Promise<string>((resolve) => {
         const reader = new FileReader();
         reader.onloadend = () => resolve(reader.result?.toString().split(',')[1] || "");
@@ -26,10 +26,10 @@ export const ImageScanner = ({ onScanComplete }: { onScanComplete: (data: any) =
 
       toast({
         title: "Inteligencia Activada",
-        description: "Leyendo el contenido del documento...",
+        description: "Gemini 1.5 está leyendo el documento...",
       });
 
-      // 2. Llamada a la Edge Function (nombre: process-image-ai)
+      // 2. Llamada a la Edge Function (Ahora con Gemini)
       const { data, error: aiError } = await supabase.functions.invoke('process-image-ai', {
         body: { image: base64Image }
       });
@@ -37,7 +37,12 @@ export const ImageScanner = ({ onScanComplete }: { onScanComplete: (data: any) =
       if (aiError) throw aiError;
 
       triggerHaptic('success');
-      onScanComplete(data);
+      
+      // Mantenemos tu onScanComplete original enviando la data que espera
+      onScanComplete({
+        ...data,
+        start_time: data.start_time || new Date().toISOString(),
+      });
       
     } catch (error: any) {
       console.error("Error en escaneo:", error);
