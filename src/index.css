@@ -16,7 +16,7 @@
   body {
     margin: 0;
     padding: 0;
-    @apply bg-slate-50 text-slate-800 antialiased;
+    @apply bg-white text-slate-800 antialiased;
     font-family: 'Nunito', sans-serif;
     overflow-x: hidden;
     overflow-y: auto !important; 
@@ -26,17 +26,15 @@
 }
 
 @layer components {
+  /* Cristal de alta fidelidad para que la lava se vea detrás */
   .glass-panel {
-    background: rgba(255, 255, 255, 0.75);
-    backdrop-filter: blur(25px);
-    -webkit-backdrop-filter: blur(25px);
-    border: 1px solid rgba(255, 255, 255, 0.6);
+    @apply bg-white/40 backdrop-blur-[30px] border border-white/50 shadow-brisa;
     border-radius: 3.5rem;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.08);
   }
 
   .atmosfera-container {
-    @apply fixed inset-0 -z-10 overflow-hidden pointer-events-none bg-slate-50;
+    @apply fixed inset-0 -z-10 overflow-hidden pointer-events-none bg-white;
   }
 }
 
@@ -44,40 +42,30 @@
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   
-  .text-brisa {
-    @apply uppercase tracking-[0.4em] font-black text-[10px];
-  }
-
-  @keyframes wave-organic {
+  /* Animación Lámpara de Lava: Morphing + Diagonal */
+  @keyframes lava-morph {
     0%, 100% { 
-      transform: translate(0, 0) scale(1) rotate(0deg);
-      border-radius: 40% 60% 70% 30% / 40% 40% 60% 50%;
+      border-radius: 63% 37% 54% 46% / 55% 48% 52% 45%;
+      transform: translate(0, 0) rotate(0deg) scale(1);
     }
     33% {
-      transform: translate(8%, -5%) scale(1.15) rotate(6deg);
-      border-radius: 70% 30% 50% 50% / 30% 30% 70% 70%;
+      border-radius: 40% 60% 54% 46% / 49% 60% 40% 51%;
+      transform: translate(10%, -15%) rotate(8deg) scale(1.1);
     }
     66% {
-      transform: translate(-5%, 10%) scale(0.95) rotate(-6deg);
-      border-radius: 30% 70% 70% 30% / 50% 60% 40% 40%;
+      border-radius: 54% 46% 38% 62% / 49% 70% 30% 51%;
+      transform: translate(-10%, 15%) rotate(-8deg) scale(0.9);
     }
   }
 
-  .animate-wave-viva {
-    filter: blur(55px); 
-    animation: wave-organic 16s ease-in-out infinite;
-    opacity: 0.8;
+  .lava-blob {
+    @apply absolute mix-blend-multiply;
+    filter: blur(25px); /* Blur ligero para bordes definidos pero orgánicos */
+    animation: lava-morph 22s ease-in-out infinite;
+    will-change: transform, border-radius;
   }
 
-  .animate-wave-viva-delayed {
-    filter: blur(65px);
-    animation: wave-organic 20s ease-in-out infinite reverse;
-    opacity: 0.7;
-  }
-
-  .animate-wave-viva-fast {
-    filter: blur(45px);
-    animation: wave-organic 12s ease-in-out infinite alternate;
-    opacity: 0.6;
-  }
+  .lava-sky { @apply bg-sky-400 opacity-50; animation-duration: 18s; }
+  .lava-vital { @apply bg-orange-400 opacity-40; animation-duration: 25s; animation-delay: -4s; }
+  .lava-violet { @apply bg-indigo-400 opacity-30; animation-duration: 20s; animation-delay: -2s; }
 }
