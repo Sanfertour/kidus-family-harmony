@@ -11,6 +11,7 @@
   html {
     scroll-behavior: smooth;
     -webkit-tap-highlight-color: transparent;
+    background-color: #f8fafc;
   }
 
   body {
@@ -18,30 +19,29 @@
     padding: 0;
     @apply bg-slate-50 text-slate-800 antialiased;
     font-family: 'Nunito', sans-serif;
-    /* PERMITIR SCROLL */
     overflow-x: hidden;
     overflow-y: auto !important; 
     min-height: 100vh;
     min-height: 100dvh;
   }
-
-  #root {
-    width: 100%;
-    max-width: 100% !important;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-  }
 }
 
 @layer components {
+  /* Estética Brisa corregida para visibilidad Élite */
   .glass-panel {
-    background: rgba(255, 255, 255, 0.6);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.5);
     border-radius: 3.5rem;
-    box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 20px 40px -10px rgba(15, 23, 42, 0.05);
+  }
+
+  /* Capa Atmosférica */
+  .atmosfera-container {
+    @apply fixed inset-0 -z-10 overflow-hidden pointer-events-none;
+    background: radial-gradient(at 0% 0%, rgba(14, 165, 233, 0.05) 0, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(249, 115, 22, 0.03) 0, transparent 50%);
   }
 }
 
@@ -49,18 +49,27 @@
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   
-  .animate-liquid-fast {
-    animation: liquid-morph 12s cubic-bezier(0.7, 0, 0.3, 1) infinite;
-    filter: blur(40px);
-    opacity: 0.15;
-  }
-
-  @keyframes liquid-morph {
-    0%, 100% { border-radius: 42% 58% 70% 30% / 45% 45% 55% 55%; transform: scale(1); }
-    50% { border-radius: 70% 30% 46% 54% / 30% 29% 71% 70%; transform: scale(1.1) rotate(5deg); }
-  }
-
   .text-brisa {
     @apply uppercase tracking-[0.4em] font-black text-[10px];
+  }
+
+  /* Animación Liquid para las ondas del fondo */
+  @keyframes wave-apple {
+    0%, 100% { 
+      transform: translate(0px, 0px) scale(1);
+      border-radius: 35% 65% 70% 30% / 30% 40% 60% 70%;
+    }
+    50% { 
+      transform: translate(3%, 5%) scale(1.1);
+      border-radius: 50% 50% 35% 65% / 55% 55% 45% 45%;
+    }
+  }
+
+  .animate-wave-brisa {
+    animation: wave-apple 20s ease-in-out infinite;
+  }
+  
+  .animate-wave-brisa-reverse {
+    animation: wave-apple 25s ease-in-out infinite reverse;
   }
 }
