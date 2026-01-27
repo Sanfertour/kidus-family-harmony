@@ -36,8 +36,9 @@ export const ManualEventDrawer = ({
     is_private: false
   });
 
-  const guias = members.filter(m => m.role === 'autonomous');
-  const tribu = members.filter(m => m.role === 'dependent');
+  // Adaptación a los roles de tu base de datos
+  const guias = members.filter(m => m.role === 'autonomous' || m.role === 'member' || !m.role);
+  const tribu = members.filter(m => m.role === 'dependent' || m.role === 'child');
 
   const handleClose = () => {
     triggerHaptic('soft');
@@ -60,34 +61,55 @@ export const ManualEventDrawer = ({
     triggerHaptic('medium');
 
     try {
+      // 1. Formateo de fecha para Supabase
       const startDateTime = new Date(`${formData.date}T${formData.time}:00`).toISOString();
       
-      // Mantenemos la lógica de la descripción para no perder información
+      // 2. Mantenemos TU lógica de descripción para no perder información
       const finalDescription = formData.involved_member 
         ? `Involucra a: ${members.find(m => m.id === formData.involved_member)?.display_name}. ${formData.description}`
         : formData.description;
 
-      const { error } = await supabase.from('events').insert([{ 
+      // 3. Payload alineado con el esquema REAL de tu tabla 'events'
+      const eventPayload = { 
         title: formData.title.trim(),
         description: finalDescription.trim(),
         start_time: startDateTime,
+        event_date: startDateTime, // Campo obligatorio en tu DB
         category: formData.category,
-        assigned_to: formData.assigned_to || profile.id,
+        assigned_to: formData.assigned_to || profile.id, // Evita string vacío ""
         nest_id: nestId,
         is_private: formData.is_private,
-        created_by: profile.id 
-      }]);
+        created_by: profile.id,
+        status: 'pending',
+        event_type: 'tribu'
+      };
+
+      const { error } = await supabase.from('events').insert([eventPayload]);
 
       if (error) throw error;
 
+      // ÉXITO: Sincronía total
       await fetchEvents();
       triggerHaptic('success');
       toast({ title: "Sincronizado", description: "Evento añadido al Nido." });
+      
       onEventAdded(); 
       onClose(); 
-      setFormData({ title: '', category: 'other', assigned_to: profile.id, involved_member: '', date: new Date().toISOString().split('T')[0], time: "09:00", description: '', is_private: false });
+      
+      // Reset del formulario a estado inicial
+      setFormData({ 
+        title: '', 
+        category: 'other', 
+        assigned_to: profile?.id || '', 
+        involved_member: '', 
+        date: new Date().toISOString().split('T')[0], 
+        time: "09:00", 
+        description: '', 
+        is_private: false 
+      });
     } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      console.error("Error en Guardado:", error);
+      toast({ title: "Error de Sincronía", description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -101,7 +123,6 @@ export const ManualEventDrawer = ({
       
       <div className={`relative w-full max-w-md rounded-t-[3.5rem] p-8 shadow-2xl animate-in slide-in-from-bottom duration-500 max-h-[95vh] overflow-y-auto no-scrollbar transition-all duration-700 ${formData.is_private ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-800'}`}>
         
-        {/* BOTÓN CERRAR - Restaurado */}
         <button 
           onClick={handleClose}
           className={`absolute top-6 right-8 p-2 rounded-full transition-colors z-10 ${formData.is_private ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-slate-200/50 text-slate-500 hover:bg-slate-200'}`}
@@ -113,10 +134,10 @@ export const ManualEventDrawer = ({
 
         <div className="space-y-6 pb-10">
           <header className="text-center">
-             <h2 className="text-3xl font-black tracking-tighter italic uppercase">Nuevo Plan</h2>
-             <p className={`text-[10px] font-bold uppercase tracking-widest ${formData.is_private ? 'text-orange-400' : 'text-sky-500'}`}>
-               {formData.is_private ? 'Privacidad Individual' : 'Sincronía del Nido'}
-             </p>
+              <h2 className="text-3xl font-black tracking-tighter italic uppercase">Nuevo Plan</h2>
+              <p className={`text-[10px] font-bold uppercase tracking-widest ${formData.is_private ? 'text-orange-400' : 'text-sky-500'}`}>
+                {formData.is_private ? 'Privacidad Individual' : 'Sincronía del Nido'}
+              </p>
           </header>
 
           {/* CATEGORÍAS */}
@@ -136,7 +157,7 @@ export const ManualEventDrawer = ({
             className={`rounded-[2rem] h-16 border-none font-bold text-lg px-8 shadow-sm ${formData.is_private ? 'bg-white/10 text-white placeholder:text-white/30' : 'bg-white text-slate-900'}`} 
           />
 
-          {/* QUIÉN SE ENCARGA (GUÍAS) - Delegación */}
+          {/* QUIÉN SE ENCARGA (GUÍAS) */}
           <div className="space-y-3">
             <div className="flex items-center gap-2 ml-4">
               <UserCheck size={12} className="text-sky-500" />
@@ -146,14 +167,14 @@ export const ManualEventDrawer = ({
               {guias.map(m => (
                 <button key={m.id} onClick={() => { triggerHaptic('soft'); setFormData({...formData, assigned_to: m.id}); }} 
                   className={`flex-shrink-0 px-5 py-3 rounded-2xl text-[10px] font-black uppercase transition-all flex items-center gap-2 ${formData.assigned_to === m.id ? 'bg-slate-900 text-white shadow-lg' : 'bg-white shadow-sm text-slate-400 border border-slate-100'}`}>
-                  <div className="w-3 h-3 rounded-full shadow-inner" style={{ backgroundColor: m.color || '#000' }} />
+                  <div className="w-3 h-3 rounded-full shadow-inner" style={{ backgroundColor: m.color || '#0ea5e9' }} />
                   {m.display_name}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* PARA QUIÉN ES (TRIBU/PEQUES) */}
+          {/* PARA QUIÉN ES (TRIBU) */}
           <div className="space-y-3">
             <div className="flex items-center gap-2 ml-4">
               <Baby size={12} className="text-pink-500" />
