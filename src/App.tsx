@@ -7,8 +7,12 @@ import { OnboardingView } from "./components/OnboardingView";
 import { AuthView } from "./components/AuthView";
 import { motion, AnimatePresence } from "framer-motion";
 
+/**
+ * KidUs - Aplicación de Gestión Familiar de Élite
+ * Estética: Brisa (Lava Lamp Edition)
+ */
 const App = () => {
-  const { fetchSession, profile, nestId, loading, initialized } = useNestStore();
+  const { fetchSession, profile, nestId, initialized } = useNestStore();
 
   useEffect(() => {
     const handleInitialAuth = async () => {
@@ -23,7 +27,6 @@ const App = () => {
     handleInitialAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event) => {
-      console.log("Auth Event:", event);
       if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
         setTimeout(async () => {
           await fetchSession();
@@ -40,12 +43,15 @@ const App = () => {
 
   if (!initialized) {
     return (
-      <div className="relative min-h-screen flex flex-col items-center justify-center p-6 bg-slate-50 overflow-hidden">
-        <div className="absolute top-[-10%] left-[-10%] w-[80%] h-[80%] bg-sky-400/20 blur-[80px] rounded-full animate-wave-viva" />
+      <div className="relative min-h-screen flex flex-col items-center justify-center p-6 bg-white overflow-hidden">
+        {/* Lava de carga */}
+        <div className="lava-blob lava-sky w-[350px] h-[350px] top-[-10%] left-[-10%]" />
+        <div className="lava-blob lava-vital w-[300px] h-[300px] bottom-[-5%] right-[-5%]" />
+        
         <motion.div 
-          initial={{ opacity: 0, y: 20 }} 
-          animate={{ opacity: 1, y: 0 }} 
-          className="text-center w-full max-w-sm z-10"
+          initial={{ opacity: 0, scale: 0.9 }} 
+          animate={{ opacity: 1, scale: 1 }} 
+          className="text-center z-10"
         >
           <img 
             src="https://raw.githubusercontent.com/Sanfertour/kidus-family-harmony/main/src/assets/IMG_20260120_144903.jpg" 
@@ -53,7 +59,7 @@ const App = () => {
             alt="KidUs Logo" 
           />
           <h1 className="text-5xl font-black text-slate-900 mb-2 italic tracking-tighter leading-none">KidUs</h1>
-          <p className="text-slate-400 mb-12 font-black uppercase tracking-[0.3em] text-[10px] animate-pulse">
+          <p className="text-slate-400 font-black uppercase tracking-[0.3em] text-[10px] animate-pulse">
             Sincronizando Nido...
           </p>
         </motion.div>
@@ -63,16 +69,16 @@ const App = () => {
 
   return (
     <BrowserRouter>
-      {/* CAPA ATMÓSFERA BRISA VIVA (3 ONDAS CONFLUYENTES) */}
+      {/* ATMÓSFERA LÁMPARA DE LAVA (COLORES CORPORATIVOS) */}
       <div className="atmosfera-container">
-        {/* Onda Sky Blue vibrante */}
-        <div className="absolute top-[-5%] right-[-5%] w-[65%] h-[65%] bg-sky-400/30 animate-wave-viva" />
+        {/* Burbuja Azul Sky - Diagonal superior */}
+        <div className="lava-blob lava-sky w-[90%] h-[60%] top-[-10%] right-[-10%]" />
         
-        {/* Onda Vital Orange marcada */}
-        <div className="absolute bottom-[-5%] left-[-5%] w-[75%] h-[75%] bg-orange-400/30 animate-wave-viva-delayed" />
+        {/* Burbuja Naranja Vital - Diagonal inferior */}
+        <div className="lava-blob lava-vital w-[80%] h-[70%] bottom-[-10%] left-[-10%]" />
         
-        {/* Onda Contraste Violeta para profundidad orgánica */}
-        <div className="absolute top-[25%] right-[-10%] w-[45%] h-[55%] bg-indigo-400/20 animate-wave-viva-fast" />
+        {/* Burbuja Violeta - Confluencia central */}
+        <div className="lava-blob lava-violet w-[50%] h-[50%] top-[25%] left-[20%]" />
       </div>
 
       <AnimatePresence mode="wait">
@@ -89,6 +95,7 @@ const App = () => {
               )
             } 
           />
+
           <Route 
             path="/onboarding" 
             element={
@@ -99,6 +106,7 @@ const App = () => {
               )
             } 
           />
+
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AnimatePresence>
