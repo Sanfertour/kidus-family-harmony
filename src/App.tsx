@@ -41,9 +41,7 @@ const App = () => {
   if (!initialized) {
     return (
       <div className="relative min-h-screen flex flex-col items-center justify-center p-6 bg-slate-50 overflow-hidden">
-        {/* Atmósfera de carga */}
-        <div className="absolute top-[-10%] left-[-10%] w-[80%] h-[80%] bg-sky-100/30 blur-[100px] rounded-full animate-wave-brisa" />
-        
+        <div className="absolute top-[-10%] left-[-10%] w-[80%] h-[80%] bg-sky-400/20 blur-[80px] rounded-full animate-wave-viva" />
         <motion.div 
           initial={{ opacity: 0, y: 20 }} 
           animate={{ opacity: 1, y: 0 }} 
@@ -65,10 +63,16 @@ const App = () => {
 
   return (
     <BrowserRouter>
-      {/* CAPA ATMÓSFERA BRISA (Ondas de fondo) */}
+      {/* CAPA ATMÓSFERA BRISA VIVA (3 ONDAS CONFLUYENTES) */}
       <div className="atmosfera-container">
-        <div className="absolute top-[-15%] right-[-10%] w-[70%] h-[70%] bg-sky-200/20 blur-[120px] rounded-full animate-wave-brisa" />
-        <div className="absolute bottom-[-15%] left-[-10%] w-[80%] h-[80%] bg-orange-100/20 blur-[120px] rounded-full animate-wave-brisa-reverse" />
+        {/* Onda Sky Blue vibrante */}
+        <div className="absolute top-[-5%] right-[-5%] w-[65%] h-[65%] bg-sky-400/30 animate-wave-viva" />
+        
+        {/* Onda Vital Orange marcada */}
+        <div className="absolute bottom-[-5%] left-[-5%] w-[75%] h-[75%] bg-orange-400/30 animate-wave-viva-delayed" />
+        
+        {/* Onda Contraste Violeta para profundidad orgánica */}
+        <div className="absolute top-[25%] right-[-10%] w-[45%] h-[55%] bg-indigo-400/20 animate-wave-viva-fast" />
       </div>
 
       <AnimatePresence mode="wait">
@@ -85,7 +89,6 @@ const App = () => {
               )
             } 
           />
-
           <Route 
             path="/onboarding" 
             element={
@@ -96,7 +99,6 @@ const App = () => {
               )
             } 
           />
-
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AnimatePresence>
