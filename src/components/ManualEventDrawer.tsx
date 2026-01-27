@@ -28,8 +28,8 @@ export const ManualEventDrawer = ({
   const [formData, setFormData] = useState({
     title: '',
     category: 'other',
-    assigned_to: '', // Guía responsable
-    involved_member: '', // Peque/Tribu involucrado
+    assigned_to: profile?.id || '', 
+    involved_member: '', 
     date: new Date().toISOString().split('T')[0],
     time: "09:00",
     description: '',
@@ -62,6 +62,7 @@ export const ManualEventDrawer = ({
     try {
       const startDateTime = new Date(`${formData.date}T${formData.time}:00`).toISOString();
       
+      // Mantenemos la lógica de la descripción para no perder información
       const finalDescription = formData.involved_member 
         ? `Involucra a: ${members.find(m => m.id === formData.involved_member)?.display_name}. ${formData.description}`
         : formData.description;
@@ -84,7 +85,7 @@ export const ManualEventDrawer = ({
       toast({ title: "Sincronizado", description: "Evento añadido al Nido." });
       onEventAdded(); 
       onClose(); 
-      setFormData({ title: '', category: 'other', assigned_to: '', involved_member: '', date: new Date().toISOString().split('T')[0], time: "09:00", description: '', is_private: false });
+      setFormData({ title: '', category: 'other', assigned_to: profile.id, involved_member: '', date: new Date().toISOString().split('T')[0], time: "09:00", description: '', is_private: false });
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
@@ -95,15 +96,15 @@ export const ManualEventDrawer = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end justify-center px-4">
+    <div className="fixed inset-0 z-[150] flex items-end justify-center px-4">
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={handleClose} />
       
       <div className={`relative w-full max-w-md rounded-t-[3.5rem] p-8 shadow-2xl animate-in slide-in-from-bottom duration-500 max-h-[95vh] overflow-y-auto no-scrollbar transition-all duration-700 ${formData.is_private ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-800'}`}>
         
-        {/* BOTÓN CERRAR */}
+        {/* BOTÓN CERRAR - Restaurado */}
         <button 
           onClick={handleClose}
-          className={`absolute top-6 right-8 p-2 rounded-full transition-colors ${formData.is_private ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-slate-200/50 text-slate-500 hover:bg-slate-200'}`}
+          className={`absolute top-6 right-8 p-2 rounded-full transition-colors z-10 ${formData.is_private ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-slate-200/50 text-slate-500 hover:bg-slate-200'}`}
         >
           <X size={20} strokeWidth={3} />
         </button>
@@ -112,7 +113,7 @@ export const ManualEventDrawer = ({
 
         <div className="space-y-6 pb-10">
           <header className="text-center">
-             <h2 className="text-3xl font-black tracking-tighter italic">Nuevo Plan</h2>
+             <h2 className="text-3xl font-black tracking-tighter italic uppercase">Nuevo Plan</h2>
              <p className={`text-[10px] font-bold uppercase tracking-widest ${formData.is_private ? 'text-orange-400' : 'text-sky-500'}`}>
                {formData.is_private ? 'Privacidad Individual' : 'Sincronía del Nido'}
              </p>
@@ -135,7 +136,7 @@ export const ManualEventDrawer = ({
             className={`rounded-[2rem] h-16 border-none font-bold text-lg px-8 shadow-sm ${formData.is_private ? 'bg-white/10 text-white placeholder:text-white/30' : 'bg-white text-slate-900'}`} 
           />
 
-          {/* QUIÉN SE ENCARGA (GUÍAS) */}
+          {/* QUIÉN SE ENCARGA (GUÍAS) - Delegación */}
           <div className="space-y-3">
             <div className="flex items-center gap-2 ml-4">
               <UserCheck size={12} className="text-sky-500" />
@@ -184,6 +185,7 @@ export const ManualEventDrawer = ({
             </div>
           </div>
 
+          {/* MODO PRIVADO */}
           <div className={`flex items-center justify-between p-6 rounded-[2.5rem] border-2 transition-all duration-700 ${formData.is_private ? 'bg-slate-950 border-orange-500/30 shadow-inner' : 'bg-white border-slate-100 shadow-sm'}`}>
             <div className="flex items-center gap-4">
               <div className={`p-3 rounded-2xl ${formData.is_private ? 'bg-orange-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
