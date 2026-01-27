@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { Camera, Loader2, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { motion } from 'framer-motion';
+import { triggerHaptic } from '@/utils/haptics';
 
 export const ImageScanner = ({ onScanComplete }: { onScanComplete: (data: any) => void }) => {
   const [isUploading, setIsUploading] = useState(false);
@@ -13,38 +14,36 @@ export const ImageScanner = ({ onScanComplete }: { onScanComplete: (data: any) =
     if (!file) return;
 
     setIsUploading(true);
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Math.random()}.${fileExt}`;
-    const filePath = `scans/${fileName}`;
-
+    triggerHaptic('medium');
+    
     try {
-      // 1. Subida al Storage (bucket 'event-attachments')
-      const { error: uploadError } = await supabase.storage
-        .from('event-attachments')
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      // 2. Llamada a tu Edge Function process-image-ai
-      toast({
-        title: "Imagen en el Nido",
-        description: "La IA está leyendo la circular...",
+      // 1. Convertir a Base64 para envío directo a la Edge Function
+      const base64Image = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result?.toString().split(',')[1] || "");
+        reader.readAsDataURL(file);
       });
 
+      toast({
+        title: "Inteligencia Activada",
+        description: "Leyendo el contenido del documento...",
+      });
+
+      // 2. Llamada a la Edge Function (nombre: process-image-ai)
       const { data, error: aiError } = await supabase.functions.invoke('process-image-ai', {
-        body: { filePath } // Pasamos la ruta del archivo para que la función lo lea
+        body: { image: base64Image }
       });
 
       if (aiError) throw aiError;
 
-      // 3. Éxito: Pasamos los datos extraídos (título, fecha, etc.) al Index
+      triggerHaptic('success');
       onScanComplete(data);
       
     } catch (error: any) {
       console.error("Error en escaneo:", error);
       toast({
         title: "Error de lectura",
-        description: "No pudimos extraer datos de la imagen.",
+        description: "Asegúrate de que la imagen sea clara.",
         variant: "destructive",
       });
     } finally {
@@ -60,16 +59,16 @@ export const ImageScanner = ({ onScanComplete }: { onScanComplete: (data: any) =
         capture="environment" 
         onChange={handleUpload}
         className="hidden"
-        id="scanner-input"
+        id="scanner-input-global"
         disabled={isUploading}
       />
       <motion.label
         whileTap={{ scale: 0.95 }}
-        htmlFor="scanner-input"
+        htmlFor="scanner-input-global"
         className={`flex items-center justify-center gap-4 w-full py-6 rounded-[2.5rem] border-2 transition-all duration-500 cursor-pointer ${
           isUploading 
           ? 'bg-slate-100 border-slate-200 text-slate-400' 
-          : 'bg-white border-sky-100 text-sky-600 shadow-xl shadow-sky-100/50'
+          : 'bg-white border-sky-100 text-sky-600 shadow-xl shadow-sky-100/50 hover:border-sky-300'
         }`}
       >
         <div className={`p-3 rounded-2xl ${isUploading ? 'bg-slate-200' : 'bg-sky-50'}`}>
@@ -80,10 +79,10 @@ export const ImageScanner = ({ onScanComplete }: { onScanComplete: (data: any) =
           )}
         </div>
         <div className="flex flex-col">
-          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
-            {isUploading ? 'Procesando...' : 'Inteligencia'}
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 leading-none mb-1">
+            {isUploading ? 'Procesando...' : 'Nest-Vision'}
           </span>
-          <span className="text-lg font-black text-slate-800 -mt-1">
+          <span className="text-lg font-black text-slate-800 leading-none">
             Escanear Circular
           </span>
         </div>
