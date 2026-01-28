@@ -1,135 +1,125 @@
-import React, { ReactNode, useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
-import { useNestStore } from "@/store/useNestStore";
-import { supabase } from "@/lib/supabase";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { triggerHaptic } from "@/utils/haptics";
-import { Link2, Users, Check, ArrowLeft, ShieldCheck, Baby } from "lucide-react";
-import { Profile } from "@/types/kidus";
+import { useNestStore } from "@/store/useNestStore";
+import { Users, Link2, CheckCircle2, Loader2, X, AlertCircle } from "lucide-react";
 
-interface AddMemberDialogProps {
-  children: ReactNode;
-  onMemberAdded?: () => Promise<void>;
-  editingMember?: Profile | null;
-}
+export const AddMemberPanel = () => {
+  // Mantenemos la lógica intacta del store
+  const { updateNestId } = useNestStore();
+  const [isLinking, setIsLinking] = useState(false);
+  const [inputCode, setInputCode] = useState("");
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
 
-const PRESET_COLORS = ["#0ea5e9", "#f43f5e", "#10b981", "#f59e0b", "#8b5cf6", "#64748b"];
+  const handleLink = async () => {
+    const cleanCode = inputCode.trim().toUpperCase();
+    if (cleanCode.length < 5) return;
 
-export const AddMemberDialog = ({ children, onMemberAdded, editingMember }: AddMemberDialogProps) => {
-  const [mode, setMode] = useState<'select' | 'link_guide' | 'create_member'>('select');
-  const [loading, setLoading] = useState(false);
-  const { nestId, fetchSession, fetchMembers } = useNestStore();
-  const { toast } = useToast();
+    setStatus('loading');
+    triggerHaptic('soft');
 
-  const [targetNestCode, setTargetNestCode] = useState("");
-  const [memberName, setMemberName] = useState("");
-  const [memberRole, setMemberRole] = useState<'autonomous' | 'dependent'>('dependent');
-  const [selectedColor, setSelectedColor] = useState(PRESET_COLORS[0]);
+    // Mantenemos la lógica de formateo del código KID-
+    const finalCode = cleanCode.startsWith('KID-') ? cleanCode : `KID-${cleanCode}`;
+    
+    // Ejecutamos la función funcional del store que vincula en el backend
+    const success = await updateNestId(finalCode);
 
-  useEffect(() => {
-    if (editingMember) {
-      setMode('create_member');
-      setMemberName(editingMember.display_name || "");
-      setMemberRole(editingMember.role as 'autonomous' | 'dependent');
-      setSelectedColor(editingMember.color || PRESET_COLORS[0]);
-    }
-  }, [editingMember]);
-
-  const resetForm = () => {
-    if (!editingMember) setMode('select');
-    setLoading(false);
-  };
-
-  const handleCreateOrUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!nestId) return;
-    setLoading(true);
-    triggerHaptic('success');
-
-    try {
-      if (editingMember) {
-        const { error } = await supabase.from('profiles').update({
-          display_name: memberName,
-          role: memberRole,
-          color: selectedColor,
-        }).eq('id', editingMember.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from('profiles').insert([{
-          id: crypto.randomUUID(),
-          nest_id: nestId,
-          display_name: memberName,
-          role: memberRole,
-          color: selectedColor,
-        }]);
-        if (error) throw error;
-      }
-      await fetchMembers(); 
-      if (onMemberAdded) await onMemberAdded();
-      toast({ title: "Sincronía Actualizada", description: "La Tribu ha sido actualizada." });
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } finally {
-      setLoading(false);
+    if (success) {
+      setStatus('success');
+      triggerHaptic('success');
+      setTimeout(() => {
+        setIsLinking(false);
+        setStatus('idle');
+        setInputCode("");
+      }, 2000);
+    } else {
+      setStatus('error');
+      triggerHaptic('error');
+      setTimeout(() => setStatus('idle'), 3000);
     }
   };
 
   return (
-    <Dialog onOpenChange={(open) => !open && resetForm()}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="rounded-[3.5rem] border-none bg-white/95 backdrop-blur-2xl p-8 shadow-2xl max-w-[90vw] sm:max-w-md">
-        <DialogHeader className="mb-6 text-center">
-          <DialogTitle className="text-3xl font-black italic tracking-tighter text-slate-900 uppercase">
-            {mode === 'select' ? "Gestión de Nido" : mode === 'link_guide' ? "Vincular Guía" : "Miembro"}
-          </DialogTitle>
-        </DialogHeader>
+    <div className="w-full">
+      {/* Botón de acceso con estética Brisa: bg-white/10 y border-white/20 */}
+      <motion.button
+        whileTap={{ scale: 0.95 }}
+        onClick={() => { setIsLinking(true); triggerHaptic('soft'); }}
+        className="w-full p-6 bg-white/10 backdrop-blur-2xl border border-white/20 rounded-[2.5rem] flex items-center gap-4 shadow-xl group transition-all"
+      >
+        <div className="w-12 h-12 bg-sky-500/20 rounded-2xl flex items-center justify-center text-sky-600 group-hover:bg-sky-500 group-hover:text-white transition-all duration-500">
+          <Users size={24} />
+        </div>
+        <div className="text-left">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-sky-500 mb-0.5 italic">Sincronía activa</p>
+          <h3 className="text-lg font-black text-slate-900 italic tracking-tighter">Vincular Nuevo Miembro</h3>
+        </div>
+      </motion.button>
 
-        {mode === 'select' && (
-          <div className="space-y-4">
-            <button onClick={() => { triggerHaptic('soft'); setMode('create_member'); }} className="w-full p-8 bg-slate-900 rounded-[2.5rem] text-left active:scale-95 transition-all">
-              <Users className="text-sky-400 mb-4" size={32} />
-              <h4 className="text-white font-black italic text-xl uppercase tracking-tighter">Nueva Tribu</h4>
-              <p className="text-sky-400/60 text-[10px] font-bold uppercase tracking-widest mt-1">Añadir dependiente</p>
-            </button>
-            <button onClick={() => { triggerHaptic('soft'); setMode('link_guide'); }} className="w-full p-8 bg-white border-2 border-slate-100 rounded-[2.5rem] text-left active:scale-95 transition-all">
-              <Link2 className="text-orange-500 mb-4" size={32} />
-              <h4 className="text-slate-900 font-black italic text-xl uppercase tracking-tighter">Sincronizar Guía</h4>
-              <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Fusión mediante código KID</p>
-            </button>
-          </div>
-        )}
+      <AnimatePresence>
+        {isLinking && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[120] flex items-center justify-center px-6 bg-slate-900/10 backdrop-blur-md"
+          >
+            {/* Modal Glassmorphism Profundo */}
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="w-full max-w-sm bg-white/70 backdrop-blur-3xl p-8 rounded-[3.5rem] border border-white shadow-2xl relative"
+            >
+              <button 
+                onClick={() => { setIsLinking(false); triggerHaptic('soft'); }}
+                className="absolute top-8 right-8 text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X size={20} />
+              </button>
 
-        {mode === 'create_member' && (
-          <form onSubmit={handleCreateOrUpdate} className="space-y-6">
-            <div className="flex flex-col items-center gap-6">
-              <div className="w-20 h-20 rounded-[2rem] flex items-center justify-center text-white text-3xl font-black shadow-xl transition-colors duration-500" style={{ backgroundColor: selectedColor }}>
-                {memberName ? memberName.charAt(0).toUpperCase() : "?"}
+              <div className="text-center mb-8">
+                <div className="w-16 h-16 bg-sky-50/50 backdrop-blur-md rounded-[1.8rem] flex items-center justify-center mx-auto mb-4 border border-white">
+                  <Link2 className="text-sky-500" size={28} />
+                </div>
+                <h4 className="text-2xl font-black text-slate-900 italic tracking-tighter leading-none">Unirse al Nido</h4>
+                <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] mt-3 italic">Código de Sincronía</p>
               </div>
-              <Input value={memberName} onChange={(e) => setMemberName(e.target.value)} placeholder="Nombre" className="h-14 rounded-2xl bg-slate-50 border-none text-center text-lg font-bold italic" required />
-              <div className="flex bg-slate-100 p-1 rounded-2xl w-full">
-                <button type="button" onClick={() => setMemberRole('dependent')} className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all ${memberRole === 'dependent' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400'}`}>
-                  <Baby size={16} /> <span className="text-[10px] font-black uppercase">Tribu</span>
+
+              <div className="space-y-4">
+                <input
+                  type="text"
+                  placeholder="KID-XXXXX"
+                  value={inputCode}
+                  onChange={(e) => setInputCode(e.target.value)}
+                  className="w-full bg-white/40 border border-white px-6 py-5 rounded-[2rem] text-center text-xl font-black tracking-widest text-slate-900 focus:outline-none focus:ring-4 focus:ring-sky-500/10 transition-all shadow-inner placeholder:text-slate-300"
+                />
+
+                <button
+                  disabled={status === 'loading' || inputCode.length < 4}
+                  onClick={handleLink}
+                  className={`w-full py-5 rounded-[2rem] font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 transition-all active:scale-95 shadow-xl
+                    ${status === 'error' ? 'bg-red-500 text-white' : 'bg-slate-900 text-white'}`}
+                >
+                  {status === 'loading' ? <Loader2 className="animate-spin" size={18} /> : 
+                   status === 'success' ? <CheckCircle2 size={18} className="text-emerald-400" /> : 
+                   status === 'error' ? <AlertCircle size={18} /> : "Vincular Ahora"}
                 </button>
-                <button type="button" onClick={() => setMemberRole('autonomous')} className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all ${memberRole === 'autonomous' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400'}`}>
-                  <ShieldCheck size={16} /> <span className="text-[10px] font-black uppercase">Guía</span>
-                </button>
+                
+                {status === 'error' && (
+                  <motion.p 
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-center text-[10px] font-black text-red-500 uppercase tracking-widest mt-2"
+                  >
+                    Código no encontrado
+                  </motion.p>
+                )}
               </div>
-              <div className="flex gap-2">
-                {PRESET_COLORS.map(color => (
-                  <button key={color} type="button" onClick={() => setSelectedColor(color)} className="w-8 h-8 rounded-full border-2 border-white shadow-sm flex items-center justify-center" style={{ backgroundColor: color }}>
-                    {selectedColor === color && <Check size={12} className="text-white" />}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <Button type="submit" disabled={loading} className="w-full h-16 bg-slate-900 text-white rounded-[2rem] font-black uppercase italic tracking-widest">
-              {loading ? "Sincronizando..." : "Confirmar"}
-            </Button>
-          </form>
+            </motion.div>
+          </motion.div>
         )}
-      </DialogContent>
-    </Dialog>
+      </AnimatePresence>
+    </div>
   );
 };
