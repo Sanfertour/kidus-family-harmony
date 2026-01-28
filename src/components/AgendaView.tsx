@@ -26,7 +26,6 @@ export const AgendaView = () => {
   const { events, members, profile, loading } = useNestStore();
   const [selectedDate, setSelectedDate] = useState(new Date());
   
-  // Referencia para la hora actual (Autoscroll)
   const currentHourRef = useRef<HTMLDivElement>(null);
 
   const dayHours = useMemo(() => {
@@ -48,7 +47,6 @@ export const AgendaView = () => {
     });
   }, [events]);
 
-  // LÓGICA DE AUTOSCROLL QUIRÚRGICA
   useEffect(() => {
     if (!loading && isToday(selectedDate)) {
       const timer = setTimeout(() => {
@@ -62,41 +60,49 @@ export const AgendaView = () => {
   }, [loading, selectedDate]);
 
   if (loading) return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50/50">
-      <Loader2 className="animate-spin text-indigo-500 mb-4" size={32} />
-      <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Sincronizando Nido...</p>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#FDFDFF]">
+      <div className="relative">
+        <div className="absolute -inset-4 bg-indigo-500/20 blur-2xl rounded-full animate-pulse" />
+        <Loader2 className="animate-spin text-indigo-600 relative" size={40} strokeWidth={3} />
+      </div>
+      <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 mt-8 italic">Sincronizando Nido...</p>
     </div>
   );
 
   const currentHourNow = getHours(new Date());
 
   return (
-    <div className="min-h-screen bg-[#FDFDFF] pb-32">
-      {/* Header Brisa - Sticky con Blur */}
-      <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-2xl border-b border-white/80 px-8 pt-14 pb-6">
-        <div className="flex justify-between items-end mb-8">
-          <div>
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500/60 block mb-1 italic">
+    <div className="min-h-screen bg-[#FDFDFF] pb-32 font-sans selection:bg-indigo-100 selection:text-indigo-900">
+      {/* Header Brisa - Glassmorphism Profundo */}
+      <div className="sticky top-0 z-30 bg-white/70 backdrop-blur-3xl border-b border-white/40 px-8 pt-14 pb-8">
+        <div className="flex justify-between items-end mb-10">
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-indigo-500/50 block mb-2 italic">
               Logística KidUs
             </span>
-            <h1 className="text-4xl font-black text-slate-900 tracking-tighter capitalize italic">
+            <h1 className="text-5xl font-black text-slate-900 tracking-tighter capitalize italic">
               {format(selectedDate, "EEEE", { locale: es })}
-              <span className="text-indigo-600 ml-2">{format(selectedDate, "d")}</span>
+              <span className="text-indigo-600 ml-3">{format(selectedDate, "d")}</span>
             </h1>
-          </div>
+          </motion.div>
+          
           <button 
             onClick={() => { triggerHaptic('medium'); setSelectedDate(new Date()); }}
-            className={`relative p-5 rounded-[2.2rem] transition-all duration-500 shadow-xl ${
-              hasUpcoming ? 'bg-orange-500 text-white shadow-orange-200 animate-pulse' : 'bg-white text-slate-400 border border-slate-100'
+            className={`relative p-6 rounded-[2.5rem] transition-all duration-700 shadow-2xl ${
+              hasUpcoming 
+                ? 'bg-orange-500 text-white shadow-orange-200 animate-pulse' 
+                : 'bg-white text-slate-400 border border-slate-100 hover:shadow-indigo-100 hover:scale-105'
             }`}
           >
-            <Bell size={24} />
-            {hasUpcoming && <span className="absolute top-4 right-4 w-3 h-3 bg-white rounded-full border-4 border-orange-500" />}
+            <Bell size={24} strokeWidth={hasUpcoming ? 3 : 2} />
+            {hasUpcoming && (
+              <span className="absolute top-5 right-5 w-4 h-4 bg-white rounded-full border-4 border-orange-500 shadow-sm" />
+            )}
           </button>
         </div>
 
-        {/* Selector Semanal */}
-        <div className="flex justify-between gap-2">
+        {/* Selector Semanal Estilo Brisa */}
+        <div className="flex justify-between gap-3 px-1">
           {weekDays.map((day) => {
             const active = isSameDay(day, selectedDate);
             const isTodayDate = isToday(day);
@@ -106,19 +112,22 @@ export const AgendaView = () => {
               <button
                 key={day.toISOString()}
                 onClick={() => { triggerHaptic('soft'); setSelectedDate(day); }}
-                className={`flex-1 flex flex-col items-center py-4 rounded-[2.2rem] transition-all relative ${
-                  active ? 'bg-slate-900 text-white shadow-2xl scale-105' : 'bg-white/50 text-slate-400'
+                className={`flex-1 flex flex-col items-center py-5 rounded-[2.5rem] transition-all duration-500 relative ${
+                  active 
+                    ? 'bg-slate-900 text-white shadow-2xl shadow-slate-300 scale-105 -translate-y-1' 
+                    : 'bg-white/40 text-slate-400 border border-white hover:bg-white/80'
                 }`}
               >
-                <span className={`text-[9px] font-bold uppercase mb-1 ${active ? 'text-indigo-300' : ''}`}>
+                <span className={`text-[9px] font-black uppercase mb-1.5 tracking-tighter ${active ? 'text-indigo-300' : 'text-slate-300'}`}>
                   {format(day, "EEE", { locale: es })}
                 </span>
-                <span className="text-lg font-black">{format(day, "d")}</span>
+                <span className="text-xl font-black tracking-tighter">{format(day, "d")}</span>
+                
                 {dayHasEvents && !active && (
-                  <div className="absolute bottom-3 w-1.5 h-1.5 bg-indigo-500 rounded-full" />
+                  <div className="absolute bottom-3 w-1.5 h-1.5 bg-indigo-500 rounded-full shadow-sm shadow-indigo-200" />
                 )}
                 {isTodayDate && !active && (
-                  <div className="absolute -top-1 w-1 h-1 bg-orange-500 rounded-full" />
+                  <div className="absolute -top-1 w-2 h-2 bg-orange-500 rounded-full border-2 border-white" />
                 )}
               </button>
             );
@@ -126,9 +135,9 @@ export const AgendaView = () => {
         </div>
       </div>
 
-      {/* Parrilla Horaria con Autoscroll e Indicador "Ahora" */}
-      <div className="px-6 mt-8 relative">
-        <div className="absolute left-[4.2rem] top-0 bottom-0 w-[1px] bg-slate-100" />
+      {/* Parrilla Horaria */}
+      <div className="px-8 mt-12 relative">
+        <div className="absolute left-[4.2rem] top-0 bottom-0 w-[2px] bg-slate-100/60 rounded-full" />
 
         <div className="space-y-0">
           {dayHours.map((hour) => {
@@ -144,33 +153,36 @@ export const AgendaView = () => {
               <div 
                 key={hourStr} 
                 ref={isItNow ? currentHourRef : null}
-                className={`flex gap-6 group min-h-[90px] transition-all ${isItNow ? 'scale-[1.01]' : ''}`}
+                className={`flex gap-8 group min-h-[100px] transition-all duration-500 ${isItNow ? 'scale-[1.02] z-10' : ''}`}
               >
-                {/* Hora e Indicador visual de posición actual */}
                 <div className="w-12 pt-1 text-right relative">
-                  <span className={`text-[10px] font-bold tabular-nums transition-colors ${
-                    isItNow ? 'text-indigo-600 scale-110 block' : 'text-slate-300'
+                  <span className={`text-[11px] font-black tabular-nums transition-all duration-500 ${
+                    isItNow ? 'text-indigo-600 scale-125 block translate-x-[-2px]' : 'text-slate-300'
                   }`}>
                     {hourStr}
                   </span>
                   {isItNow && (
                     <motion.div 
                       layoutId="current-hour-indicator"
-                      className="absolute -right-[1.85rem] top-3 w-3 h-3 bg-indigo-600 rounded-full border-4 border-white z-20 shadow-lg shadow-indigo-200"
+                      className="absolute -right-[2.15rem] top-3 w-4 h-4 bg-indigo-600 rounded-full border-[5px] border-white z-20 shadow-xl shadow-indigo-300"
                     />
                   )}
                 </div>
 
-                {/* Slot de Contenido */}
-                <div className={`flex-1 border-t ${isItNow ? 'border-indigo-100 bg-indigo-50/20 rounded-r-[2.5rem]' : 'border-slate-50'} pt-2 pb-6 relative`}>
+                <div className={`flex-1 border-t ${
+                  isItNow 
+                    ? 'border-indigo-100 bg-indigo-50/20 rounded-r-[3.5rem] shadow-inner shadow-indigo-50/50' 
+                    : 'border-slate-50'
+                } pt-3 pb-8 relative px-2 transition-all`}>
                   <AnimatePresence mode="popLayout">
                     {hourEvents.length > 0 ? (
-                      <div className="space-y-3">
+                      <div className="space-y-4">
                         {hourEvents.map((event) => (
                           <motion.div
                             key={event.id}
-                            initial={{ opacity: 0, y: 5 }}
-                            animate={{ opacity: 1, y: 0 }}
+                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
                           >
                             <AgendaCard 
                               event={event}
@@ -182,12 +194,12 @@ export const AgendaView = () => {
                         ))}
                       </div>
                     ) : (
-                      <div className="h-full w-full flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="h-full w-full flex items-center opacity-0 group-hover:opacity-100 transition-all duration-300">
                          <button 
-                          onClick={() => triggerHaptic('soft')}
-                          className="text-[9px] font-bold text-slate-200 uppercase tracking-[0.2em] ml-4"
+                          onClick={() => { triggerHaptic('soft'); }}
+                          className="text-[9px] font-black text-slate-300 hover:text-indigo-400 uppercase tracking-[0.3em] ml-6 flex items-center gap-2"
                         >
-                          Slot Libre
+                          <Plus size={12} strokeWidth={3} /> Slot Libre
                         </button>
                       </div>
                     )}
@@ -199,31 +211,32 @@ export const AgendaView = () => {
         </div>
       </div>
 
-      {/* Indicador de Custodia Flotante (Lógica preservada) */}
+      {/* Indicador de Custodia Flotante - Deep Glassmorphism */}
       <AnimatePresence>
         {events.some(e => e.category === 'custody' && isSameDay(new Date(e.start_time), selectedDate)) && (
           <motion.div 
-            initial={{ opacity: 0, y: 100 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="fixed bottom-28 left-6 right-28 bg-slate-900/90 backdrop-blur-xl text-white p-5 rounded-[2.5rem] shadow-2xl flex items-center gap-4 z-40 border border-white/10"
+            initial={{ opacity: 0, y: 100, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            className="fixed bottom-32 left-8 right-32 bg-slate-900/90 backdrop-blur-2xl text-white p-6 rounded-[3rem] shadow-2xl flex items-center gap-5 z-40 border border-white/10"
           >
-            <div className="w-10 h-10 bg-indigo-500 rounded-2xl flex items-center justify-center shadow-inner">
-              <HeartPulse size={20} className="text-white animate-pulse" />
+            <div className="w-12 h-12 bg-indigo-500 rounded-[1.2rem] flex items-center justify-center shadow-lg shadow-indigo-500/40">
+              <HeartPulse size={24} className="text-white animate-pulse" />
             </div>
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-indigo-300">Custodia Activa</p>
-              <p className="text-xs text-slate-300 font-medium">Sincronía con el otro Guía</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-300 italic mb-0.5">Custodia Activa</p>
+              <p className="text-sm text-slate-300 font-bold tracking-tight">Sincronía con el otro Guía</p>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Botón Añadir Evento (Estilo KidUs) */}
+      {/* FAB Estilo KidUs */}
       <motion.button
+        whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.9 }}
-        className="fixed bottom-28 right-8 w-16 h-16 bg-indigo-600 text-white rounded-[2.2rem] shadow-2xl shadow-indigo-200 flex items-center justify-center z-40 border-4 border-white"
+        className="fixed bottom-32 right-8 w-20 h-20 bg-indigo-600 text-white rounded-[2.8rem] shadow-2xl shadow-indigo-300 flex items-center justify-center z-50 border-[6px] border-[#FDFDFF]"
       >
-        <Plus size={28} strokeWidth={3} />
+        <Plus size={32} strokeWidth={4} />
       </motion.button>
     </div>
   );
