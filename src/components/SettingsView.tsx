@@ -1,20 +1,11 @@
 import React, { useState } from 'react';
 import { Settings, Users, Shield, Bell, Share2, UserPlus, Heart, ChevronRight } from 'lucide-react';
+import { useNestStore } from "@/store/useNestStore"; // Importación necesaria para la lógica
 
-// Tipado para mantener la integridad
-interface SettingsViewProps {
-  userProfile: any;
-  nestData: any;
-  onSyncNest: (code: string) => Promise<void>;
-  onAddDependent: (data: any) => Promise<void>;
-}
-
-const SettingsView: React.FC<SettingsViewProps> = ({ 
-  userProfile, 
-  nestData, 
-  onSyncNest, 
-  onAddDependent 
-}) => {
+const SettingsView = () => {
+  // Conexión directa al Store para no tocar el Index.tsx
+  const { profile, nestData, syncNest, addDependent } = useNestStore();
+  
   const [syncCode, setSyncCode] = useState('');
 
   // Feedback Háptico Universal
@@ -57,7 +48,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
           <button 
             onClick={() => {
               hapticFeedback();
-              navigator.clipboard.writeText(nestData?.nest_code);
+              if (nestData?.nest_code) navigator.clipboard.writeText(nestData.nest_code);
             }}
             className="p-4 hover:bg-white/60 rounded-full transition-all active:scale-95"
           >
@@ -84,7 +75,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
               className="w-full bg-white/80 border-none rounded-[2rem] py-4 px-6 text-lg font-mono focus:ring-4 focus:ring-indigo-100 transition-all outline-none"
             />
             <button 
-              onClick={() => handleAction(() => onSyncNest(syncCode))}
+              onClick={() => handleAction(() => syncNest(syncCode))}
               className="absolute right-2 top-2 bg-indigo-600 text-white px-6 py-2.5 rounded-[1.5rem] font-medium hover:bg-indigo-700 transition-colors"
             >
               Vincular
