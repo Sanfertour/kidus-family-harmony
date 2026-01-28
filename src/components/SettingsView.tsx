@@ -4,7 +4,8 @@ import { triggerHaptic } from "@/utils/haptics";
 import { useNestStore } from "@/store/useNestStore";
 import { Users, Link2, CheckCircle2, Loader2, X, AlertCircle, Settings2 } from "lucide-react";
 
-export const AddMemberPanel = () => {
+// CAMBIO CRÍTICO: Se renombra AddMemberPanel a SettingsView para que el Build lo encuentre
+export const SettingsView = () => {
   const { updateNestId } = useNestStore();
   const [isLinking, setIsLinking] = useState(false);
   const [inputCode, setInputCode] = useState("");
@@ -37,7 +38,7 @@ export const AddMemberPanel = () => {
 
   return (
     <div className="w-full space-y-4">
-      {/* CAMBIO: "Nueva Tribu" -> "Nuevo Miembro" */}
+      {/* "Nuevo Miembro" */}
       <motion.button
         whileTap={{ scale: 0.95 }}
         onClick={() => { setIsLinking(true); triggerHaptic('soft'); }}
@@ -52,7 +53,7 @@ export const AddMemberPanel = () => {
         </div>
       </motion.button>
 
-      {/* CAMBIO: "Radar" -> "Ajustes" e Icono Settings2 */}
+      {/* "Ajustes" */}
       <motion.button
         whileTap={{ scale: 0.95 }}
         onClick={() => { triggerHaptic('soft'); }}
@@ -89,7 +90,6 @@ export const AddMemberPanel = () => {
                 <div className="w-16 h-16 bg-sky-50/50 backdrop-blur-md rounded-[1.8rem] flex items-center justify-center mx-auto mb-4 border border-white">
                   <Link2 className="text-sky-500" size={28} />
                 </div>
-                {/* CAMBIO: "Sincronizar Guía" -> "Sincronizar Nido" */}
                 <h4 className="text-2xl font-black text-slate-900 italic tracking-tighter leading-none">Sincronizar Nido</h4>
                 <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] mt-3 italic">Código de Vinculación</p>
               </div>
