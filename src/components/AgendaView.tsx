@@ -155,7 +155,7 @@ export const AgendaView = () => {
                               isCreator={event.created_by === profile?.id}
                               assignedMember={members.find((m: any) => m.id === event.assigned_to)}
                               onClick={() => {
-                                triggerHaptic('light');
+                                triggerHaptic('soft'); // CORRECCIÓN: 'light' cambiado a 'soft' para el Build
                                 console.log("Detalle", event.title);
                               }}
                             />
