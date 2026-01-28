@@ -1,134 +1,199 @@
-import React, { useState } from 'react';
-import { Settings, Users, Shield, Bell, Share2, UserPlus, Heart, ChevronRight } from 'lucide-react';
-import { useNestStore } from "@/store/useNestStore"; // Importación necesaria para la lógica
+import { useState, useMemo } from "react";
+import { useNestStore } from "@/store/useNestStore";
+import { motion, AnimatePresence } from "framer-motion";
+import { 
+  Bell, Loader2, Clock, 
+  GraduationCap, Utensils, HeartPulse, Trophy, Star,
+  Calendar as CalendarIcon, ChevronRight
+} from "lucide-react";
+import { 
+  format, isToday, startOfWeek, addDays, 
+  isSameDay, eachDayOfInterval, startOfDay, addHours 
+} from "date-fns";
+import { es } from "date-fns/locale";
+import { triggerHaptic } from "@/utils/haptics";
+import { AgendaCard } from "./AgendaCard";
 
-const SettingsView = () => {
-  // Conexión directa al Store para no tocar el Index.tsx
-  const { profile, nestData, syncNest, addDependent } = useNestStore();
-  
-  const [syncCode, setSyncCode] = useState('');
+export const CATEGORY_CONFIG: any = {
+  school: { icon: <GraduationCap size={14} />, color: "#8B5CF6", bg: "#F5F3FF", label: "Escuela" },
+  meal: { icon: <Utensils size={14} />, color: "#F59E0B", bg: "#FFFBEB", label: "Alimentación" },
+  health: { icon: <HeartPulse size={14} />, color: "#EF4444", bg: "#FEF2F2", label: "Salud" },
+  activity: { icon: <Trophy size={14} />, color: "#10B981", bg: "#ECFDF5", label: "Extraescolar" },
+  other: { icon: <Star size={14} />, color: "#0EA5E9", bg: "#F0F9FF", label: "Sincronía" },
+  custody: { icon: <HeartPulse size={14} />, color: "#EC4899", bg: "#FDF2F7", label: "Custodia" },
+};
 
-  // Feedback Háptico Universal
-  const hapticFeedback = () => {
-    if (window.navigator.vibrate) {
-      window.navigator.vibrate(15);
-    }
-  };
+export const AgendaView = () => {
+  const { events, members, profile, loading } = useNestStore();
+  const [selectedDate, setSelectedDate] = useState(new Date());
 
-  const handleAction = async (actionFn: () => Promise<void>) => {
-    hapticFeedback();
-    await actionFn();
-  };
+  const dayHours = useMemo(() => {
+    const start = startOfDay(selectedDate);
+    // Expandimos a 18 horas para cubrir mejor el día familiar (6am a 12pm)
+    return Array.from({ length: 18 }, (_, i) => addHours(start, i + 6));
+  }, [selectedDate]);
+
+  const weekDays = useMemo(() => {
+    const start = startOfWeek(new Date(), { weekStartsOn: 1 });
+    return eachDayOfInterval({ start, end: addDays(start, 6) });
+  }, []);
+
+  const hasUpcoming = useMemo(() => {
+    const now = new Date();
+    return events.some(e => {
+      const start = new Date(e.start_time);
+      const diff = (start.getTime() - now.getTime()) / (1000 * 60);
+      return diff > 0 && diff < 180;
+    });
+  }, [events]);
+
+  if (loading) return (
+    <div className="py-20 flex flex-col items-center justify-center opacity-40">
+      <Loader2 className="animate-spin text-indigo-500 mb-4" size={32} />
+      <p className="text-[10px] font-black uppercase tracking-[0.3em]">Sincronizando Nido...</p>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-transparent p-6 pb-24 space-y-8 animate-in fade-in duration-700">
-      
-      {/* Header Estilo Brisa */}
-      <header className="mt-8 mb-10">
-        <h1 className="text-4xl font-light text-slate-800 tracking-tight">
-          Ajustes de <span className="font-semibold text-indigo-600">Sincronía</span>
-        </h1>
-        <p className="text-slate-500 mt-2">Gestiona tu Nido y la seguridad de tu Tribu</p>
-      </header>
-
-      {/* Card: Información del Nido Actual */}
-      <section className="bg-white/40 backdrop-blur-xl border border-white/60 rounded-[3.5rem] p-8 shadow-sm">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <div className="p-4 bg-indigo-100/50 rounded-3xl">
-              <Shield className="text-indigo-600" size={24} />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-slate-400 uppercase tracking-widest">Código del Nido</p>
-              <h2 className="text-2xl font-bold text-slate-800 tracking-tighter italic">
-                {nestData?.nest_code || 'KID-XXXXX'}
-              </h2>
-            </div>
+    <div className="space-y-6 pb-32 bg-[#F8FAFC] min-h-screen">
+      {/* Header con Estética Brisa */}
+      <div className="px-8 flex justify-between items-center pt-12">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse" />
+            <h2 className="text-[10px] font-bold uppercase tracking-[0.3em] text-indigo-600/60">Sincronía KidUs</h2>
           </div>
-          <button 
-            onClick={() => {
-              hapticFeedback();
-              if (nestData?.nest_code) navigator.clipboard.writeText(nestData.nest_code);
-            }}
-            className="p-4 hover:bg-white/60 rounded-full transition-all active:scale-95"
-          >
-            <Share2 size={20} className="text-slate-600" />
-          </button>
+          <h1 className="text-4xl font-black text-slate-900 tracking-tighter capitalize">
+            {format(selectedDate, "EEEE", { locale: es })}
+            <span className="text-indigo-600 ml-2">{format(selectedDate, "d")}</span>
+          </h1>
         </div>
-      </section>
-
-      {/* SECCIÓN: Sincronizar Nests (Unir a otro Guía) */}
-      <section className="space-y-4">
-        <h3 className="ml-6 text-sm font-semibold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-          <Users size={16} /> Sincronizar Nidos
-        </h3>
-        <div className="bg-white/60 backdrop-blur-md border border-white/80 rounded-[3.5rem] p-8 space-y-4 shadow-xl shadow-indigo-500/5">
-          <p className="text-slate-600 text-sm leading-relaxed px-2">
-            Introduce el código de otro Nido para fusionar calendarios con otro **Guía**. Esta acción unifica la gestión pero mantiene la autonomía.
-          </p>
-          <div className="relative group">
-            <input 
-              type="text"
-              value={syncCode}
-              onChange={(e) => setSyncCode(e.target.value.toUpperCase())}
-              placeholder="KID-00000"
-              className="w-full bg-white/80 border-none rounded-[2rem] py-4 px-6 text-lg font-mono focus:ring-4 focus:ring-indigo-100 transition-all outline-none"
-            />
-            <button 
-              onClick={() => handleAction(() => syncNest(syncCode))}
-              className="absolute right-2 top-2 bg-indigo-600 text-white px-6 py-2.5 rounded-[1.5rem] font-medium hover:bg-indigo-700 transition-colors"
-            >
-              Vincular
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* SECCIÓN: Añadir Miembros (Tribu / Peques) */}
-      <section className="space-y-4">
-        <h3 className="ml-6 text-sm font-semibold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-          <Heart size={16} /> Gestión de la Tribu
-        </h3>
-        <div 
-          onClick={() => handleAction(async () => {})} // Aquí se abriría tu modal de AddDependent
-          className="group cursor-pointer bg-white/60 backdrop-blur-md border border-white/80 rounded-[3.5rem] p-8 flex items-center justify-between hover:bg-white/80 transition-all shadow-xl shadow-pink-500/5"
+        <button 
+          onClick={() => triggerHaptic('medium')}
+          className={`relative p-5 rounded-[2.5rem] transition-all duration-500 shadow-xl ${
+            hasUpcoming ? 'bg-orange-500 text-white shadow-orange-200' : 'bg-white text-slate-400 border border-slate-100'
+          }`}
         >
-          <div className="flex items-center gap-5">
-            <div className="p-4 bg-pink-100/50 rounded-3xl group-hover:scale-110 transition-transform">
-              <UserPlus className="text-pink-600" size={24} />
-            </div>
-            <div>
-              <h4 className="text-lg font-bold text-slate-800">Añadir Dependiente</h4>
-              <p className="text-sm text-slate-500 text-balance">Registra a los Peques para asignarles eventos y tareas.</p>
-            </div>
-          </div>
-          <ChevronRight className="text-slate-300 group-hover:translate-x-1 transition-transform" />
-        </div>
-      </section>
-
-      {/* Preferencias de Notificaciones y Privacidad */}
-      <section className="grid grid-cols-2 gap-4">
-        <div className="bg-white/40 backdrop-blur-sm rounded-[2.5rem] p-6 border border-white/40 shadow-sm">
-          <Bell className="text-slate-400 mb-3" size={20} />
-          <span className="block font-semibold text-slate-800">Alertas</span>
-          <span className="text-xs text-slate-500">Sincronía en tiempo real</span>
-        </div>
-        <div className="bg-white/40 backdrop-blur-sm rounded-[2.5rem] p-6 border border-white/40 shadow-sm">
-          <Shield className="text-slate-400 mb-3" size={20} />
-          <span className="block font-semibold text-slate-800">Privacidad</span>
-          <span className="text-xs text-slate-500">Modo Ocupado activo</span>
-        </div>
-      </section>
-
-      {/* Footer Log Out - Discreto */}
-      <footer className="pt-10 flex justify-center">
-        <button className="text-slate-400 text-sm font-medium hover:text-red-400 transition-colors uppercase tracking-[0.2em]">
-          Cerrar Sesión
+          <Bell size={24} />
+          {hasUpcoming && <span className="absolute top-4 right-4 w-3 h-3 bg-white rounded-full border-4 border-orange-500" />}
         </button>
-      </footer>
+      </div>
 
+      {/* Selector de Fecha Mejorado (Modo Visual) */}
+      <div className="px-4">
+        <div className="flex justify-between bg-white/60 backdrop-blur-3xl p-3 rounded-[3rem] shadow-sm border border-white/80">
+          {weekDays.map((day) => {
+            const active = isSameDay(day, selectedDate);
+            const isTodayDate = isToday(day);
+            const hasEvents = events.some(e => isSameDay(new Date(e.start_time), day));
+            
+            return (
+              <button
+                key={day.toISOString()}
+                onClick={() => { triggerHaptic('soft'); setSelectedDate(day); }}
+                className={`flex flex-col items-center justify-center min-w-[50px] py-5 rounded-[2.2rem] transition-all relative ${
+                  active ? 'bg-slate-900 text-white shadow-2xl scale-105' : 'text-slate-400 hover:bg-white'
+                }`}
+              >
+                <span className={`text-[9px] font-bold uppercase mb-1 ${active ? 'text-indigo-300' : 'text-slate-400'}`}>
+                  {format(day, "EE", { locale: es })}
+                </span>
+                <span className="text-lg font-black">{format(day, "d")}</span>
+                
+                {hasEvents && !active && (
+                  <div className="absolute bottom-3 w-1.5 h-1.5 bg-indigo-500 rounded-full" />
+                )}
+                {isTodayDate && !active && (
+                  <div className="absolute -top-1 w-1 h-1 bg-orange-500 rounded-full" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Parrilla Horaria Estilo Timeline Élite */}
+      <div className="px-6 relative mt-8">
+        {/* Línea de tiempo vertical decorativa */}
+        <div className="absolute left-[4.5rem] top-0 bottom-0 w-[1.5px] bg-gradient-to-b from-slate-200 via-slate-100 to-transparent" />
+        
+        <div className="space-y-2">
+          {dayHours.map((hour) => {
+            const hourStr = format(hour, "HH:00");
+            const hourEvents = events.filter(e => 
+              isSameDay(new Date(e.start_time), selectedDate) && 
+              format(new Date(e.start_time), "HH:00") === hourStr
+            );
+
+            return (
+              <div key={hourStr} className="flex gap-6 group">
+                {/* Hora */}
+                <div className="w-12 pt-2 text-right">
+                  <span className={`text-[11px] font-bold tabular-nums transition-colors ${
+                    hourEvents.length > 0 ? 'text-indigo-600' : 'text-slate-300'
+                  }`}>
+                    {hourStr}
+                  </span>
+                </div>
+
+                {/* Slot de Contenido */}
+                <div className={`flex-1 min-h-[100px] relative rounded-[2.5rem] transition-all ${
+                  hourEvents.length > 0 ? 'py-2' : 'border-b border-slate-50'
+                }`}>
+                  <AnimatePresence mode="popLayout">
+                    {hourEvents.length > 0 ? (
+                      <div className="space-y-3">
+                        {hourEvents.map((event) => (
+                          <motion.div
+                            key={event.id}
+                            initial={{ opacity: 0, x: 10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                          >
+                            <AgendaCard 
+                              event={event}
+                              isCreator={event.created_by === profile?.id}
+                              assignedMember={members.find((m: any) => m.id === event.assigned_to)}
+                              onClick={() => {
+                                triggerHaptic('soft'); // CORRECCIÓN: 'light' cambiado a 'soft' para el Build
+                                console.log("Detalle", event.title);
+                              }}
+                            />
+                          </motion.div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="h-full w-full flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                         <button 
+                          onClick={() => triggerHaptic('soft')}
+                          className="text-[9px] font-bold text-slate-300 uppercase tracking-widest flex items-center gap-2 ml-4"
+                        >
+                          <div className="w-4 h-[1px] bg-slate-200" />
+                          Libre
+                        </button>
+                      </div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Indicador flotante de "Día de Custodia" si aplica */}
+      <AnimatePresence>
+        {events.some(e => e.category === 'custody' && isSameDay(new Date(e.start_time), selectedDate)) && (
+          <motion.div 
+            initial={{ y: 100 }} 
+            animate={{ y: 0 }}
+            className="fixed bottom-28 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-8 py-4 rounded-full shadow-2xl flex items-center gap-3 z-50 border border-white/10"
+          >
+            <div className="w-2 h-2 bg-pink-500 rounded-full animate-pulse" />
+            <span className="text-[11px] font-black uppercase tracking-[0.2em]">Hoy: Turno de Custodia</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
-
-export { SettingsView };
