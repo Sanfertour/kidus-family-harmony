@@ -9,7 +9,6 @@ export const useNestStore = create<any>((set, get) => ({
   events: [],
   loading: false,
   initialized: false,
-  // Estado para la IA: Almacena el borrador detectado en la circular
   aiDraftEvent: null, 
 
   fetchSession: async () => {
@@ -39,7 +38,6 @@ export const useNestStore = create<any>((set, get) => ({
 
       if (profile.nest_id) {
         await get().initializeNest(profile.nest_id);
-        // ACTIVAMOS REALTIME: Escucha cambios en eventos del Nido
         get().subscribeToEvents(profile.nest_id);
       }
     } catch (e) {
@@ -65,14 +63,40 @@ export const useNestStore = create<any>((set, get) => ({
     }
   },
 
-  // SUSCRIPCIÓN EN TIEMPO REAL
+  // --- NUEVA LÓGICA DE SINCRONIZACIÓN A POSTERIORI ---
+  updateNestId: async (code: string) => {
+    try {
+      set({ loading: true });
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return false;
+
+      // Llamada al backend (RPC) para vincular nuevo miembro
+      const { data, error } = await supabase.rpc('link_member_to_nest_by_code', {
+        target_code: code,
+        user_uuid: session.user.id
+      });
+
+      if (error || !data) throw new Error(error?.message || "Código no válido");
+
+      // Si tiene éxito, reiniciamos el estado con el nuevo nido
+      set({ nestCode: code });
+      await get().fetchSession(); // Esto recarga nestId, miembros y eventos automáticamente
+      return true;
+    } catch (e) {
+      console.error("Error vinculando nido:", e);
+      return false;
+    } finally {
+      set({ loading: false });
+    }
+  },
+
   subscribeToEvents: (nestId: string) => {
     const channel = supabase
       .channel(`nest_events_${nestId}`)
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'events', filter: `nest_id=eq.${nestId}` },
         () => {
-          console.log("🔄 Sincronía: Cambio detectado en el Nido...");
+          console.log("🔄 Sincronía Realtime activa");
           get().fetchEvents();
         }
       )
@@ -92,30 +116,17 @@ export const useNestStore = create<any>((set, get) => ({
     const { nestId } = get();
     if (!nestId) return;
 
+    // Ajustado para evitar el error 400 si created_by no existe aún
     const { data, error } = await supabase
       .from('events')
-      .select(`
-        *,
-        profiles:assigned_to (id, display_name, avatar_url, role, color)
-      `)
+      .select('*')
       .eq('nest_id', nestId)
       .order('start_time', { ascending: true });
     
-    if (error) {
-      // Fallback si la relación falla (Error 400)
-      const { data: fallback } = await supabase.from('events').select('*').eq('nest_id', nestId).order('start_time', { ascending: true });
-      set({ events: fallback || [] });
-    } else {
-      set({ events: data || [] });
-    }
+    set({ events: data || [] });
   },
 
-  // --- MÓDULO IA / BOVEDA ---
-  setAiDraft: (data: any) => {
-    // Aquí volcamos lo que la IA "entiende" para pasarlo al Drawer
-    set({ aiDraftEvent: data });
-  },
-
+  setAiDraft: (data: any) => set({ aiDraftEvent: data }),
   clearAiDraft: () => set({ aiDraftEvent: null }),
 
   signOut: async () => {
@@ -123,3 +134,4 @@ export const useNestStore = create<any>((set, get) => ({
     set({ profile: null, nestId: null, nestCode: null, events: [], members: [] });
   }
 }));
+                                                                    
