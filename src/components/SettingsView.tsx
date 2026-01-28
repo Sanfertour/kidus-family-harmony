@@ -40,14 +40,13 @@ const SettingsView = () => {
 
   const handleUpdateMember = async (id: string) => {
     triggerHaptic('medium');
-    // Asumimos que updateProfile puede recibir un ID opcional o tenemos updateMember
     await updateProfile({ display_name: editMemberName }, id);
     setEditingMemberId(null);
   };
 
   const handleDeleteMember = async (id: string) => {
     if (confirm("¿Seguro que quieres eliminar a este miembro de la Tribu?")) {
-      triggerHaptic('heavy');
+      triggerHaptic('medium'); // CORRECCIÓN: 'heavy' cambiado a 'medium' para el Build
       await deleteMember(id);
     }
   };
@@ -100,7 +99,7 @@ const SettingsView = () => {
             <h2 className="text-3xl font-black text-slate-800 tracking-tighter italic">{nestData?.nest_code}</h2>
           </div>
           <button 
-            onClick={() => { triggerHaptic('soft'); navigator.clipboard.writeText(nestData?.nest_code); }}
+            onClick={() => { triggerHaptic('soft'); navigator.clipboard.writeText(nestData?.nest_code || ''); }}
             className="p-4 bg-white rounded-3xl shadow-sm text-slate-400 hover:text-indigo-600 transition-all active:scale-90"
           >
             <Copy size={20} />
@@ -182,7 +181,6 @@ const SettingsView = () => {
             ))}
           </AnimatePresence>
 
-          {/* Botón Añadir */}
           {!showAddMember ? (
             <button 
               onClick={() => { triggerHaptic('soft'); setShowAddMember(true); }}
@@ -211,7 +209,7 @@ const SettingsView = () => {
       {/* FOOTER */}
       <footer className="pt-10 flex flex-col items-center gap-6">
         <button 
-          onClick={() => { triggerHaptic('heavy'); signOut(); }}
+          onClick={() => { triggerHaptic('medium'); signOut(); }} // CORRECCIÓN: 'heavy' cambiado a 'medium'
           className="px-10 py-4 bg-white text-red-400 rounded-full text-[10px] font-black uppercase tracking-[0.3em] border border-red-50 hover:bg-red-500 hover:text-white transition-all shadow-sm"
         >
           Finalizar Sesión
